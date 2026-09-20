@@ -1951,7 +1951,7 @@ function getService(id){
 function getSubscription(id){
 
     return state.subscriptions.find(
-        x=>Number(x.id)===Number(id)
+        x=>String(x.id)===String(id)
     );
 
 }
@@ -6732,11 +6732,9 @@ async function saveCustomerInvoice(){
         "invoiceSubscription"
     ).value
     ?
-    Number(
-        document.getElementById(
-            "invoiceSubscription"
-        ).value
-    )
+    document.getElementById(
+        "invoiceSubscription"
+    ).value
     :
     null;
 
@@ -7130,7 +7128,7 @@ function calculateTraderInvoice(){
 }
 
 
-async function createTraderInvoice(){
+async async function createTraderInvoice(){
 
     const traderId=
     Number(
@@ -7170,9 +7168,9 @@ async function createTraderInvoice(){
     checks.map(
         check=>
         getSubscription(
-            Number(check.value)
+            check.value
         )
-    );
+    ).filter(Boolean);
 
     const subtotal=
     subscriptions.reduce(
@@ -7337,7 +7335,7 @@ function printInvoice(id){
 
     const items =
     state.invoiceItems.filter(
-        x => Number(x.invoice_id) === Number(id)
+        x => String(x.invoice_id) === String(id)
     );
 
     const company =
