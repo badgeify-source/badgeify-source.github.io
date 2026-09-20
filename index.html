@@ -9417,33 +9417,87 @@ async function requestMobileNotifications(){
         return false;
     }
 
-    await registerBadgeifyServiceWorker();
-    localStorage.setItem("badgeify_notifications_enabled","1");
-    updateNotificationUI();
+    const reg=await registerBadgeifyServiceWorker();
 
-    try{
-        if(PUSH_PUBLIC_KEY && "PushManager" in window){
-            const reg=await navigator.serviceWorker.ready;
-            let sub=await reg.pushManager.getSubscription();
-
-            if(!sub){
-                sub=await reg.pushManager.subscribe({
-                    userVisibleOnly:true,
-                    applicationServerKey:urlBase64ToUint8Array(PUSH_PUBLIC_KEY)
-                });
-            }
-
-            localStorage.setItem(
-                "badgeify_push_subscription",
-                JSON.stringify(sub)
-            );
-        }
-    }catch(error){
-        console.warn("BADGEIFY push subscription:", error);
+    if(!reg){
+        showToast("تعذر تشغيل خدمة إشعارات BADGEIFY", true);
+        return false;
     }
 
-    showToast("تم تفعيل إشعارات BADGEIFY على هذا الجهاز");
-    return true;
+    try{
+        if(!("PushManager" in window)){
+            throw new Error("Push Notifications غير مدعومة في هذا المتصفح");
+        }
+
+        let sub=await reg.pushManager.getSubscription();
+
+        if(!sub){
+            sub=await reg.pushManager.subscribe({
+                userVisibleOnly:true,
+                applicationServerKey:
+                    urlBase64ToUint8Array(PUSH_PUBLIC_KEY)
+            });
+        }
+
+        const json=sub.toJSON();
+
+        const response=await fetch(
+            NOTIFICATION_REGISTER_URL,
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    role:"owner",
+                    owner_user_id:currentUser?.id || null,
+                    endpoint:json.endpoint,
+                    p256dh:json.keys?.p256dh || "",
+                    auth:json.keys?.auth || "",
+                    user_agent:navigator.userAgent
+                })
+            }
+        );
+
+        const data=await response.json();
+
+        if(!response.ok || !data.success){
+            throw new Error(
+                data.error ||
+                "تعذر تسجيل جهاز المالك"
+            );
+        }
+
+        localStorage.setItem(
+            "badgeify_push_subscription",
+            JSON.stringify(json)
+        );
+
+        localStorage.setItem(
+            "badgeify_notifications_enabled",
+            "1"
+        );
+
+        updateNotificationUI();
+
+        showToast("تم تسجيل جهاز المالك لاستقبال الإشعارات");
+
+        return true;
+
+    }catch(error){
+        console.error(
+            "BADGEIFY push subscription:",
+            error
+        );
+
+        showToast(
+            "تعذر تسجيل جهاز الإشعارات: "+
+            (error?.message || "خطأ غير معروف"),
+            true
+        );
+
+        return false;
+    }
 }
 
 function updateNotificationUI(){
