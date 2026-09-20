@@ -9477,5 +9477,70 @@ applyTheme();
 
 </script>
 
+<script>
+/* BADGEIFY LOGIN SAFETY FALLBACK */
+(function(){
+    const btn = document.getElementById("loginBtn");
+    const emailEl = document.getElementById("loginEmail");
+    const passEl = document.getElementById("loginPassword");
+    const msgEl = document.getElementById("loginMsg");
+
+    if(!btn || !emailEl || !passEl || !msgEl) return;
+
+    btn.addEventListener("click", async function(e){
+        e.preventDefault();
+
+        const email = emailEl.value.trim();
+        const password = passEl.value;
+
+        if(!email || !password){
+            msgEl.textContent = "اكتب البريد الإلكتروني وكلمة المرور";
+            return;
+        }
+
+        btn.disabled = true;
+        msgEl.textContent = "جاري تسجيل الدخول...";
+
+        try{
+            const client = window.supabase.createClient(
+                "https://rsvzachgbqsucqgrwguv.supabase.co",
+                "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"
+            );
+
+            const { data, error } =
+                await client.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+            if(error){
+                msgEl.textContent = error.message || "بيانات الدخول غير صحيحة";
+                btn.disabled = false;
+                return;
+            }
+
+            if(data && data.session){
+                msgEl.textContent = "";
+                document.getElementById("loginView")?.classList.add("hidden");
+                document.getElementById("appView")?.classList.remove("hidden");
+
+                if(typeof window.refresh === "function"){
+                    window.refresh();
+                }
+            }else{
+                msgEl.textContent = "تم تسجيل الدخول ولكن لم يتم إنشاء جلسة.";
+            }
+
+        }catch(err){
+            msgEl.textContent =
+                err?.message ||
+                "حدث خطأ أثناء الاتصال. حاول مرة أخرى.";
+        }finally{
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
+
 </body>
 </html>
