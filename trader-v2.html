@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BADGEIFY_TRADER_V2_DIRECT -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+
+<title>BADGEIFY - بوابة التاجر</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:"Cairo",sans-serif;
+    background:
+        radial-gradient(circle at top right,#302514 0%,transparent 35%),
+        radial-gradient(circle at bottom left,#1b1710 0%,transparent 35%),
+        #090909;
+    color:#f5f5f5;
+    min-height:100vh;
+}
+
+:root{
+    --gold:#1877F2;
+    --gold2:#42A5F5;
+    --bg:#090909;
+    --card:#111111;
+    --card2:#171717;
+    --border:rgba(24,119,242,.22);
+    --muted:#a7a7a7;
+    --green:#31c48d;
+    --red:#ef5350;
+    --orange:#f0a33a;
+    --blue:#5ca9ff;
+}
+
+.container{
+    width:min(1200px,94%);
+    margin:auto;
+}
+
+/* HEADER */
+
+.header{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:rgba(9,9,9,.92);
+    backdrop-filter:blur(15px);
+    border-bottom:1px solid var(--border);
+}
+
+.header-inner{
+    min-height:78px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+}
+
+.brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.logo{
+    width:48px;
+    height:48px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(135deg,#42A5F5,#0B5ED7);
+    color:#080808;
+    font-size:22px;
+    font-weight:800;
+    box-shadow:0 8px 25px rgba(24,119,242,.2);
+}
+
+.brand-text strong{
+    display:block;
+    font-size:20px;
+    letter-spacing:1px;
+    color:var(--gold2);
+}
+
+.brand-text span{
+    display:block;
+    color:#888;
+    font-size:11px;
+}
+
+.header-actions{
+    display:flex;
+    gap:8px;
+}
+
+.icon-btn{
+    border:1px solid var(--border);
+    background:#121212;
+    color:var(--gold2);
+    width:42px;
+    height:42px;
+    border-radius:12px;
+    cursor:pointer;
+    transition:.2s;
+}
+
+.icon-btn:hover{
+    background:#1b1b1b;
+    transform:translateY(-1px);
+}
+
+/* HERO */
+
+.hero{
+    padding:32px 0 22px;
+}
+
+.hero-card{
+    position:relative;
+    overflow:hidden;
+    background:
+        linear-gradient(135deg,rgba(24,119,242,.12),rgba(255,255,255,.02)),
+        var(--card);
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:28px;
+    box-shadow:0 15px 50px rgba(0,0,0,.35);
+}
+
+.hero-card:after{
+    content:"";
+    position:absolute;
+    width:280px;
+    height:280px;
+    border-radius:50%;
+    background:rgba(24,119,242,.08);
+    left:-130px;
+    bottom:-170px;
+    filter:blur(10px);
+}
+
+.hero-content{
+    position:relative;
+    z-index:2;
+}
+
+.eyebrow{
+    color:var(--gold);
+    font-size:12px;
+    font-weight:700;
+    margin-bottom:5px;
+}
+
+.trader-name{
+    margin:0;
+    font-size:30px;
+    font-weight:800;
+}
+
+.trader-meta{
+    margin-top:10px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    color:var(--muted);
+    font-size:13px;
+}
+
+.meta-item{
+    display:flex;
+    align-items:center;
+    gap:7px;
+}
+
+.hero-bottom{
+    margin-top:22px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    flex-wrap:wrap;
+}
+
+.whatsapp{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    text-decoration:none;
+    color:white;
+    background:#159447;
+    border-radius:12px;
+    padding:10px 16px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.whatsapp:hover{
+    background:#20a956;
+}
+
+/* SUMMARY */
+
+.summary{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:14px;
+    margin:0 0 25px;
+}
+
+.stat{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:19px;
+    min-height:120px;
+}
+
+.stat-icon{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(214,173,85,.1);
+    color:var(--gold2);
+    margin-bottom:12px;
+}
+
+.stat-label{
+    color:#999;
+    font-size:12px;
+}
+
+.stat-value{
+    font-size:22px;
+    font-weight:800;
+    margin-top:3px;
+}
+
+/* SECTION */
+
+.section{
+    margin-bottom:28px;
+}
+
+.section-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+
+.section-title{
+    margin:0;
+    font-size:20px;
+}
+
+.section-title span{
+    color:var(--gold2);
+}
+
+/* FILTERS */
+
+.tools{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.search{
+    position:relative;
+}
+
+.search i{
+    position:absolute;
+    right:13px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#777;
+}
+
+.search input{
+    width:250px;
+    height:42px;
+    padding:0 40px 0 12px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    background:#111;
+    color:white;
+    outline:none;
+    font-family:inherit;
+}
+
+.search input:focus{
+    border-color:var(--gold);
+}
+
+.filters{
+    display:flex;
+    gap:7px;
+    flex-wrap:wrap;
+}
+
+.filter{
+    height:42px;
+    border:1px solid var(--border);
+    background:#111;
+    color:#aaa;
+    border-radius:12px;
+    padding:0 14px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:12px;
+}
+
+.filter.active{
+    background:rgba(214,173,85,.13);
+    color:var(--gold2);
+    border-color:rgba(214,173,85,.5);
+}
+
+/* TABLE */
+
+.table-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:20px;
+    overflow:hidden;
+}
+
+.table-wrap{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:850px;
+}
+
+th{
+    background:#151515;
+    color:#999;
+    font-size:12px;
+    font-weight:600;
+    padding:15px;
+    text-align:right;
+    white-space:nowrap;
+}
+
+td{
+    padding:16px 15px;
+    border-top:1px solid rgba(255,255,255,.05);
+    font-size:13px;
+    vertical-align:middle;
+}
+
+tr:hover td{
+    background:rgba(255,255,255,.015);
+}
+
+.customer-cell{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.avatar{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    background:linear-gradient(135deg,#e1c36d,#8f6723);
+    color:#111;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:800;
+    flex-shrink:0;
+}
+
+.customer-link{
+    color:#f1d58a;
+    background:none;
+    border:0;
+    padding:0;
+    font:inherit;
+    font-weight:800;
+    cursor:pointer;
+    text-align:right;
+}
+.customer-link:hover{
+    color:#fff;
+    text-decoration:underline;
+}
+.customer-link i{
+    font-size:10px;
+    margin-right:5px;
+    color:#d6ad55;
+}
+.customer-modal{
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.78);
+    backdrop-filter:blur(8px);
+}
+.customer-modal.show{display:flex;}
+.customer-modal-box{
+    width:min(850px,100%);
+    max-height:90vh;
+    overflow:auto;
+    background:#111;
+    border:1px solid var(--border);
+    border-radius:22px;
+    box-shadow:0 25px 80px rgba(0,0,0,.55);
+    padding:22px;
+}
+.customer-modal-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:15px;
+    margin-bottom:18px;
+}
+.customer-modal-title{
+    font-size:22px;
+    font-weight:800;
+    color:var(--gold2);
+}
+.customer-modal-meta{
+    color:#888;
+    font-size:12px;
+    margin-top:5px;
+}
+.customer-modal-close{
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    border:1px solid var(--border);
+    background:#191919;
+    color:#ddd;
+    cursor:pointer;
+}
+.customer-modal-sub{
+    background:#161616;
+    border:1px solid rgba(214,173,85,.13);
+    border-radius:15px;
+    padding:15px;
+    margin-bottom:10px;
+}
+.customer-modal-sub-head{
+    display:flex;
+    justify-content:space-between;
+    gap:12px;
+    align-items:center;
+    margin-bottom:12px;
+}
+.customer-modal-service{
+    color:var(--gold2);
+    font-weight:800;
+}
+.customer-modal-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:9px;
+}
+.customer-modal-item{
+    background:#0d0d0d;
+    border-radius:10px;
+    padding:10px;
+}
+.customer-modal-item label{
+    display:block;
+    color:#777;
+    font-size:10px;
+    margin-bottom:4px;
+}
+.customer-modal-item span{
+    font-size:12px;
+    font-weight:700;
+}
+@media(max-width:600px){
+    .customer-modal-grid{grid-template-columns:1fr 1fr;}
+}
+
+.customer-info strong{
+    display:block;
+    font-size:13px;
+}
+
+.customer-info small{
+    color:#777;
+    font-size:10px;
+}
+
+.service{
+    color:var(--gold2);
+    font-weight:700;
+}
+
+.money{
+    font-weight:800;
+}
+
+.day{
+    color:#bbb;
+}
+
+.status{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:20px;
+    padding:6px 10px;
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.status.paid{
+    color:var(--green);
+    background:rgba(49,196,141,.1);
+}
+
+.status.overdue{
+    color:var(--red);
+    background:rgba(239,83,80,.1);
+}
+
+.status.due{
+    color:var(--orange);
+    background:rgba(240,163,58,.1);
+}
+
+.status.upcoming{
+    color:var(--blue);
+    background:rgba(92,169,255,.1);
+}
+
+/* CUSTOMER CARDS MOBILE */
+
+.mobile-list{
+    display:none;
+}
+
+.subscription-card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:17px;
+    margin-bottom:12px;
+}
+
+.sub-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+}
+
+.sub-customer{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.sub-customer strong{
+    display:block;
+}
+
+.sub-customer small{
+    display:block;
+    color:#777;
+    margin-top:2px;
+}
+
+.sub-grid{
+    margin-top:15px;
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+}
+
+.sub-item{
+    background:#151515;
+    border-radius:12px;
+    padding:10px;
+}
+
+.sub-item label{
+    display:block;
+    color:#777;
+    font-size:10px;
+    margin-bottom:2px;
+}
+
+.sub-item span{
+    font-size:12px;
+    font-weight:700;
+}
+
+/* EMPTY / LOADING */
+
+.center{
+    min-height:250px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:12px;
+    color:#777;
+}
+
+.loader{
+    width:38px;
+    height:38px;
+    border:3px solid #292929;
+    border-top-color:var(--gold);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+.error{
+    background:rgba(239,83,80,.08);
+    border:1px solid rgba(239,83,80,.25);
+    color:#ff8987;
+    border-radius:16px;
+    padding:18px;
+    text-align:center;
+}
+
+.empty{
+    padding:40px 20px;
+    text-align:center;
+    color:#777;
+}
+
+/* FOOTER */
+
+.footer{
+    padding:15px 0 30px;
+    text-align:center;
+    color:#666;
+    font-size:11px;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:1050px){
+
+    .summary{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+}
+
+@media(max-width:700px){
+
+    .container{
+        width:92%;
+    }
+
+    .header-inner{
+        min-height:68px;
+    }
+
+    .brand-text strong{
+        font-size:17px;
+    }
+
+    .logo{
+        width:42px;
+        height:42px;
+        border-radius:12px;
+    }
+
+    .hero{
+        padding-top:20px;
+    }
+
+    .hero-card{
+        padding:21px;
+        border-radius:20px;
+    }
+
+    .trader-name{
+        font-size:24px;
+    }
+
+    .summary{
+        grid-template-columns:repeat(2,1fr);
+        gap:10px;
+    }
+
+    .stat{
+        min-height:105px;
+        padding:15px;
+    }
+
+    .stat-value{
+        font-size:19px;
+    }
+
+    .tools{
+        width:100%;
+    }
+
+    .search{
+        width:100%;
+    }
+
+    .search input{
+        width:100%;
+    }
+
+    .filters{
+        width:100%;
+        overflow-x:auto;
+        padding-bottom:4px;
+        flex-wrap:nowrap;
+    }
+
+    .filter{
+        flex-shrink:0;
+    }
+
+    .table-card{
+        display:none;
+    }
+
+    .mobile-list{
+        display:block;
+    }
+
+    .section-title{
+        font-size:18px;
+    }
+
+}
+
+@media(max-width:420px){
+
+    .summary{
+        grid-template-columns:1fr 1fr;
+    }
+
+    .hero-bottom{
+        align-items:stretch;
+    }
+
+    .whatsapp{
+        justify-content:center;
+        width:100%;
+    }
+
+}
+
+
+/* VISA DISPLAY */
+.visa-display{display:flex;align-items:center;gap:12px;padding:12px 14px;margin-top:10px;border:1px solid rgba(99,179,255,.16);border-radius:14px;background:linear-gradient(135deg,rgba(24,119,242,.10),rgba(255,255,255,.025));}
+.visa-chip{width:42px;height:28px;border-radius:7px;background:linear-gradient(135deg,#42a5f5,#1877f2);position:relative;box-shadow:0 6px 18px rgba(24,119,242,.22);flex:none}
+.visa-chip:after{content:"";position:absolute;left:7px;top:8px;width:12px;height:9px;border:1px solid rgba(255,255,255,.7);border-radius:2px}
+.visa-info{min-width:0}.visa-title{font-size:11px;color:#91a0b3;margin-bottom:3px}.visa-name{font-weight:800;color:#f7fbff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.visa-number{font-size:12px;color:#63b3ff;direction:ltr;unicode-bidi:embed;letter-spacing:1px;margin-top:2px}
+
+/* BADGEIFY TRADER PORTAL - PREMIUM REDESIGN */
+:root{
+ --bg:#050a12;--card:#0d1624;--card2:#101d2e;--gold:#1877f2;--gold2:#63b3ff;
+ --text:#f7fbff;--muted:#91a0b3;--green:#35d39a;--red:#ff6868;--orange:#f4b65e;
+ --border:rgba(99,179,255,.13);--shadow:0 22px 70px rgba(0,0,0,.38)
+}
+body{background:radial-gradient(circle at 85% -10%,rgba(24,119,242,.20),transparent 32%),radial-gradient(circle at 5% 100%,rgba(66,165,245,.08),transparent 30%),#050a12}
+.container{width:min(1100px,92%)}
+.header{padding:28px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.brand{font-size:30px;letter-spacing:2.5px;text-shadow:0 0 28px rgba(24,119,242,.28)}
+.subtitle{letter-spacing:.5px}
+.hero{margin-top:18px;padding:30px;border:1px solid rgba(99,179,255,.16);background:linear-gradient(145deg,rgba(16,29,46,.97),rgba(7,13,23,.97));box-shadow:var(--shadow);border-radius:24px;position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;width:260px;height:260px;left:-110px;top:-130px;border-radius:50%;background:rgba(24,119,242,.10);filter:blur(8px)}
+.hero h1,.hero h2{position:relative;font-size:27px;line-height:1.45}
+.hero p{position:relative;color:#aebaca;margin-top:9px}
+.card,.customer-card,.customer-box,.subscription,.sub-card{background:linear-gradient(145deg,rgba(15,27,43,.98),rgba(8,15,25,.98))!important;border:1px solid rgba(255,255,255,.07)!important;box-shadow:0 15px 48px rgba(0,0,0,.25);border-radius:20px!important}
+.customer-card,.customer-box{transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.customer-card:hover,.customer-box:hover{transform:translateY(-2px);border-color:rgba(99,179,255,.25)!important;box-shadow:0 20px 55px rgba(0,0,0,.32)}
+button,.btn,.action-btn{border-radius:12px!important}
+.gold-btn,.primary-btn{background:linear-gradient(135deg,#42a5f5,#1877f2)!important;color:#fff!important;border:0!important;box-shadow:0 10px 30px rgba(24,119,242,.25)}
+.search input,.search select,input,select{border-color:rgba(255,255,255,.09)!important;background:rgba(255,255,255,.025)!important}
+.badge,.status,.payment-status{border-radius:999px!important;padding:7px 12px!important;font-weight:800}
+.section-title{font-weight:900;letter-spacing:.2px}
+.footer{opacity:.8;padding:30px 0 45px}
+@media(max-width:700px){.container{width:94%}.header{padding-top:20px}.brand{font-size:25px}.hero{padding:22px;border-radius:20px}.hero h1,.hero h2{font-size:22px}.card,.customer-card,.customer-box{border-radius:17px!important}}
+
+/* BADGEIFY TRADER PORTAL - V2 ACTUAL COMPONENTS */
+body{background:#050a12!important;color:#f7fbff!important}
+.container{max-width:1160px!important;width:92%!important}
+.header{background:rgba(5,10,18,.88)!important;border-bottom:1px solid rgba(99,179,255,.12)!important;padding:20px 0!important;backdrop-filter:blur(14px)!important}
+.brand{color:#63b3ff!important;font-weight:950!important;letter-spacing:2.5px!important;text-shadow:0 0 28px rgba(24,119,242,.35)!important}
+.logo{background:linear-gradient(135deg,#42a5f5,#1877f2)!important;box-shadow:0 10px 30px rgba(24,119,242,.25)!important}
+.icon-btn{background:#0d1827!important;border:1px solid rgba(99,179,255,.15)!important;color:#63b3ff!important;border-radius:12px!important}
+.hero-card{background:linear-gradient(135deg,#111f32,#07111e)!important;border:1px solid rgba(99,179,255,.22)!important;border-radius:26px!important;box-shadow:0 25px 80px rgba(0,0,0,.42)!important}
+.eyebrow{color:#63b3ff!important;letter-spacing:2px!important}.trader-name{color:#fff!important;font-size:30px!important;font-weight:900!important}.trader-meta{color:#9fb0c4!important}.meta-item{background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.06)!important;border-radius:12px!important}
+.whatsapp{background:linear-gradient(135deg,#35d39a,#159a6d)!important;border:0!important;box-shadow:0 10px 28px rgba(53,211,154,.18)!important}
+.stat{background:linear-gradient(145deg,#101e30,#0a1422)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:18px!important;box-shadow:0 14px 40px rgba(0,0,0,.25)!important}
+.stat-icon{background:rgba(24,119,242,.13)!important;color:#63b3ff!important}
+.stat-value{color:#fff!important;font-weight:900!important}.stat-label{color:#91a0b3!important}
+.section{margin-top:28px!important}.section-title{color:#fff!important;font-weight:900!important;font-size:20px!important}.tools{background:transparent!important}
+.search{background:#0d1827!important;border:1px solid rgba(99,179,255,.12)!important;border-radius:14px!important}.search input{color:#fff!important}
+.filter{background:#0d1827!important;border:1px solid rgba(99,179,255,.12)!important;color:#aebaca!important;border-radius:12px!important}.filter.active{background:linear-gradient(135deg,#42a5f5,#1877f2)!important;color:#fff!important}
+.table-card{background:linear-gradient(145deg,#101d2e,#09121f)!important;border:1px solid rgba(99,179,255,.13)!important;border-radius:20px!important;box-shadow:0 18px 50px rgba(0,0,0,.28)!important}
+.customer-cell,.customer-info{color:#fff!important}.customer-link{color:#63b3ff!important;font-weight:900!important}
+.subscription-card{background:linear-gradient(145deg,#101d2e,#09121f)!important;border:1px solid rgba(99,179,255,.13)!important;border-radius:18px!important;box-shadow:0 15px 42px rgba(0,0,0,.25)!important}
+.sub-customer{color:#fff!important;font-weight:900!important}.service{color:#63b3ff!important}.money{color:#35d39a!important;font-weight:900!important}.day{color:#aebaca!important}
+.status{border-radius:999px!important}
+.footer{border-top:1px solid rgba(255,255,255,.06)!important;color:#718096!important}
+@media(max-width:700px){.container{width:94%!important}.hero-card{border-radius:20px!important}.trader-name{font-size:24px!important}.stat{min-height:100px!important}}
+</style>
+</head>
+
+<body>
+
+<header class="header">
+
+    <div class="container header-inner">
+
+        <div class="brand">
+
+            <div class="logo">
+                <img src="https://scontent.fcai19-6.fna.fbcdn.net/v/t39.30808-6/668525850_2199653773906597_7853828551378894356_n.jpg?stp=dst-jpg_tt6&cstp=mx1024x1024&ctp=s1024x1024&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=jN9zzk0cgtMQ7kNvwGOSJ86&_nc_oc=AdoPY9Oiv9RuWpzZqiZhQtBL8_D44BTxrXRyP8FXc-1TwAiHTok27pi88YUHp6Juwsc&_nc_zt=23&_nc_ht=scontent.fcai19-6.fna&_nc_gid=J5MCcle55wDvCYr-oi3x0g&_nc_ss=7b2a8&oh=00_AQKYoylM8WFVIVRJFICZbjPr5qJ0RbK-vvanL5q7naqABg&oe=6AB4F454" alt="BADGEIFY" style="width:48px;height:48px;border-radius:14px;object-fit:cover;box-shadow:0 8px 25px rgba(24,119,242,.25);">
+            </div>
+
+            <div class="brand-text">
+                <strong>BADGEIFY</strong>
+                <span>بوابة التاجر</span>
+            </div>
+
+        </div>
+
+        <div class="header-actions">
+
+            <button
+                class="icon-btn"
+                onclick="loadPortal()"
+                title="تحديث">
+
+                <i class="fa-solid fa-rotate"></i>
+
+            </button>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<main class="container">
+
+    <!-- LOADING -->
+
+    <div id="loading" class="center" style="min-height:500px;">
+
+        <div class="loader"></div>
+
+        <div>
+            جاري تحميل بيانات التاجر...
+        </div>
+
+    </div>
+
+
+    <!-- ERROR -->
+
+    <div
+        id="errorBox"
+        style="display:none;margin-top:30px;"
+        class="error">
+    </div>
+
+
+    <!-- CONTENT -->
+
+    <div id="customerModal" class="customer-modal" onclick="closeCustomerModal(event)">
+    <div class="customer-modal-box" onclick="event.stopPropagation()">
+        <div class="customer-modal-head">
+            <div>
+                <div id="customerModalTitle" class="customer-modal-title">بيانات العميل</div>
+                <div id="customerModalMeta" class="customer-modal-meta"></div>
+            </div>
+            <button class="customer-modal-close" onclick="closeCustomerModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="customerModalBody"></div>
+    </div>
+</div>
+
+<div id="app" style="display:none;">
+
+        <!-- HERO -->
+
+        <section class="hero">
+
+            <div class="hero-card">
+
+                <div class="hero-content">
+
+                    <div class="eyebrow">
+                        حساب التاجر
+                    </div>
+
+                    <h1
+                        id="traderName"
+                        class="trader-name">
+                        -
+                    </h1>
+
+                    <div class="trader-meta">
+
+                        <div
+                            id="traderPhoneBox"
+                            class="meta-item">
+
+                            <i class="fa-solid fa-phone"></i>
+
+                            <span id="traderPhone">
+                                -
+                            </span>
+
+                        </div>
+
+                        <div class="meta-item">
+
+                            <i class="fa-solid fa-calendar"></i>
+
+                            <span>
+                                متابعة الاشتراكات
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    <div class="hero-bottom">
+
+                        <div
+                            id="traderStatus"
+                            style="color:#31c48d;font-size:12px;font-weight:700;">
+
+                            <i class="fa-solid fa-circle"></i>
+                            الحساب نشط
+
+                        </div>
+
+                        <a
+                            id="traderWhatsapp"
+                            class="whatsapp"
+                            href="#"
+                            target="_blank"
+                            style="display:none;">
+
+                            <i class="fa-brands fa-whatsapp"></i>
+
+                            التواصل عبر واتساب
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- SUMMARY -->
+
+        <section class="summary">
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+
+                <div class="stat-label">
+                    العملاء
+                </div>
+
+                <div
+                    id="customersCount"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+
+                <div class="stat-label">
+                    الاشتراكات
+                </div>
+
+                <div
+                    id="subscriptionsCount"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+
+                <div class="stat-label">
+                    إجمالي الاشتراكات الشهرية
+                </div>
+
+                <div
+                    id="monthlyTotal"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+
+                <div class="stat-label">
+                    المسدد هذا الشهر
+                </div>
+
+                <div
+                    id="paidTotal"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+
+                <div class="stat-label">
+                    المتبقي هذا الشهر
+                </div>
+
+                <div
+                    id="remainingTotal"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- EXTRA SUMMARY -->
+
+        <section class="summary">
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+
+                <div class="stat-label">
+                    المتأخر
+                </div>
+
+                <div
+                    id="overdueTotal"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+
+            <div class="stat">
+
+                <div class="stat-icon">
+                    <i class="fa-solid fa-calendar-day"></i>
+                </div>
+
+                <div class="stat-label">
+                    مستحق اليوم
+                </div>
+
+                <div
+                    id="dueTodayTotal"
+                    class="stat-value">
+                    0
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- SUBSCRIPTIONS -->
+
+        <section class="section">
+
+            <div class="section-head">
+
+                <h2 class="section-title">
+                    الاشتراكات
+                    <span id="billingMonth"></span>
+                </h2>
+
+                <div class="tools">
+
+                    <div class="search">
+
+                        <i class="fa-solid fa-search"></i>
+
+                        <input
+                            id="searchInput"
+                            type="text"
+                            placeholder="ابحث باسم العميل أو الخدمة..."
+                            oninput="renderSubscriptions()">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="filters">
+
+                <button
+                    class="filter active"
+                    data-filter="all"
+                    onclick="setFilter('all',this)">
+
+                    الكل
+
+                </button>
+
+                <button
+                    class="filter"
+                    data-filter="paid"
+                    onclick="setFilter('paid',this)">
+
+                    مسدد
+
+                </button>
+
+                <button
+                    class="filter"
+                    data-filter="due"
+                    onclick="setFilter('due',this)">
+
+                    مستحق اليوم
+
+                </button>
+
+                <button
+                    class="filter"
+                    data-filter="overdue"
+                    onclick="setFilter('overdue',this)">
+
+                    متأخر
+
+                </button>
+
+                <button
+                    class="filter"
+                    data-filter="upcoming"
+                    onclick="setFilter('upcoming',this)">
+
+                    قادم
+
+                </button>
+
+            </div>
+
+
+            <br>
+
+
+            <!-- DESKTOP TABLE -->
+
+            <div
+                id="desktopTable"
+                class="table-card">
+
+                <div class="center">
+
+                    لا توجد بيانات
+
+                </div>
+
+            </div>
+
+
+            <!-- MOBILE -->
+
+            <div
+                id="mobileList"
+                class="mobile-list">
+
+            </div>
+
+        </section>
+
+
+        <!-- CUSTOMERS -->
+
+        <section class="section">
+
+            <div class="section-head">
+
+                <h2 class="section-title">
+                    العملاء
+                </h2>
+
+            </div>
+
+            <div
+                id="customersList"
+                class="table-card">
+
+            </div>
+
+        </section>
+
+
+    </div>
+
+</main>
+
+
+<footer class="footer">
+
+    BADGEIFY © 2026 — بوابة متابعة الاشتراكات
+
+</footer>
+
+
+<script>
+
+const FUNCTION_URL =
+"https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/trader-portal";
+
+
+const params =
+new URLSearchParams(window.location.search);
+
+const TOKEN =
+params.get("token");
+
+
+let portalData = null;
+
+let currentFilter = "all";
+
+
+/* =========================
+   HELPERS
+========================= */
+
+function escapeHtml(value){
+
+    if(value === null || value === undefined){
+        return "";
+    }
+
+    return String(value)
+        .replace(/&/g,"&amp;")
+        .replace(/</g,"&lt;")
+        .replace(/>/g,"&gt;")
+        .replace(/"/g,"&quot;")
+        .replace(/'/g,"&#039;");
+
+}
+
+
+function money(value){
+
+    const n =
+        Number(value || 0);
+
+    return new Intl.NumberFormat(
+        "ar-EG",
+        {
+            maximumFractionDigits:2
+        }
+    ).format(n);
+
+}
+
+
+function formatDate(date){
+
+    if(!date){
+        return "-";
+    }
+
+    try{
+
+        return new Date(date).toLocaleDateString(
+            "ar-EG",
+            {
+                year:"numeric",
+                month:"short",
+                day:"numeric"
+            }
+        );
+
+    }catch(e){
+
+        return date;
+
+    }
+
+}
+
+
+function getInitial(name){
+
+    if(!name){
+        return "?";
+    }
+
+    return String(name).trim().charAt(0);
+
+}
+
+
+function statusLabel(type){
+
+    switch(type){
+
+        case "paid":
+            return "مسدد";
+
+        case "overdue":
+            return "متأخر";
+
+        case "due":
+            return "مستحق اليوم";
+
+        case "upcoming":
+            return "قادم";
+
+        default:
+            return "-";
+
+    }
+
+}
+
+
+function statusIcon(type){
+
+    switch(type){
+
+        case "paid":
+            return "fa-circle-check";
+
+        case "overdue":
+            return "fa-triangle-exclamation";
+
+        case "due":
+            return "fa-calendar-day";
+
+        case "upcoming":
+            return "fa-clock";
+
+        default:
+            return "fa-circle";
+
+    }
+
+}
+
+
+function getCustomer(customerId){
+
+    return (
+        portalData?.customers || []
+    ).find(
+        c => Number(c.id) === Number(customerId)
+    );
+
+}
+
+
+function getServiceName(sub){
+
+    if(sub.service_name){
+        return sub.service_name;
+    }
+
+    return "-";
+
+}
+
+
+/* =========================
+   LOAD PORTAL
+========================= */
+
+async function loadPortal(){
+
+    if(!TOKEN){
+
+        showError(
+            "رابط التاجر غير صحيح.<br>يرجى استخدام الرابط المرسل لك."
+        );
+
+        return;
+
+    }
+
+
+    showLoading();
+
+
+    try{
+
+        const response =
+            await fetch(
+                FUNCTION_URL
+                + "?token="
+                + encodeURIComponent(TOKEN),
+                {
+                    method:"GET",
+                    headers:{
+                        "Accept":"application/json"
+                    },
+                    cache:"no-store"
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if(!response.ok){
+
+            throw new Error(
+                data?.message
+                ||
+                data?.error
+                ||
+                "تعذر تحميل البيانات"
+            );
+
+        }
+
+
+        if(
+            !data
+            ||
+            !data.trader
+        ){
+
+            throw new Error(
+                "لم يتم العثور على بيانات التاجر"
+            );
+
+        }
+
+
+        portalData = data;
+
+
+        renderPortal();
+
+
+    }catch(error){
+
+        console.error(error);
+
+        showError(
+            "حدث خطأ أثناء تحميل بيانات التاجر.<br><br>"
+            +
+            escapeHtml(error.message)
+        );
+
+    }
+
+}
+
+
+/* =========================
+   RENDER
+========================= */
+
+function renderPortal(){
+
+    hideLoading();
+
+
+    const trader =
+        portalData.trader;
+
+    const summary =
+        portalData.summary || {};
+
+
+    document.getElementById("traderName")
+        .textContent =
+        trader.trader_name || "-";
+
+
+    document.getElementById("traderPhone")
+        .textContent =
+        trader.phone || "لا يوجد رقم";
+
+
+    document.getElementById("customersCount")
+        .textContent =
+        money(summary.customers_count);
+
+
+    document.getElementById("subscriptionsCount")
+        .textContent =
+        money(summary.subscriptions_count);
+
+
+    document.getElementById("monthlyTotal")
+        .textContent =
+        money(summary.monthly_total)
+        + " "
+        + "ج.م";
+
+
+    document.getElementById("paidTotal")
+        .textContent =
+        money(summary.paid_current_month)
+        + " "
+        + "ج.م";
+
+
+    document.getElementById("remainingTotal")
+        .textContent =
+        money(summary.remaining_current_month)
+        + " "
+        + "ج.م";
+
+
+    document.getElementById("overdueTotal")
+        .textContent =
+        money(summary.overdue_total)
+        + " "
+        + "ج.م";
+
+
+    document.getElementById("dueTodayTotal")
+        .textContent =
+        money(summary.due_today_total)
+        + " "
+        + "ج.م";
+
+
+    document.getElementById("billingMonth")
+        .textContent =
+        "("
+        + escapeHtml(
+            summary.current_billing_month || ""
+        )
+        + ")";
+
+
+    if(trader.phone){
+
+        const number =
+            String(trader.phone)
+            .replace(/\D/g,"");
+
+
+        const whatsappNumber =
+            number.startsWith("0")
+            ? "20" + number.substring(1)
+            : number;
+
+
+        const wa =
+            document.getElementById(
+                "traderWhatsapp"
+            );
+
+
+        wa.href =
+            "https://wa.me/"
+            + whatsappNumber;
+
+
+        wa.style.display =
+            "inline-flex";
+
+    }
+
+
+    renderSubscriptions();
+
+    renderCustomers();
+
+}
+
+
+/* =========================
+   FILTER
+========================= */
+
+function setFilter(filter,button){
+
+    currentFilter =
+        filter;
+
+
+    document
+        .querySelectorAll(".filter")
+        .forEach(
+            b => b.classList.remove("active")
+        );
+
+
+    if(button){
+        button.classList.add("active");
+    }
+
+
+    renderSubscriptions();
+
+}
+
+
+/* =========================
+   SUBSCRIPTIONS
+========================= */
+
+function renderSubscriptions(){
+
+    const subscriptions =
+        portalData?.subscriptions || [];
+
+
+    const search =
+        (
+            document.getElementById(
+                "searchInput"
+            )?.value
+            ||
+            ""
+        )
+        .trim()
+        .toLowerCase();
+
+
+    let rows =
+        subscriptions.filter(
+            sub => {
+
+                if(
+                    currentFilter !== "all"
+                    &&
+                    sub.payment_status !== currentFilter
+                ){
+                    return false;
+                }
+
+
+                if(!search){
+                    return true;
+                }
+
+
+                const customerName =
+                    sub.customer_name || "";
+
+
+                const serviceName =
+                    sub.service_name || "";
+
+
+                const platform =
+                    sub.platform || "";
+
+
+                return (
+
+                    customerName
+                        .toLowerCase()
+                        .includes(search)
+
+                    ||
+
+                    serviceName
+                        .toLowerCase()
+                        .includes(search)
+
+                    ||
+
+                    platform
+                        .toLowerCase()
+                        .includes(search)
+
+                );
+
+            }
+        );
+
+
+    renderDesktopSubscriptions(rows);
+
+    renderMobileSubscriptions(rows);
+
+}
+
+
+/* =========================
+   DESKTOP
+========================= */
+
+function renderDesktopSubscriptions(rows){
+    const container=document.getElementById("desktopTable");
+    if(!rows.length){
+        container.innerHTML=`<div class="empty"><i class="fa-solid fa-folder-open" style="font-size:30px;margin-bottom:10px;color:#80662e;"></i><div>لا توجد اشتراكات مطابقة للبحث</div></div>`;
+        return;
+    }
+    const groups={};
+    rows.forEach(function(sub){
+        const key=String(sub.customer_id || sub.customer_name || "unknown");
+        if(!groups[key]) groups[key]={customer_id:sub.customer_id,customer_name:sub.customer_name||"-",customer_phone:sub.customer_phone||"",subscriptions:[]};
+        groups[key].subscriptions.push(sub);
+    });
+    container.innerHTML=`<div style="display:grid;gap:16px;padding:16px;">${Object.values(groups).map(function(group){
+        const total=group.subscriptions.reduce(function(sum,sub){return sum+Number(sub.monthly_fee||0);},0);
+        return `<div class="subscription-card" style="margin:0;padding:20px;">
+            <div class="sub-top">
+                <div class="sub-customer"><div class="avatar">${escapeHtml(getInitial(group.customer_name))}</div><div><button class="customer-link" onclick="openCustomerDetails(${Number(group.customer_id)})">${escapeHtml(group.customer_name)} <i class="fa-solid fa-arrow-up-right-from-square"></i></button><small>${escapeHtml(group.customer_phone||"")}</small></div></div>
+                <div style="text-align:left;"><strong style="color:var(--gold2);font-size:14px;">${money(total)} ج.م</strong><small style="display:block;color:#777;margin-top:3px;">إجمالي الاشتراكات الشهرية</small></div>
+            </div>
+            <div style="margin-top:16px;display:grid;gap:9px;">${group.subscriptions.map(function(sub){
+                return `<div style="background:#151515;border:1px solid rgba(24,119,242,.12);border-radius:13px;padding:13px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;align-items:center;">
+                    <div><small style="display:block;color:#777;font-size:10px;margin-bottom:3px;">الخدمة</small><strong class="service">${escapeHtml(getServiceName(sub))}</strong></div>
+                    <div><small style="display:block;color:#777;font-size:10px;margin-bottom:3px;">المنصة</small><span>${escapeHtml(sub.platform||"-")}</span></div>
+                    <div><small style="display:block;color:#777;font-size:10px;margin-bottom:3px;">القيمة الشهرية</small><strong class="money">${money(sub.monthly_fee)} ${escapeHtml(sub.currency||"EGP")}</strong></div>
+                    <div><small style="display:block;color:#777;font-size:10px;margin-bottom:3px;">يوم الدفع</small><span class="day">يوم ${escapeHtml(sub.payment_day||"-")}</span></div>
+                    <div><small style="display:block;color:#777;font-size:10px;margin-bottom:3px;">الحالة</small><span class="status ${escapeHtml(sub.payment_status)}"><i class="fa-solid ${statusIcon(sub.payment_status)}"></i> ${statusLabel(sub.payment_status)}</span></div>
+                </div>`;
+            }).join("")}</div>
+        </div>`;
+    }).join("")}</div>`;
+}
+
+function renderMobileSubscriptions(rows){
+    const container=document.getElementById("mobileList");
+    if(!rows.length){container.innerHTML=`<div class="empty">لا توجد اشتراكات مطابقة</div>`;return;}
+    const groups={};
+    rows.forEach(function(sub){
+        const key=String(sub.customer_id || sub.customer_name || "unknown");
+        if(!groups[key]) groups[key]={customer_id:sub.customer_id,customer_name:sub.customer_name||"-",customer_phone:sub.customer_phone||"",subscriptions:[]};
+        groups[key].subscriptions.push(sub);
+    });
+    container.innerHTML=Object.values(groups).map(function(group){
+        const total=group.subscriptions.reduce(function(sum,sub){return sum+Number(sub.monthly_fee||0);},0);
+        return `<div class="subscription-card">
+            <div class="sub-top">
+                <div class="sub-customer"><div class="avatar">${escapeHtml(getInitial(group.customer_name))}</div><div><button class="customer-link" onclick="openCustomerDetails(${Number(group.customer_id)})">${escapeHtml(group.customer_name)} <i class="fa-solid fa-arrow-up-right-from-square"></i></button><small>${escapeHtml(group.customer_phone||"")}</small></div></div>
+                <div style="text-align:left;"><strong style="color:var(--gold2);font-size:13px;">${money(total)} ج.م</strong><small style="display:block;color:#777;margin-top:2px;">إجمالي شهري</small></div>
+            </div>
+            <div style="margin-top:15px;display:grid;gap:9px;">${group.subscriptions.map(function(sub){
+                return `<div style="background:#151515;border-radius:12px;padding:10px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;"><strong class="service">${escapeHtml(getServiceName(sub))}</strong><span class="status ${escapeHtml(sub.payment_status)}"><i class="fa-solid ${statusIcon(sub.payment_status)}"></i> ${statusLabel(sub.payment_status)}</span></div>
+                    <div class="sub-grid" style="margin-top:0;">
+                        <div class="sub-item"><label>المنصة</label><span>${escapeHtml(sub.platform||"-")}</span></div>
+                        <div class="sub-item"><label>الاشتراك الشهري</label><span>${money(sub.monthly_fee)} ${escapeHtml(sub.currency||"EGP")}</span></div>
+                        <div class="sub-item"><label>يوم الدفع</label><span>يوم ${escapeHtml(sub.payment_day||"-")}</span></div>
+                        <div class="sub-item"><label>الاستحقاق</label><span>${formatDate(sub.due_date)}</span></div>
+                    </div>
+                </div>`;
+            }).join("")}</div>
+        </div>`;
+    }).join("");
+}
+
+
+function renderCustomers(){
+
+    const customers =
+        portalData?.customers || [];
+
+
+    const container =
+        document.getElementById(
+            "customersList"
+        );
+
+
+    if(!customers.length){
+
+        container.innerHTML = `
+            <div class="empty">
+                لا يوجد عملاء مرتبطون بهذا التاجر
+            </div>
+        `;
+
+        return;
+
+    }
+
+
+    container.innerHTML = `
+
+        <div class="table-wrap">
+
+            <table style="min-width:650px;">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            العميل
+                        </th>
+
+                        <th>
+                            الهاتف
+                        </th>
+
+                        <th>
+                            عدد الاشتراكات
+                        </th>
+
+                        <th>
+                            إجمالي الاشتراكات الشهرية
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    ${
+
+                        customers.map(
+                            customer => {
+
+                                const subs =
+                                    (
+                                        portalData.subscriptions || []
+                                    ).filter(
+                                        s =>
+                                            Number(
+                                                s.customer_id
+                                            )
+                                            ===
+                                            Number(
+                                                customer.id
+                                            )
+                                    );
+
+
+                                const total =
+                                    subs.reduce(
+                                        (
+                                            sum,
+                                            s
+                                        ) =>
+                                            sum
+                                            +
+                                            Number(
+                                                s.monthly_fee || 0
+                                            ),
+                                        0
+                                    );
+
+
+                                return `
+
+                                    <tr>
+
+                                        <td>
+
+                                            <div class="customer-cell">
+
+                                                <div class="avatar">
+
+                                                    ${escapeHtml(
+                                                        getInitial(
+                                                            customer.client_name
+                                                        )
+                                                    )}
+
+                                                </div>
+
+
+                                                <div class="customer-info">
+
+                                                    <strong>
+                                                        ${escapeHtml(
+                                                            customer.client_name
+                                                            ||
+                                                            "-"
+                                                        )}
+                                                    </strong>
+
+                                                </div>
+
+                                            </div>
+
+                                        </td>
+
+
+                                        <td>
+
+                                            ${escapeHtml(
+                                                customer.phone || "-"
+                                            )}
+
+                                        </td>
+
+
+                                        <td>
+
+                                            ${money(
+                                                subs.length
+                                            )}
+
+                                        </td>
+
+
+                                        <td>
+
+                                            <span class="money">
+
+                                                ${money(total)}
+
+                                            </span>
+
+                                            ج.م
+
+                                        </td>
+
+                                    </tr>
+
+                                `;
+
+                            }
+                        ).join("")
+
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    `;
+
+}
+
+
+function openCustomerDetails(customerId){
+    const customer=getCustomer(customerId);
+    if(!customer) return;
+
+    const subs=(portalData?.subscriptions||[]).filter(
+        s=>Number(s.customer_id)===Number(customerId)
+    );
+
+    document.getElementById("customerModalTitle").textContent=
+        customer.client_name || "العميل";
+
+    document.getElementById("customerModalMeta").textContent=
+        customer.phone ? "الهاتف: "+customer.phone : "تفاصيل الاشتراكات";
+
+    const body=document.getElementById("customerModalBody");
+
+    if(!subs.length){
+        body.innerHTML='<div class="empty">لا توجد اشتراكات لهذا العميل.</div>';
+    }else{
+        body.innerHTML=subs.map(function(sub){
+            const visa =
+                sub.visa_last4
+                ? "•••• " + escapeHtml(sub.visa_last4)
+                : "غير محددة";
+
+            const visaName =
+                sub.visa_name
+                ? escapeHtml(sub.visa_name)
+                : "";
+
+            return `<div class="customer-modal-sub">
+                <div class="customer-modal-sub-head">
+                    <div class="customer-modal-service">${escapeHtml(getServiceName(sub))}</div>
+                    <span class="status ${escapeHtml(sub.payment_status)}">
+                        <i class="fa-solid ${statusIcon(sub.payment_status)}"></i>
+                        ${statusLabel(sub.payment_status)}
+                    </span>
+                </div>
+                <div class="customer-modal-grid">
+                    <div class="customer-modal-item">
+                        <label>المنصة</label>
+                        <span>${escapeHtml(sub.platform||"-")}</span>
+                    </div>
+                    <div class="customer-modal-item">
+                        <label>الاشتراك الشهري</label>
+                        <span>${money(sub.monthly_fee)} ${escapeHtml(sub.currency||"EGP")}</span>
+                    </div>
+                    <div class="customer-modal-item">
+                        <label>يوم الدفع</label>
+                        <span>يوم ${escapeHtml(sub.payment_day||"-")}</span>
+                    </div>
+                    <div class="customer-modal-item">
+                        <label>الاستحقاق</label>
+                        <span>${formatDate(sub.due_date)}</span>
+                    </div>
+                    <div class="customer-modal-item">
+                        <label>الفيزا المستخدمة</label>
+                        <span>${visaName ? visaName+" — " : ""}${visa}</span>
+                    </div>
+                    <div class="customer-modal-item">
+                        <label>الحالة</label>
+                        <span>${escapeHtml(statusLabel(sub.payment_status))}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join("");
+    }
+
+    document.getElementById("customerModal").classList.add("show");
+    document.body.style.overflow="hidden";
+}
+
+function closeCustomerModal(event){
+    if(event && event.target!==event.currentTarget) return;
+    document.getElementById("customerModal").classList.remove("show");
+    document.body.style.overflow="";
+}
+
+document.addEventListener("keydown",function(event){
+    if(event.key==="Escape") closeCustomerModal();
+});
+
+/* =========================
+   UI STATES
+========================= */
+
+function showLoading(){
+
+    document.getElementById(
+        "loading"
+    ).style.display =
+        "flex";
+
+
+    document.getElementById(
+        "errorBox"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "app"
+    ).style.display =
+        "none";
+
+}
+
+
+function hideLoading(){
+
+    document.getElementById(
+        "loading"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "errorBox"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "app"
+    ).style.display =
+        "block";
+
+}
+
+
+function showError(message){
+
+    document.getElementById(
+        "loading"
+    ).style.display =
+        "none";
+
+
+    const box =
+        document.getElementById(
+            "errorBox"
+        );
+
+
+    box.innerHTML =
+        message;
+
+
+    box.style.display =
+        "block";
+
+
+    document.getElementById(
+        "app"
+    ).style.display =
+        "none";
+
+}
+
+
+/* =========================
+   START
+========================= */
+
+loadPortal();
+
+</script>
+
+</body>
+</html>
