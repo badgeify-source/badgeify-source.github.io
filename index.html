@@ -7325,187 +7325,264 @@ function generateInvoiceNumber(prefix="INV"){
 
 function printInvoice(id){
 
-    const invoice=
+    const invoice =
     state.invoices.find(
-        x=>Number(x.id)===Number(id)
+        x => Number(x.id) === Number(id)
     );
 
-    if(!invoice)
+    if(!invoice) return;
+
+    const trader = getTrader(invoice.trader_id);
+    const customer = getCustomer(invoice.customer_id);
+
+    const items =
+    state.invoiceItems.filter(
+        x => Number(x.invoice_id) === Number(id)
+    );
+
+    const company =
+    state.settings.company_name || "BADGEIFY";
+
+    const currency =
+    invoice.currency || state.settings.currency || "EGP";
+
+    const rows = items.map(function(item){
+
+        const sub = getSubscription(item.subscription_id);
+        const c = sub ? getCustomer(sub.customer_id) : customer;
+        const service = sub ? getService(sub.app_service_id) : null;
+        const visa =
+            sub
+            ? (
+                sub.visa_name
+                ? sub.visa_name + " — •••• " + (sub.visa_last4 || "")
+                : (
+                    getVisaCard(sub.visa_card_id)
+                    ? getVisaCard(sub.visa_card_id).card_name +
+                      " — " + maskVisaCard(getVisaCard(sub.visa_card_id))
+                    : ""
+                )
+            )
+            : "";
+
+        return {
+            customer: c?.client_name || item.description || "-",
+            service: service?.service_name || item.service_name || "-",
+            platform: sub?.platform || "-",
+            amount: Number(item.total || 0),
+            visa: visa
+        };
+    });
+
+    const popup = window.open("", "_blank");
+
+    if(!popup){
+        showToast("اسمح بفتح النوافذ المنبثقة لطباعة الفاتورة", true);
         return;
-
-    const trader=
-    getTrader(invoice.trader_id);
-
-    const customer=
-    getCustomer(invoice.customer_id);
-
-    const items=
-    state.invoiceItems
-    .filter(
-        x=>
-        Number(x.invoice_id)
-        ===Number(id)
-    );
-
-    const popup=
-    window.open(
-        "",
-        "_blank"
-    );
-
-    const company=
-    state.settings.company_name
-    ||
-    "BADGEIFY";
+    }
 
     popup.document.write(`
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>${esc(invoice.invoice_number || ("#" + invoice.id))}</title>
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    background:#f3f6fa;
+    color:#172033;
+    font-family:Tahoma,Arial,sans-serif;
+}
+.page{
+    width:min(900px,94%);
+    margin:35px auto;
+    background:#fff;
+    border-radius:18px;
+    padding:35px;
+    box-shadow:0 10px 35px rgba(0,0,0,.08);
+}
+.head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:25px;
+    border-bottom:3px solid #1877F2;
+    padding-bottom:22px;
+}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:65px;height:65px;border-radius:16px;object-fit:cover}
+.brand-name{font-size:28px;font-weight:900;color:#1877F2;letter-spacing:1px}
+.tag{font-size:11px;color:#6b7280;margin-top:5px}
+.invoice-box{text-align:left;direction:ltr}
+.invoice-no{font-size:20px;font-weight:900;color:#1877F2}
+.date{font-size:12px;color:#687386;margin-top:7px}
+.info{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    margin:25px 0;
+}
+.info-card{
+    background:#f7faff;
+    border:1px solid #dcecff;
+    border-radius:13px;
+    padding:15px;
+}
+.label{font-size:11px;color:#738095}
+.value{font-size:15px;font-weight:800;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{padding:12px 10px;border-bottom:1px solid #e8edf3;text-align:right}
+th{background:#1877F2;color:#fff;font-size:12px}
+td{font-size:12px}
+.total-box{
+    margin-top:22px;
+    margin-right:auto;
+    width:min(330px,100%);
+    background:#f4f9ff;
+    border:1px solid #cfe4ff;
+    border-radius:15px;
+    padding:18px;
+}
+.total-line{display:flex;justify-content:space-between;gap:15px;margin:7px 0}
+.total{font-size:23px;font-weight:900;color:#1877F2}
+.notes{
+    margin-top:20px;
+    padding:14px;
+    border-right:4px solid #1877F2;
+    background:#f8fafc;
+    font-size:12px;
+    line-height:1.8;
+}
+.footer{
+    text-align:center;
+    color:#8a94a6;
+    font-size:11px;
+    margin-top:30px;
+    padding-top:18px;
+    border-top:1px solid #e7ebf0;
+}
+.print{
+    position:fixed;
+    left:25px;
+    top:25px;
+    border:0;
+    background:#1877F2;
+    color:#fff;
+    padding:11px 18px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+@media print{
+    body{background:#fff}
+    .page{width:100%;margin:0;box-shadow:none;border-radius:0}
+    .print{display:none}
+}
+</style>
+</head>
+<body>
+<button class="print" onclick="window.print()">طباعة / حفظ PDF</button>
+<div class="page">
 
-    <!DOCTYPE html>
-
-    <html>
-
-    <head>
-
-        <meta charset="UTF-8">
-
-        <title>
-        ${esc(invoice.invoice_number)}
-        </title>
-
-        <style>
-
-        body{
-            font-family:Arial;
-            padding:40px;
-            direction:rtl;
-        }
-
-        h1{
-            color:#b28d34;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-            margin-top:25px;
-        }
-
-        th,
-        td{
-            border:1px solid #ddd;
-            padding:10px;
-        }
-
-        th{
-            background:#f5f5f5;
-        }
-
-        .total{
-            margin-top:25px;
-            font-size:22px;
-            font-weight:bold;
-        }
-
-        </style>
-
-    </head>
-
-    <body>
-
-        <h1>
-        ${esc(company)}
-        </h1>
-
-        <h2>
-        ${esc(invoice.invoice_number)}
-        </h2>
-
-        <p>
-
-        ${
-        trader
-        ?
-        `التاجر: ${esc(trader.trader_name)}`
-        :
-        `العميل: ${esc(customer?.client_name||"-")}`
-        }
-
-        </p>
-
-        <p>
-        التاريخ:
-        ${formatDate(invoice.invoice_date)}
-        </p>
-
-        <table>
-
-        <tr>
-
-            <th>
-            العميل / الوصف
-            </th>
-
-            <th>
-            الخدمة
-            </th>
-
-            <th>
-            المبلغ
-            </th>
-
-        </tr>
-
-        ${
-        items.map(function(item){
-
-            return `
-
-            <tr>
-
-                <td>
-                ${esc(item.description||"")}
-                </td>
-
-                <td>
-                ${esc(item.service_name)}
-                </td>
-
-                <td>
-                ${money(item.total)}
-                ${esc(invoice.currency||"EGP")}
-                </td>
-
-            </tr>
-
-            `;
-
-        }).join("")
-        }
-
-        </table>
-
-        <div class="total">
-
-        الإجمالي:
-        ${money(invoice.total)}
-        ${esc(invoice.currency||"EGP")}
-
+    <div class="head">
+        <div class="brand">
+            <img class="logo" src="${logo}" alt="BADGEIFY">
+            <div>
+                <div class="brand-name">BADGEIFY</div>
+                <div class="tag">VERIFIED TRUST & SECURITY</div>
+            </div>
         </div>
 
-        <script>
+        <div class="invoice-box">
+            <div class="invoice-no">${esc(invoice.invoice_number || ("#" + invoice.id))}</div>
+            <div class="date">تاريخ الفاتورة: ${formatDate(invoice.invoice_date)}</div>
+        </div>
+    </div>
 
-        window.print();
+    <div class="info">
+        <div class="info-card">
+            <div class="label">${trader ? "التاجر" : "العميل"}</div>
+            <div class="value">${esc(trader?.trader_name || customer?.client_name || "-")}</div>
+        </div>
 
-        <\/script>
+        <div class="info-card">
+            <div class="label">نوع الفاتورة</div>
+            <div class="value">${trader ? "فاتورة مجمعة للتاجر" : "فاتورة عميل"}</div>
+        </div>
+    </div>
 
-    </body>
+    <table>
+        <thead>
+            <tr>
+                ${trader ? "<th>العميل</th>" : ""}
+                <th>الخدمة</th>
+                <th>المنصة</th>
+                <th>الفيزا</th>
+                <th>المبلغ</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rows.map(function(row){
+                return `
+                <tr>
+                    ${trader ? `<td>${esc(row.customer)}</td>` : ""}
+                    <td>${esc(row.service)}</td>
+                    <td>${esc(row.platform)}</td>
+                    <td>${esc(row.visa || "-")}</td>
+                    <td><strong>${money(row.amount)} ${esc(currency)}</strong></td>
+                </tr>
+                `;
+            }).join("") || `
+                <tr>
+                    <td colspan="${trader ? 5 : 4}" style="text-align:center">لا توجد بنود مسجلة</td>
+                </tr>
+            `}
+        </tbody>
+    </table>
 
-    </html>
+    <div class="total-box">
+        <div class="total-line">
+            <span>الإجمالي قبل الخصم</span>
+            <strong>${money(invoice.subtotal || invoice.total)} ${esc(currency)}</strong>
+        </div>
+        <div class="total-line">
+            <span>الخصم</span>
+            <strong>${money(invoice.discount || 0)} ${esc(currency)}</strong>
+        </div>
+        <div class="total-line" style="border-top:1px solid #dbe6f2;padding-top:10px">
+            <span>الإجمالي النهائي</span>
+            <span class="total">${money(invoice.total)} ${esc(currency)}</span>
+        </div>
+        <div class="total-line">
+            <span>الحالة</span>
+            <strong>${esc(invoice.status || "غير محدد")}</strong>
+        </div>
+    </div>
 
-    `);
+    ${invoice.notes ? `
+        <div class="notes">
+            <strong>ملاحظات:</strong><br>
+            ${esc(invoice.notes)}
+        </div>
+    ` : ""}
+
+    <div class="footer">
+        <strong>BADGEIFY</strong><br>
+        VERIFIED TRUST & SECURITY<br>
+        شكراً لتعاملك معنا
+    </div>
+
+</div>
+<script>
+window.onload=function(){ setTimeout(function(){ window.print(); },400); };
+<\/script>
+</body>
+</html>
+`);
 
     popup.document.close();
-
 }
 
 
