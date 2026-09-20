@@ -9674,21 +9674,32 @@ function openNotificationSettings(){
 }
 
 async function testMobileNotification(){
+
+    console.log("BADGEIFY TEST BUTTON CLICKED");
+
     if(!("Notification" in window)){
         showToast("المتصفح لا يدعم الإشعارات", true);
         return;
     }
 
-    if(Notification.permission!=="granted"){
-        const ok=await requestMobileNotifications();
+    if(Notification.permission !== "granted"){
+        const ok = await requestMobileNotifications();
         if(!ok) return;
     }
 
+    const url =
+        "https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/send-test-notification";
+
+    console.log("BADGEIFY TEST URL:", url);
+
     try{
-        const response=await fetch(
-            NOTIFICATION_TEST_URL,
+        showToast("جاري إرسال إشعار الاختبار...");
+
+        const response = await fetch(
+            url,
             {
                 method:"POST",
+                mode:"cors",
                 headers:{
                     "Content-Type":"application/json"
                 },
@@ -9700,40 +9711,89 @@ async function testMobileNotification(){
             }
         );
 
-        const data=await response.json();
+        console.log(
+            "BADGEIFY TEST HTTP STATUS:",
+            response.status
+        );
 
-        if(!response.ok || !data.success){
+        console.log(
+            "BADGEIFY TEST HTTP OK:",
+            response.ok
+        );
+
+        const responseText = await response.text();
+
+        console.log(
+            "BADGEIFY TEST RESPONSE:",
+            responseText
+        );
+
+        let data = null;
+
+        try{
+            data = JSON.parse(responseText);
+        }catch(parseError){
+            console.error(
+                "BADGEIFY RESPONSE JSON ERROR:",
+                parseError
+            );
+        }
+
+        if(!response.ok){
             throw new Error(
-                data.error ||
+                data?.error ||
+                responseText ||
+                ("HTTP " + response.status)
+            );
+        }
+
+        if(!data || data.success !== true){
+            throw new Error(
+                data?.error ||
                 "تعذر إرسال إشعار الاختبار"
             );
         }
 
-        showToast(
-            "تم إرسال إشعار الاختبار إلى "+
-            (data.sent || 0)+
-            " جهاز."
-        );
-
         console.log(
-            "BADGEIFY test notification:",
+            "BADGEIFY TEST SUCCESS:",
             data
         );
 
+        const sent = Number(data.sent || 0);
+        const failed = Number(data.failed || 0);
+
+        if(sent > 0){
+            showToast(
+                "تم إرسال إشعار الاختبار إلى " +
+                sent +
+                " جهاز."
+            );
+        }else if(failed > 0){
+            showToast(
+                "الدالة اشتغلت لكن فشل إرسال الإشعار إلى الأجهزة.",
+                true
+            );
+        }else{
+            showToast(
+                "الدالة اشتغلت، لكن لا توجد أجهزة مسجلة حاليًا.",
+                true
+            );
+        }
+
     }catch(error){
+
         console.error(
-            "BADGEIFY server test notification:",
+            "BADGEIFY TEST ERROR:",
             error
         );
 
         showToast(
-            "فشل إرسال إشعار الاختبار: "+
+            "فشل إرسال إشعار الاختبار: " +
             (error?.message || "خطأ غير معروف"),
             true
         );
     }
 }
-
 
 function urlBase64ToUint8Array(base64String){
     const padding="=".repeat((4-base64String.length%4)%4);
