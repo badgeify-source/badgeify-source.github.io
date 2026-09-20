@@ -2184,5 +2184,82 @@ loadPortal();
 
 </script>
 
+<style>
+.badgeify-notify-btn{
+position:fixed;left:18px;bottom:18px;z-index:9999;
+width:52px;height:52px;border-radius:50%;border:1px solid rgba(99,179,255,.35);
+background:#0b1422;color:#fff;box-shadow:0 12px 30px rgba(0,0,0,.35);
+font-size:19px;cursor:pointer
+}
+.badgeify-notify-btn.on{background:#1877f2}
+</style>
+<button id="badgeifyNotifyBtn" class="badgeify-notify-btn" title="إشعارات BADGEIFY">🔔</button>
+<script>
+(function(){
+"use strict";
+const KEY="badgeify_portal_push_subscription";
+const ENABLED="badgeify_portal_notifications_enabled";
+
+function registerSW(){
+    if(!("serviceWorker" in navigator)) return Promise.resolve(null);
+    return navigator.serviceWorker.register("./service-worker.js").catch(function(){return null;});
+}
+
+function update(){
+    const b=document.getElementById("badgeifyNotifyBtn");
+    if(!b) return;
+    const on=("Notification" in window && Notification.permission==="granted");
+    b.classList.toggle("on",on);
+    b.title=on?"إشعارات BADGEIFY مفعلة":"تفعيل إشعارات BADGEIFY";
+}
+
+async function enable(){
+    if(!("Notification" in window)){
+        alert("المتصفح لا يدعم إشعارات الموبايل.");
+        return;
+    }
+
+    const permission=await Notification.requestPermission();
+    if(permission!=="granted"){
+        update();
+        return;
+    }
+
+    const reg=await registerSW();
+    if(reg && "PushManager" in window){
+        try{
+            let sub=await reg.pushManager.getSubscription();
+            if(!sub){
+                sub=await reg.pushManager.subscribe({userVisibleOnly:true});
+            }
+            localStorage.setItem(KEY,JSON.stringify(sub));
+        }catch(e){
+            console.warn("Push subscription:",e);
+        }
+    }
+
+    localStorage.setItem(ENABLED,"1");
+    update();
+
+    try{
+        const reg2=await navigator.serviceWorker.ready;
+        if(reg2.active){
+            reg2.active.postMessage({
+                type:"SHOW_NOTIFICATION",
+                title:"BADGEIFY",
+                body:"تم تفعيل إشعارات حسابك بنجاح."
+            });
+        }
+    }catch(e){}
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+    registerSW().then(update);
+    const b=document.getElementById("badgeifyNotifyBtn");
+    if(b) b.addEventListener("click",enable);
+});
+})();
+</script>
+
 </body>
 </html>
