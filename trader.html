@@ -1686,6 +1686,71 @@ function setFilter(filter,button){
    SUBSCRIPTIONS
 ========================= */
 
+function portalSubscriptionSortInfo(subscription){
+
+    const status = subscription?.payment_status || "upcoming";
+    const due = subscription?.due_date ? new Date(subscription.due_date) : null;
+    const dueTime = due && !isNaN(due.getTime()) ? due.getTime() : Number.MAX_SAFE_INTEGER;
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    if(status === "overdue"){
+        const diff = due && !isNaN(due.getTime())
+            ? Math.round((today - new Date(due.getFullYear(),due.getMonth(),due.getDate())) / 86400000)
+            : 0;
+        return {rank:0,distance:diff,dueTime};
+    }
+
+    if(status === "due" || status === "due_today"){
+        return {rank:1,distance:0,dueTime};
+    }
+
+    if(status === "upcoming"){
+        const diff = due && !isNaN(due.getTime())
+            ? Math.round((new Date(due.getFullYear(),due.getMonth(),due.getDate()) - today) / 86400000)
+            : Number.MAX_SAFE_INTEGER;
+        return {rank:2,distance:Math.max(0,diff),dueTime};
+    }
+
+    return {rank:3,distance:0,dueTime};
+}
+
+function sortPortalSubscriptionRows(rows){
+
+    return [...rows].sort(function(a,b){
+
+        const A=portalSubscriptionSortInfo(a);
+        const B=portalSubscriptionSortInfo(b);
+
+        if(A.rank!==B.rank) return A.rank-B.rank;
+        if(A.rank===0 && A.distance!==B.distance) return B.distance-A.distance;
+        if(A.rank===2 && A.distance!==B.distance) return A.distance-B.distance;
+
+        return A.dueTime-B.dueTime;
+    });
+}
+
+function sortPortalCustomerGroups(groups){
+
+    groups.forEach(function(group){
+        group.subscriptions = sortPortalSubscriptionRows(group.subscriptions);
+    });
+
+    groups.sort(function(a,b){
+
+        const A=portalSubscriptionSortInfo(a.subscriptions[0] || {});
+        const B=portalSubscriptionSortInfo(b.subscriptions[0] || {});
+
+        if(A.rank!==B.rank) return A.rank-B.rank;
+        if(A.rank===0 && A.distance!==B.distance) return B.distance-A.distance;
+        if(A.rank===2 && A.distance!==B.distance) return A.distance-B.distance;
+
+        return A.dueTime-B.dueTime;
+    });
+
+    return groups;
+}
+
 function renderSubscriptions(){
 
     const subscriptions =
@@ -1758,7 +1823,9 @@ function renderSubscriptions(){
         );
 
 
-    renderDesktopSubscriptions(rows);
+    rows = sortPortalSubscriptionRows(rows);
+
+renderDesktopSubscriptions(rows);
 
     renderMobileSubscriptions(rows);
 
