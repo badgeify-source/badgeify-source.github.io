@@ -9387,6 +9387,250 @@ function render(){
 
 
 /* =========================================
+   MOBILE NOTIFICATIONS
+========================================= */
+
+const PUSH_PUBLIC_KEY = "";
+
+async function registerBadgeifyServiceWorker(){
+    if(!("serviceWorker" in navigator)) return null;
+    try{
+        return await navigator.serviceWorker.register("./service-worker.js");
+    }catch(error){
+        console.warn("BADGEIFY service worker:", error);
+        return null;
+    }
+}
+
+async function requestMobileNotifications(){
+    if(!("Notification" in window)){
+        showToast("المتصفح الحالي لا يدعم إشعارات الموبايل", true);
+        return false;
+    }
+
+    const permission=await Notification.requestPermission();
+
+    if(permission!=="granted"){
+        showToast("لم يتم السماح بإشعارات BADGEIFY", true);
+        updateNotificationUI();
+        return false;
+    }
+
+    await registerBadgeifyServiceWorker();
+    localStorage.setItem("badgeify_notifications_enabled","1");
+    updateNotificationUI();
+
+    try{
+        if(PUSH_PUBLIC_KEY && "PushManager" in window){
+            const reg=await navigator.serviceWorker.ready;
+            let sub=await reg.pushManager.getSubscription();
+
+            if(!sub){
+                sub=await reg.pushManager.subscribe({
+                    userVisibleOnly:true,
+                    applicationServerKey:urlBase64ToUint8Array(PUSH_PUBLIC_KEY)
+                });
+            }
+
+            localStorage.setItem(
+                "badgeify_push_subscription",
+                JSON.stringify(sub)
+            );
+        }
+    }catch(error){
+        console.warn("BADGEIFY push subscription:", error);
+    }
+
+    showToast("تم تفعيل إشعارات BADGEIFY على هذا الجهاز");
+    return true;
+}
+
+function updateNotificationUI(){
+    const btn=document.getElementById("notificationBtn");
+    const dot=document.getElementById("notificationDot");
+    if(!btn) return;
+
+    const enabled=
+        ("Notification" in window) &&
+        Notification.permission==="granted";
+
+    btn.title=enabled
+        ? "إشعارات الموبايل مفعلة"
+        : "تفعيل إشعارات الموبايل";
+
+    if(dot) dot.style.display=enabled ? "block" : "none";
+}
+
+function openNotificationSettings(){
+    const enabled=
+        ("Notification" in window) &&
+        Notification.permission==="granted";
+
+    openModal(
+        "إشعارات الموبايل",
+        `
+        <div class="card" style="margin:0">
+            <div class="card-body">
+                <div style="font-size:16px;font-weight:800;margin-bottom:8px">
+                    إشعارات BADGEIFY
+                </div>
+                <div style="color:var(--muted);line-height:1.8;margin-bottom:16px">
+                    فعّل الإشعارات على الموبايل لاستقبال تنبيهات الاشتراكات والاستحقاقات.
+                </div>
+                <div style="padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:14px">
+                    <b>الحالة:</b>
+                    <span style="color:${enabled ? "#4ade80" : "#f59e0b"}">
+                        ${enabled ? "مفعلة" : "غير مفعلة"}
+                    </span>
+                </div>
+                <button class="gold-btn" style="width:100%" onclick="requestMobileNotifications()">
+                    <i class="fa-solid fa-bell"></i>
+                    تفعيل إشعارات الموبايل
+                </button>
+                <button class="ghost-btn" style="width:100%;margin-top:10px" onclick="testMobileNotification()">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    تجربة الإشعار
+                </button>
+            </div>
+        </div>
+        `,
+        `
+        <button class="ghost-btn" onclick="closeModal()">إغلاق</button>
+        `
+    );
+}
+
+async function testMobileNotification(){
+    if(!("Notification" in window)){
+        showToast("المتصفح لا يدعم الإشعارات", true);
+        return;
+    }
+
+    if(Notification.permission!=="granted"){
+        const ok=await requestMobileNotifications();
+        if(!ok) return;
+    }
+
+    try{
+        const reg=await navigator.serviceWorker.ready;
+        if(reg.active){
+            reg.active.postMessage({
+                type:"SHOW_NOTIFICATION",
+                title:"BADGEIFY",
+                body:"تم اختبار إشعارات الموبايل بنجاح."
+            });
+        }
+        showToast("تم إرسال إشعار التجربة");
+    }catch(error){
+        new Notification("BADGEIFY",{
+            body:"تم اختبار إشعارات الموبايل بنجاح."
+        });
+    }
+}
+
+function urlBase64ToUint8Array(base64String){
+    const padding="=".repeat((4-base64String.length%4)%4);
+    const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+    const rawData=atob(base64);
+    return Uint8Array.from([...rawData].map(char=>char.charCodeAt(0)));
+}
+
+function getSubscriptionDueDate(sub){
+    if(!sub) return null;
+    if(sub.due_date) return new Date(sub.due_date+"T00:00:00");
+
+    const day=Number(sub.payment_day||0);
+    if(!day) return null;
+
+    const now=new Date();
+    const d=new Date(now.getFullYear(),now.getMonth(),day);
+    if(d<new Date(now.getFullYear(),now.getMonth(),now.getDate())){
+        d.setMonth(d.getMonth()+1);
+    }
+    return d;
+}
+
+function getSubscriptionAlertState(sub){
+    if(!sub || String(sub.status||"").toLowerCase()==="paid") return null;
+
+    const due=getSubscriptionDueDate(sub);
+    if(!due || Number.isNaN(due.getTime())) return null;
+
+    const today=new Date();
+    const a=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+    const b=new Date(due.getFullYear(),due.getMonth(),due.getDate());
+    const diff=Math.round((b-a)/86400000);
+
+    if(diff<0) return {type:"overdue",days:Math.abs(diff)};
+    if(diff===0) return {type:"today",days:0};
+    if(diff===1) return {type:"tomorrow",days:1};
+    if(diff===2) return {type:"two_days",days:2};
+    return null;
+}
+
+function buildDueAlerts(){
+    const alerts=[];
+    (state.subscriptions||[]).forEach(function(sub){
+        const alert=getSubscriptionAlertState(sub);
+        if(!alert) return;
+
+        const customer=getCustomer(sub.customer_id);
+        const name=customer?.client_name || "عميل";
+        const amount=Number(sub.monthly_fee||0);
+        const currency=sub.currency || state.settings.currency || "EGP";
+
+        let body="";
+        if(alert.type==="overdue"){
+            body=`اشتراك ${name} متأخر عن السداد منذ ${alert.days} يوم.`;
+        }else if(alert.type==="today"){
+            body=`اشتراك ${name} مستحق السداد اليوم.`;
+        }else if(alert.type==="tomorrow"){
+            body=`اشتراك ${name} مستحق السداد غدًا.`;
+        }else{
+            body=`اشتراك ${name} مستحق السداد بعد يومين.`;
+        }
+
+        alerts.push({
+            id:String(sub.id)+"_"+alert.type,
+            title:"تنبيه BADGEIFY",
+            body:amount ? body+" المبلغ: "+amount+" "+currency : body
+        });
+    });
+    return alerts;
+}
+
+async function showAutomaticDueNotifications(){
+    if(!("Notification" in window) || Notification.permission!=="granted") return;
+
+    const alerts=buildDueAlerts();
+    if(!alerts.length) return;
+
+    const sentKey="badgeify_sent_due_notifications_"+new Date().toISOString().slice(0,10);
+    const sent=JSON.parse(localStorage.getItem(sentKey)||"[]");
+    const reg=await navigator.serviceWorker.ready;
+
+    for(const alert of alerts){
+        if(sent.includes(alert.id)) continue;
+
+        if(reg.active){
+            reg.active.postMessage({
+                type:"SHOW_NOTIFICATION",
+                title:alert.title,
+                body:alert.body,
+                tag:"badgeify-"+alert.id
+            });
+        }
+        sent.push(alert.id);
+    }
+
+    localStorage.setItem(sentKey,JSON.stringify(sent));
+}
+
+registerBadgeifyServiceWorker().then(function(){
+    updateNotificationUI();
+});
+
+/* =========================================
    LOGIN
 ========================================= */
 
