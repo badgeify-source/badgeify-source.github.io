@@ -9390,7 +9390,8 @@ function render(){
    MOBILE NOTIFICATIONS
 ========================================= */
 
-const PUSH_PUBLIC_KEY = "";
+const PUSH_PUBLIC_KEY = "BH73c6DoCgPzRvQGZ08OBJM1KWP4Ih0nJgt92PvrAKFhpYZpAbVFIn98z6cmwdpw5t3MPftO5JAXkPGwZWjttRQ";
+const NOTIFICATION_REGISTER_URL = "https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/register-notification";
 
 async function registerBadgeifyServiceWorker(){
     if(!("serviceWorker" in navigator)) return null;
