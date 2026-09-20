@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- BADGEIFY_CACHE_BUST_V3 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
 <title>BADGEIFY | بوابة العميل</title>
 
 <style>
@@ -1447,6 +1452,37 @@ function renderFollowups(followups){
 }
 
 loadPortal();
+
+
+/* BADGEIFY: force-refresh the portal document without changing the customer token */
+(function(){
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    const alreadyRefreshed = params.get("__bfv") === "3";
+    if(!token || alreadyRefreshed) return;
+
+    const key = "badgeify_client_cache_v3";
+    const last = sessionStorage.getItem(key);
+    const now = Date.now();
+    if(last && now - Number(last) < 15000) return;
+    sessionStorage.setItem(key, String(now));
+
+    const separator = window.location.href.includes("?") ? "&" : "?";
+    const freshUrl = window.location.href + separator + "__bfv=3&t=" + now;
+
+    fetch(freshUrl, {cache:"no-store", credentials:"same-origin"})
+        .then(function(response){
+            if(!response.ok) throw new Error("refresh failed");
+            return response.text();
+        })
+        .then(function(html){
+            if(!html || html.indexOf("BADGEIFY_CACHE_BUST_V3") === -1) return;
+            document.open();
+            document.write(html);
+            document.close();
+        })
+        .catch(function(){ /* keep the normal page if refresh is unavailable */ });
+})();
 
 </script>
 
