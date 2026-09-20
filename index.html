@@ -5573,6 +5573,16 @@ async function openTraderPortal(traderId){
             trader?.trader_name || "التاجر";
 
 
+        // استخدم رابط الموقع الجديد مع نفس التوكن
+        const traderPortalUrl =
+            "https://badgeify-source.github.io/trader.html"
+            + (
+                result.url && result.url.includes("?")
+                ? result.url.substring(result.url.indexOf("?"))
+                : ""
+            );
+
+
         openModal(
 
             "رابط التاجر",
@@ -5606,7 +5616,7 @@ async function openTraderPortal(traderId){
 
                     <input
                     id="traderPortalLink"
-                    value="${esc(result.url)}"
+                    value="${esc(traderPortalUrl)}"
                     readonly
                     style="direction:ltr;text-align:left"
                     >
@@ -5658,7 +5668,7 @@ async function openTraderPortal(traderId){
                 class="mini-btn wa"
                 onclick="sendTraderPortalWhatsApp(
                     '${esc(trader.phone)}',
-                    '${esc(result.url)}',
+                    '${esc(traderPortalUrl)}',
                     '${esc(traderName)}'
                 )">
 
