@@ -996,6 +996,55 @@ function renderWhatsapp(customer){
     btn.style.display = "inline-flex";
 }
 
+function subscriptionSortInfo(subscription){
+
+    const status =
+        subscription?.payment_status?.code ||
+        subscription?.payment_status ||
+        "upcoming";
+
+    const due = subscription?.due_date ? new Date(subscription.due_date) : null;
+    const dueTime = due && !isNaN(due.getTime()) ? due.getTime() : Number.MAX_SAFE_INTEGER;
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    if(status === "overdue"){
+        const diff = due && !isNaN(due.getTime())
+            ? Math.round((today - new Date(due.getFullYear(),due.getMonth(),due.getDate())) / 86400000)
+            : 0;
+        return {rank:0,distance:diff,dueTime};
+    }
+
+    if(status === "due" || status === "due_today"){
+        return {rank:1,distance:0,dueTime};
+    }
+
+    if(status === "upcoming"){
+        const diff = due && !isNaN(due.getTime())
+            ? Math.round((new Date(due.getFullYear(),due.getMonth(),due.getDate()) - today) / 86400000)
+            : Number.MAX_SAFE_INTEGER;
+        return {rank:2,distance:Math.max(0,diff),dueTime};
+    }
+
+    return {rank:3,distance:0,dueTime};
+}
+
+function sortPortalSubscriptions(subscriptions){
+
+    return [...subscriptions].sort(function(a,b){
+
+        const A=subscriptionSortInfo(a);
+        const B=subscriptionSortInfo(b);
+
+        if(A.rank!==B.rank) return A.rank-B.rank;
+        if(A.rank===0 && A.distance!==B.distance) return B.distance-A.distance;
+        if(A.rank===2 && A.distance!==B.distance) return A.distance-B.distance;
+
+        return A.dueTime-B.dueTime;
+    });
+}
+
 function renderSubscriptions(
     subscriptions,
     currency
@@ -1014,6 +1063,8 @@ function renderSubscriptions(
 
         return;
     }
+
+    subscriptions = sortPortalSubscriptions(subscriptions);
 
     container.innerHTML =
         subscriptions.map(subscription => {
