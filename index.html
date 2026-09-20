@@ -567,7 +567,9 @@ body.light .topbar{
 .subscription-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .subscription-filter-btn{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);color:var(--text);text-align:center}
 .subscription-filter-btn:hover,.subscription-filter-btn.active{border-color:var(--gold);background:rgba(214,179,90,.12);color:var(--gold2)}
-.subscription-filter-btn b{display:block;font-size:18px;margin-bottom:2px}.subscription-filter-btn span{color:var(--muted);font-size:10px}
+.subscription-filter-btn b{display:block;font-size:18px;margin-bottom:2px}.subscription-filter-btn span{color:var(--muted);font-size:10px}.subscription-filter-btn small{display:block;margin-top:3px;font-size:10px;color:var(--gold2)}
+.field select option,.search select option,.subscription-service-select option{background:#111b2a;color:#f7faff}
+body.light .field select option,body.light .search select option,body.light .subscription-service-select option{background:#fff;color:#17191d}
 @media(max-width:600px){.subscription-filters{grid-template-columns:repeat(2,1fr)}}
 /* SEARCH */
 
@@ -1577,7 +1579,11 @@ selectVisa:"اختر الفيزا",
 visaName:"اسم الفيزا",
 visaLast4:"آخر 4 أرقام",
 allSubscriptions:"كل الاشتراكات",
-upcomingSubscriptions:"القادمة"
+upcomingSubscriptions:"القادمة",
+paidAmountMonth:"إجمالي المدفوع هذا الشهر",
+remainingAmount:"إجمالي المتبقي",
+editPayment:"تعديل الدفع",
+paymentDateRequired:"اختر تاريخ الدفع"
 
 },
 
@@ -1719,7 +1725,11 @@ selectVisa:"Select card",
 visaName:"Card name",
 visaLast4:"Last 4 digits",
 allSubscriptions:"All subscriptions",
-upcomingSubscriptions:"Upcoming"
+upcomingSubscriptions:"Upcoming",
+paidAmountMonth:"Total paid this month",
+remainingAmount:"Total remaining",
+editPayment:"Edit payment",
+paymentDateRequired:"Choose payment date"
 
 }
 
@@ -2499,6 +2509,19 @@ function renderDashboard(){
         0
     );
 
+    const paidAmount=
+    paid.reduce(
+        (sum,x)=>
+        sum+Number(x.amount||0),
+        0
+    );
+
+    const remainingAmount=
+    Math.max(
+        0,
+        expected-paidAmount
+    );
+
     document.getElementById("content")
     .innerHTML=`
 
@@ -2599,6 +2622,34 @@ function renderDashboard(){
             </h2>
 
             <p>${t("overdueCount")}</p>
+
+        </div>
+
+        <div class="stat">
+
+            <div class="stat-icon">
+            <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+
+            <h2>
+            ${money(paidAmount)}
+            </h2>
+
+            <p>${t("paidAmountMonth")}</p>
+
+        </div>
+
+        <div class="stat">
+
+            <div class="stat-icon">
+            <i class="fa-solid fa-wallet"></i>
+            </div>
+
+            <h2>
+            ${money(remainingAmount)}
+            </h2>
+
+            <p>${t("remainingAmount")}</p>
 
         </div>
 
@@ -3699,6 +3750,14 @@ function renderSubscriptions(){
         overdue:rows.filter(x=>getPaymentState(x).type==="overdue").length,
         paid:rows.filter(x=>getPaymentState(x).type==="paid").length
     };
+
+    const totals={
+        all:rows.reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        upcoming:rows.filter(x=>getPaymentState(x).type==="upcoming").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        due:rows.filter(x=>getPaymentState(x).type==="due").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        overdue:rows.filter(x=>getPaymentState(x).type==="overdue").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        paid:rows.filter(x=>getPaymentState(x).type==="paid").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0)
+    };
     /*
      * ترتيب الاشتراكات:
      * 1) الأقدم في التأخير أولاً (7 أيام قبل يومين مثلاً)
@@ -3836,11 +3895,11 @@ function renderSubscriptions(){
     <div class="card">
         <div class="card-body">
             <div class="subscription-filters">
-                <button class="subscription-filter-btn ${selectedStatus==="all"?"active":""}" onclick="setSubscriptionStatusFilter('all')"><b>${counts.all}</b><span>${t("allSubscriptions")}</span></button>
-                <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="setSubscriptionStatusFilter('upcoming')"><b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span></button>
-                <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="setSubscriptionStatusFilter('due')"><b>${counts.due}</b><span>${t("dueToday")}</span></button>
-                <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="setSubscriptionStatusFilter('overdue')"><b>${counts.overdue}</b><span>${t("overdue")}</span></button>
-                <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="setSubscriptionStatusFilter('paid')"><b>${counts.paid}</b><span>${t("paid")}</span></button>
+                <button class="subscription-filter-btn ${selectedStatus==="all"?"active":""}" onclick="setSubscriptionStatusFilter('all')"><b>${counts.all}</b><span>${t("allSubscriptions")}</span><small>${money(totals.all)} ${esc(state.settings.currency||"EGP")}</small></button>
+                <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="setSubscriptionStatusFilter('upcoming')"><b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span><small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small></button>
+                <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="setSubscriptionStatusFilter('due')"><b>${counts.due}</b><span>${t("dueToday")}</span><small>${money(totals.due)} ${esc(state.settings.currency||"EGP")}</small></button>
+                <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="setSubscriptionStatusFilter('overdue')"><b>${counts.overdue}</b><span>${t("overdue")}</span><small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small></button>
+                <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="setSubscriptionStatusFilter('paid')"><b>${counts.paid}</b><span>${t("paid")}</span><small>${money(totals.paid)} ${esc(state.settings.currency||"EGP")}</small></button>
             </div>
 
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
@@ -3981,6 +4040,7 @@ function subscriptionServiceRowHTML(
 
                 <select
                     class="subscription-service-select"
+                    style="width:100%;color:var(--text);background:var(--panel2);"
 
                     onchange="
                         updateSubscriptionServicePrice(this)
@@ -5401,6 +5461,81 @@ async function confirmPayment(subscriptionId){
 
 
 /* =========================================
+   PAYMENT EDIT
+========================================= */
+
+async function openPaymentEditModal(paymentId){
+
+    const payment=
+    state.payments.find(
+        x=>Number(x.id)===Number(paymentId)
+    );
+
+    if(!payment){
+        showToast("الدفعة غير موجودة",true);
+        return;
+    }
+
+    openModal(
+        t("editPayment"),
+        `
+        <div class="form-grid">
+            <div class="field">
+                <label>${t("amount")}</label>
+                <input id="editPaymentAmount" type="number" step="0.01" min="0" value="${Number(payment.amount||0)}">
+            </div>
+            <div class="field">
+                <label>${t("paymentDate")}</label>
+                <input id="editPaymentDate" type="date" value="${String(payment.payment_date||"").slice(0,10)}">
+            </div>
+            <div class="field full">
+                <label>${t("notes")}</label>
+                <textarea id="editPaymentNotes">${esc(payment.notes||"")}</textarea>
+            </div>
+        </div>
+        `,
+        `
+        <button class="ghost-btn" onclick="closeModal()">${t("cancel")}</button>
+        <button class="gold-btn" onclick="savePaymentEdit(${paymentId})">${t("save")}</button>
+        `
+    );
+}
+
+async function savePaymentEdit(paymentId){
+
+    const amount=Number(document.getElementById("editPaymentAmount").value||0);
+    const paymentDate=document.getElementById("editPaymentDate").value;
+    const notes=document.getElementById("editPaymentNotes").value;
+
+    if(!paymentDate){
+        showToast(t("paymentDateRequired"),true);
+        return;
+    }
+
+    try{
+        const result=await db
+        .from("subscription_payments")
+        .update({
+            amount:amount,
+            payment_date:paymentDate,
+            notes:notes
+        })
+        .eq("id",paymentId);
+
+        if(result.error) throw result.error;
+
+        await logActivity("PAYMENT_EDIT","payment",paymentId,"Edited payment");
+        closeModal();
+        await refresh();
+        showToast(t("saved"));
+
+    }catch(error){
+        showToast(error.message,true);
+    }
+}
+
+
+/* =========================================
    PAYMENTS
 ========================================= */
 
@@ -5447,6 +5582,7 @@ function renderPayments(){
         <th>${t("amount")}</th>
         <th>${t("paymentDate")}</th>
         <th>${t("status")}</th>
+        <th>${t("actions")}</th>
 
     </tr>
 
@@ -5502,6 +5638,14 @@ function renderPayments(){
 
             </td>
 
+            <td>
+                <div class="actions">
+                    <button class="mini-btn" onclick="openPaymentEditModal(${p.id})" title="${t("editPayment")}">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                </div>
+            </td>
+
         </tr>
 
         `;
@@ -5511,7 +5655,7 @@ function renderPayments(){
     `
     <tr>
 
-        <td colspan="5">
+        <td colspan="6">
 
         <div class="empty">
         ${t("noData")}
