@@ -9564,7 +9564,9 @@ async function requestMobileNotifications(){
             {
                 method:"POST",
                 headers:{
-                    "Content-Type":"application/json"
+                    "Content-Type":"application/json",
+                    "apikey":"sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
+                    "Authorization":"Bearer sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"
                 },
                 body:JSON.stringify({
                     role:"owner",
@@ -9577,7 +9579,17 @@ async function requestMobileNotifications(){
             }
         );
 
-        const data=await response.json();
+        const responseText=await response.text();
+
+        let data=null;
+        try{
+            data=JSON.parse(responseText);
+        }catch(e){
+            throw new Error(
+                responseText ||
+                ("HTTP "+response.status)
+            );
+        }
 
         if(!response.ok || !data.success){
             throw new Error(
