@@ -3697,6 +3697,74 @@ function renderSubscriptions(){
         overdue:rows.filter(x=>getPaymentState(x).type==="overdue").length,
         paid:rows.filter(x=>getPaymentState(x).type==="paid").length
     };
+    /*
+     * ترتيب الاشتراكات:
+     * 1) الأقدم في التأخير أولاً (7 أيام قبل يومين مثلاً)
+     * 2) المستحق اليوم
+     * 3) القادم، والأقرب أولاً
+     * 4) المدفوع في النهاية
+     *
+     * ترتيب العملاء المجمعين يعتمد على أسوأ/أقرب اشتراك
+     * داخل كل عميل، مع الحفاظ على تجميع خدمات العميل في بطاقة واحدة.
+     */
+    function subscriptionSortInfo(subscription){
+        const paymentState=getPaymentState(subscription);
+        const due=subscriptionDueDate(subscription);
+        const today=dateOnly(isoDate(new Date()));
+        const diff=due ? Math.round((today-due)/86400000) : 999999;
+
+        if(paymentState.type==="overdue"){
+            return {
+                rank:0,
+                distance:diff,
+                dueTime:due ? due.getTime() : Number.MAX_SAFE_INTEGER
+            };
+        }
+
+        if(paymentState.type==="due"){
+            return {
+                rank:1,
+                distance:0,
+                dueTime:due ? due.getTime() : Number.MAX_SAFE_INTEGER
+            };
+        }
+
+        if(paymentState.type==="upcoming"){
+            return {
+                rank:2,
+                distance:Math.abs(diff),
+                dueTime:due ? due.getTime() : Number.MAX_SAFE_INTEGER
+            };
+        }
+
+        return {
+            rank:3,
+            distance:0,
+            dueTime:due ? due.getTime() : Number.MAX_SAFE_INTEGER
+        };
+    }
+
+    filteredRows.sort(function(a,b){
+        const A=subscriptionSortInfo(a);
+        const B=subscriptionSortInfo(b);
+
+        if(A.rank!==B.rank){
+            return A.rank-B.rank;
+        }
+
+        if(A.rank===0){
+            if(A.distance!==B.distance){
+                return B.distance-A.distance;
+            }
+        }else if(A.rank===2){
+            if(A.distance!==B.distance){
+                return A.distance-B.distance;
+            }
+        }
+
+        return A.dueTime-B.dueTime;
+    });
+
     const grouped={};
     filteredRows.forEach(function(subscription){
         const key=String(subscription.customer_id);
@@ -3706,6 +3774,55 @@ function renderSubscriptions(){
         grouped[key].subscriptions.push(subscription);
     });
     const groups=Object.values(grouped);
+
+    /*
+     * بعد التجميع، نرتب كل عميل حسب أهم اشتراك بداخله.
+     * مثال: عميل لديه اشتراك متأخر 7 أيام وآخر قادم،
+     * يظل العميل نفسه في مكان المتأخر 7 أيام.
+     */
+    groups.forEach(function(group){
+        group.subscriptions.sort(function(a,b){
+            const A=subscriptionSortInfo(a);
+            const B=subscriptionSortInfo(b);
+
+            if(A.rank!==B.rank){
+                return A.rank-B.rank;
+            }
+
+            if(A.rank===0){
+                if(A.distance!==B.distance){
+                    return B.distance-A.distance;
+                }
+            }else if(A.rank===2){
+                if(A.distance!==B.distance){
+                    return A.distance-B.distance;
+                }
+            }
+
+            return A.dueTime-B.dueTime;
+        });
+    });
+
+    groups.sort(function(a,b){
+        const A=subscriptionSortInfo(a.subscriptions[0]);
+        const B=subscriptionSortInfo(b.subscriptions[0]);
+
+        if(A.rank!==B.rank){
+            return A.rank-B.rank;
+        }
+
+        if(A.rank===0){
+            if(A.distance!==B.distance){
+                return B.distance-A.distance;
+            }
+        }else if(A.rank===2){
+            if(A.distance!==B.distance){
+                return A.distance-B.distance;
+            }
+        }
+
+        return A.dueTime-B.dueTime;
+    });
 
     document.getElementById("content").innerHTML=`
     <div class="page-head">
