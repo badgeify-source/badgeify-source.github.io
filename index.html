@@ -9422,7 +9422,7 @@ refresh;
 ========================================= */
 
 db.auth.onAuthStateChange(
-async function(event,session){
+function(event,session){
 
     currentUser=
     session?.user||null;
@@ -9443,7 +9443,11 @@ async function(event,session){
         .classList
         .remove("hidden");
 
-        await refresh();
+        // تشغيل تحميل البيانات بعد انتهاء callback الخاص بـ Supabase Auth
+        // لتجنب تعليق تسجيل الدخول.
+        setTimeout(function(){
+            refresh();
+        },0);
 
     }else{
 
