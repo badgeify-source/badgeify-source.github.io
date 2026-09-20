@@ -974,7 +974,120 @@ body.light .topbar{
     .day{min-height:105px;padding:8px;}
 }
 
-</style>
+\n
+/* BADGEIFY PREMIUM UI REFRESH */
+:root{
+ --bg:#060b14;
+ --panel:#0d1420;
+ --panel2:#111b2a;
+ --border:rgba(255,255,255,.075);
+ --text:#f7faff;
+ --muted:#8f9bad;
+ --gold:#1877f2;
+ --gold2:#63b3ff;
+ --blue:#42a5f5;
+ --shadow:0 20px 60px rgba(0,0,0,.35);
+}
+body{
+ background:
+ radial-gradient(circle at 85% -10%,rgba(24,119,242,.13),transparent 32%),
+ radial-gradient(circle at 10% 100%,rgba(66,165,245,.06),transparent 30%),
+ var(--bg);
+}
+.sidebar{
+ background:linear-gradient(180deg,rgba(13,20,32,.98),rgba(7,12,20,.98));
+ border-left:1px solid rgba(99,179,255,.10);
+ box-shadow:-12px 0 45px rgba(0,0,0,.16);
+}
+.brand{
+ padding-bottom:24px;
+}
+.brand .logo-icon,.login .logo-icon{
+ position:relative;
+ box-shadow:0 0 0 1px rgba(99,179,255,.15),0 12px 30px rgba(24,119,242,.22);
+}
+.brand-logo-image{
+ object-fit:cover;
+}
+.brand-name,.logo-title{
+ letter-spacing:.4px;
+}
+.brand-sub,.logo-sub{
+ letter-spacing:1px;
+}
+.topbar{
+ background:rgba(6,11,20,.78);
+ border-bottom:1px solid rgba(255,255,255,.06);
+}
+.content{
+ padding-top:30px;
+}
+.page-head h1{
+ font-weight:800;
+ letter-spacing:-.3px;
+}
+.card,.stat{
+ background:linear-gradient(145deg,rgba(17,27,42,.96),rgba(11,18,29,.96));
+ border:1px solid rgba(255,255,255,.07);
+ box-shadow:0 14px 45px rgba(0,0,0,.20);
+}
+.card-head{
+ background:linear-gradient(90deg,rgba(24,119,242,.045),transparent);
+}
+.stat{
+ position:relative;
+ overflow:hidden;
+}
+.stat:before{
+ content:"";
+ position:absolute;
+ width:100px;height:100px;
+ left:-35px;top:-45px;
+ background:rgba(24,119,242,.08);
+ border-radius:50%;
+ filter:blur(2px);
+}
+.stat-icon{
+ background:rgba(24,119,242,.12);
+ color:#63b3ff;
+ box-shadow:inset 0 0 0 1px rgba(99,179,255,.08);
+}
+.gold-btn{
+ background:linear-gradient(135deg,#42a5f5,#1877f2);
+ color:#fff;
+ border:0;
+ box-shadow:0 10px 28px rgba(24,119,242,.22);
+}
+.gold-btn:hover{
+ transform:translateY(-1px);
+ box-shadow:0 14px 32px rgba(24,119,242,.30);
+}
+.ghost-btn,.icon-btn,.mini-btn{
+ background:rgba(255,255,255,.025);
+}
+.field input,.field select,.field textarea,.search input,.search select{
+ background:rgba(255,255,255,.025);
+ border-color:rgba(255,255,255,.08);
+}
+.table th{
+ background:rgba(24,119,242,.035);
+}
+.table tr:hover td{
+ background:rgba(24,119,242,.045);
+}
+.badge.due{
+ background:rgba(24,119,242,.13);
+ color:#63b3ff;
+}
+.modal-box{
+ background:linear-gradient(145deg,#0e1725,#0a111c);
+ border-color:rgba(99,179,255,.12);
+}
+.login-box{
+ background:linear-gradient(145deg,rgba(15,24,38,.98),rgba(9,15,25,.98));
+ border-color:rgba(99,179,255,.12);
+}
+\n</style>
 </head>
 
 <body>
