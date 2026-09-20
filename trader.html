@@ -2195,20 +2195,147 @@ font-size:19px;cursor:pointer
 </style>
 <button id="badgeifyNotifyBtn" class="badgeify-notify-btn" title="إشعارات BADGEIFY">🔔</button>
 <script>
-<script>
 (function(){
 "use strict";
 const KEY="badgeify_portal_push_subscription";
 const ENABLED="badgeify_portal_notifications_enabled";
 const PUSH_PUBLIC_KEY="BH73c6DoCgPzRvQGZ08OBJM1KWP4Ih0nJgt92PvrAKFhpYZpAbVFIn98z6cmwdpw5t3MPftO5JAXkPGwZWjttRQ";
 const REGISTER_URL="https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/register-notification";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986";
 const PORTAL_ROLE="trader";
-function registerSW(){if(!("serviceWorker" in navigator))return Promise.resolve(null);return navigator.serviceWorker.register("./service-worker.js").catch(function(){return null;});}
-function update(){const b=document.getElementById("badgeifyNotifyBtn");if(!b)return;const on=("Notification" in window)&&Notification.permission==="granted";b.classList.toggle("on",on);b.title=on?"إشعارات BADGEIFY مفعلة":"تفعيل إشعارات BADGEIFY";}
-function urlBase64ToUint8Array(s){const p="=".repeat((4-s.length%4)%4);const b=(s+p).replace(/-/g,"+").replace(/_/g,"/");const r=atob(b);return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));}
-async function registerDevice(sub){const j=sub.toJSON();const body={role:PORTAL_ROLE,portal_token:new URLSearchParams(window.location.search).get("token"),endpoint:j.endpoint,p256dh:j.keys?.p256dh||"",auth:j.keys?.auth||"",user_agent:navigator.userAgent};const response=await fetch(REGISTER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const data=await response.json();if(!response.ok||!data.success)throw new Error(data.error||"تعذر تسجيل الجهاز");localStorage.setItem(KEY,JSON.stringify(j));return data;}
-async function enable(){if(!("Notification" in window)){alert("المتصفح لا يدعم إشعارات الموبايل.");return;}const permission=await Notification.requestPermission();if(permission!=="granted"){update();return;}const reg=await registerSW();if(!reg||!("PushManager" in window)){alert("هذا المتصفح لا يدعم Push Notifications المطلوبة.");return;}try{let sub=await reg.pushManager.getSubscription();if(!sub){sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(PUSH_PUBLIC_KEY)});}await registerDevice(sub);localStorage.setItem(ENABLED,"1");update();const reg2=await navigator.serviceWorker.ready;if(reg2.active)reg2.active.postMessage({type:"SHOW_NOTIFICATION",title:"BADGEIFY",body:"تم تسجيل هذا الجهاز بنجاح لاستقبال إشعارات BADGEIFY."});}catch(e){console.error("BADGEIFY notification registration:",e);alert("تعذر تسجيل الجهاز للإشعارات: "+(e?.message||"خطأ غير معروف"));}}
-document.addEventListener("DOMContentLoaded",function(){registerSW().then(update);const b=document.getElementById("badgeifyNotifyBtn");if(b)b.addEventListener("click",enable);});
+
+function registerSW(){
+    if(!("serviceWorker" in navigator)) return Promise.resolve(null);
+    return navigator.serviceWorker.register("./service-worker.js").catch(function(){
+        return null;
+    });
+}
+
+function update(){
+    const b=document.getElementById("badgeifyNotifyBtn");
+    if(!b) return;
+    const on=("Notification" in window)&&Notification.permission==="granted";
+    b.classList.toggle("on",on);
+    b.title=on?"إشعارات BADGEIFY مفعلة":"تفعيل إشعارات BADGEIFY";
+}
+
+function urlBase64ToUint8Array(s){
+    const p="=".repeat((4-s.length%4)%4);
+    const b=(s+p).replace(/-/g,"+").replace(/_/g,"/");
+    const r=atob(b);
+    return Uint8Array.from([...r].map(c=>c.charCodeAt(0)));
+}
+
+async function registerDevice(sub){
+    const j=sub.toJSON();
+
+    const body={
+        role:PORTAL_ROLE,
+        portal_token:new URLSearchParams(window.location.search).get("token"),
+        endpoint:j.endpoint,
+        p256dh:j.keys?.p256dh||"",
+        auth:j.keys?.auth||"",
+        user_agent:navigator.userAgent
+    };
+
+    const response=await fetch(REGISTER_URL,{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json",
+            "apikey":SUPABASE_PUBLISHABLE_KEY,
+            "Authorization":"Bearer "+SUPABASE_PUBLISHABLE_KEY
+        },
+        body:JSON.stringify(body)
+    });
+
+    const data=await response.json();
+
+    if(!response.ok||!data.success){
+        throw new Error(data.error||"تعذر تسجيل الجهاز");
+    }
+
+    localStorage.setItem(KEY,JSON.stringify(j));
+    return data;
+}
+
+async function enable(){
+    if(!("Notification" in window)){
+        alert("المتصفح لا يدعم إشعارات الموبايل.");
+        return;
+    }
+
+    const permission=await Notification.requestPermission();
+
+    if(permission!=="granted"){
+        update();
+        return;
+    }
+
+    const reg=await registerSW();
+
+    if(!reg||!("PushManager" in window)){
+        alert("هذا المتصفح لا يدعم Push Notifications المطلوبة.");
+        return;
+    }
+
+    try{
+        let sub=await reg.pushManager.getSubscription();
+
+        if(!sub){
+            sub=await reg.pushManager.subscribe({
+                userVisibleOnly:true,
+                applicationServerKey:
+                    urlBase64ToUint8Array(PUSH_PUBLIC_KEY)
+            });
+        }
+
+        await registerDevice(sub);
+
+        localStorage.setItem(ENABLED,"1");
+        update();
+
+        const reg2=await navigator.serviceWorker.ready;
+
+        if(reg2.active){
+            reg2.active.postMessage({
+                type:"SHOW_NOTIFICATION",
+                title:"BADGEIFY",
+                body:"تم تسجيل هذا الجهاز بنجاح لاستقبال إشعارات BADGEIFY."
+            });
+        }
+
+    }catch(e){
+        console.error(
+            "BADGEIFY notification registration:",
+            e
+        );
+
+        alert(
+            "تعذر تسجيل الجهاز للإشعارات: "+
+            (e?.message||"خطأ غير معروف")
+        );
+    }
+}
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function(){
+        registerSW().then(update);
+
+        const b=
+            document.getElementById(
+                "badgeifyNotifyBtn"
+            );
+
+        if(b){
+            b.addEventListener(
+                "click",
+                enable
+            );
+        }
+    }
+);
+
 })();
 </script>
 
