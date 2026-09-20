@@ -9362,87 +9362,40 @@ document.getElementById(
     const email=
     document.getElementById(
         "loginEmail"
-    ).value
-    .trim();
+    ).value;
 
     const password=
     document.getElementById(
         "loginPassword"
     ).value;
 
-    const msg=
     document.getElementById(
         "loginMsg"
-    );
+    ).textContent="...";
 
-    const btn=
-    document.getElementById(
-        "loginBtn"
-    );
 
-    if(!email || !password){
+    const result=
+    await db.auth.signInWithPassword({
 
-        msg.textContent=
-        "اكتب البريد الإلكتروني وكلمة المرور.";
+        email:email,
 
-        return;
+        password:password
 
-    }
+    });
 
-    btn.disabled=true;
-    btn.style.opacity=".65";
-    msg.textContent="جاري تسجيل الدخول...";
 
-    try{
+    if(result.error){
 
-        const result=
-        await db.auth.signInWithPassword({
+        document.getElementById(
+            "loginMsg"
+        ).textContent=
+        result.error.message;
 
-            email:email,
-            password:password
+    }else{
 
-        });
-
-        if(result.error)
-            throw result.error;
-
-        currentUser=
-        result.data?.user||null;
-
-        if(!currentUser)
-            throw new Error(
-                "تم تسجيل الدخول لكن لم يتم استلام جلسة المستخدم."
-            );
-
-        document
-        .getElementById("loginView")
-        .classList
-        .add("hidden");
-
-        document
-        .getElementById("appView")
-        .classList
-        .remove("hidden");
-
-        msg.textContent="";
-
-        setTimeout(function(){
-            refresh();
-        },0);
-
-    }catch(error){
-
-        console.error("BADGEIFY LOGIN ERROR:",error);
-
-        msg.textContent=
-        error?.message
-        ||
-        "حدث خطأ أثناء تسجيل الدخول.";
-
-    }finally{
-
-        btn.disabled=false;
-        btn.style.opacity="";
+        document.getElementById(
+            "loginMsg"
+        ).textContent="";
 
     }
 
@@ -9469,7 +9422,7 @@ refresh;
 ========================================= */
 
 db.auth.onAuthStateChange(
-function(event,session){
+async function(event,session){
 
     currentUser=
     session?.user||null;
@@ -9477,32 +9430,34 @@ function(event,session){
     if(currentUser){
 
         document
-        .getElementById("loginView")
+        .getElementById(
+            "loginView"
+        )
         .classList
         .add("hidden");
 
         document
-        .getElementById("appView")
+        .getElementById(
+            "appView"
+        )
         .classList
         .remove("hidden");
 
-        if(event!=="INITIAL_SESSION"){
-
-            setTimeout(function(){
-                refresh();
-            },0);
-
-        }
+        await refresh();
 
     }else{
 
         document
-        .getElementById("loginView")
+        .getElementById(
+            "loginView"
+        )
         .classList
         .remove("hidden");
 
         document
-        .getElementById("appView")
+        .getElementById(
+            "appView"
+        )
         .classList
         .add("hidden");
 
@@ -9512,58 +9467,12 @@ function(event,session){
 
 
 /* =========================================
-   INITIAL SESSION
-========================================= */
-
-(async function(){
-
-    try{
-
-        const result=
-        await db.auth.getSession();
-
-        if(result.error)
-            throw result.error;
-
-        const session=
-        result.data?.session;
-
-        if(session?.user){
-
-            currentUser=session.user;
-
-            document
-            .getElementById("loginView")
-            .classList
-            .add("hidden");
-
-            document
-            .getElementById("appView")
-            .classList
-            .remove("hidden");
-
-            setTimeout(function(){
-                refresh();
-            },0);
-
-        }
-
-    }catch(error){
-
-        console.error(
-            "BADGEIFY SESSION ERROR:",
-            error
-        );
-
-    }
-
-})();
-
-/* =========================================
    INITIAL
 ========================================= */
 
 applyTheme();
+
+
 
 
 </script>
