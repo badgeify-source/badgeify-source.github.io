@@ -1951,7 +1951,7 @@ function getService(id){
 function getSubscription(id){
 
     return state.subscriptions.find(
-        x=>String(x.id)===String(id)
+        x=>Number(x.id)===Number(id)
     );
 
 }
@@ -6732,9 +6732,11 @@ async function saveCustomerInvoice(){
         "invoiceSubscription"
     ).value
     ?
-    document.getElementById(
-        "invoiceSubscription"
-    ).value
+    Number(
+        document.getElementById(
+            "invoiceSubscription"
+        ).value
+    )
     :
     null;
 
@@ -7128,7 +7130,7 @@ function calculateTraderInvoice(){
 }
 
 
-async async function createTraderInvoice(){
+async function createTraderInvoice(){
 
     const traderId=
     Number(
@@ -7168,9 +7170,9 @@ async async function createTraderInvoice(){
     checks.map(
         check=>
         getSubscription(
-            check.value
+            Number(check.value)
         )
-    ).filter(Boolean);
+    );
 
     const subtotal=
     subscriptions.reduce(
@@ -7335,10 +7337,8 @@ function printInvoice(id){
 
     const items =
     state.invoiceItems.filter(
-        x => String(x.invoice_id) === String(id)
+        x => Number(x.invoice_id) === Number(id)
     );
-
-    const invoiceLogoUrl = "https://scontent.fcai19-6.fna.fbcdn.net/v/t39.30808-6/668525850_2199653773906597_7853828551378894356_n.jpg?stp=dst-jpg_tt6&cstp=mx1024x1024&ctp=s1024x1024&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=jN9zzk0cgtMQ7kNvwGOSJ86&_nc_oc=AdoPY9Oiv9RuWpzZqiZhQtBL8_D44BTxrXRyP8FXc-1TwAiHTok27pi88YUHp6Juwsc&_nc_zt=23&_nc_ht=scontent.fcai19-6.fna&_nc_gid=J5MCcle55wDvCYr-oi3x0g&_nc_ss=7b2a8&oh=00_AQKYoylM8WFVIVRJFICZbjPr5qJ0RbK-vvanL5q7naqABg&oe=6AB4F454";
 
     const company =
     state.settings.company_name || "BADGEIFY";
@@ -7488,7 +7488,7 @@ td{font-size:12px}
 
     <div class="head">
         <div class="brand">
-            <img class="logo" src="${invoiceLogoUrl}" alt="BADGEIFY">
+            <img class="logo" src="${logo}" alt="BADGEIFY">
             <div>
                 <div class="brand-name">BADGEIFY</div>
                 <div class="tag">VERIFIED TRUST & SECURITY</div>
