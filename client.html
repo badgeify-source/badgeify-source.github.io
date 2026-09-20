@@ -1094,6 +1094,25 @@ function renderSubscriptions(
                         </div>
 
                         
+                        <div class="detail">
+                            <div class="detail-label">
+                                الاستحقاق
+                            </div>
+
+                            <div class="detail-value">
+                                ${escapeHtml(formatDate(subscription.due_date))}
+                            </div>
+                        </div>
+
+                        ${subscription.page_link ? `
+                        <div class="detail" style="grid-column:1/-1">
+                            <div class="detail-label">رابط الصفحة</div>
+                            <div class="detail-value">
+                                <a href="${escapeHtml(subscription.page_link)}" target="_blank" rel="noopener noreferrer" style="color:#63b3ff;text-decoration:none;word-break:break-all">فتح الرابط</a>
+                            </div>
+                        </div>
+                        ` : ""}
+
                         ${(subscription.visa_last4 || subscription.visa_card_last4 || subscription.visa_last_4 || subscription.visa_name || subscription.visa_card_name || subscription.card_name) ? `
                             <div class="visa-display">
                                 <div class="visa-chip"></div>
