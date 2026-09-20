@@ -9362,40 +9362,87 @@ document.getElementById(
     const email=
     document.getElementById(
         "loginEmail"
-    ).value;
+    ).value
+    .trim();
 
     const password=
     document.getElementById(
         "loginPassword"
     ).value;
 
+    const msg=
     document.getElementById(
         "loginMsg"
-    ).textContent="...";
+    );
 
+    const btn=
+    document.getElementById(
+        "loginBtn"
+    );
 
-    const result=
-    await db.auth.signInWithPassword({
+    if(!email || !password){
 
-        email:email,
+        msg.textContent=
+        "اكتب البريد الإلكتروني وكلمة المرور.";
 
-        password:password
+        return;
 
-    });
+    }
 
+    btn.disabled=true;
+    btn.style.opacity=".65";
+    msg.textContent="جاري تسجيل الدخول...";
 
-    if(result.error){
+    try{
 
-        document.getElementById(
-            "loginMsg"
-        ).textContent=
-        result.error.message;
+        const result=
+        await db.auth.signInWithPassword({
 
-    }else{
+            email:email,
+            password:password
 
-        document.getElementById(
-            "loginMsg"
-        ).textContent="";
+        });
+
+        if(result.error)
+            throw result.error;
+
+        currentUser=
+        result.data?.user||null;
+
+        if(!currentUser)
+            throw new Error(
+                "تم تسجيل الدخول لكن لم يتم استلام جلسة المستخدم."
+            );
+
+        document
+        .getElementById("loginView")
+        .classList
+        .add("hidden");
+
+        document
+        .getElementById("appView")
+        .classList
+        .remove("hidden");
+
+        msg.textContent="";
+
+        setTimeout(function(){
+            refresh();
+        },0);
+
+    }catch(error){
+
+        console.error("BADGEIFY LOGIN ERROR:",error);
+
+        msg.textContent=
+        error?.message
+        ||
+        "حدث خطأ أثناء تسجيل الدخول.";
+
+    }finally{
+
+        btn.disabled=false;
+        btn.style.opacity="";
 
     }
 
@@ -9430,38 +9477,32 @@ function(event,session){
     if(currentUser){
 
         document
-        .getElementById(
-            "loginView"
-        )
+        .getElementById("loginView")
         .classList
         .add("hidden");
 
         document
-        .getElementById(
-            "appView"
-        )
+        .getElementById("appView")
         .classList
         .remove("hidden");
 
-        // تشغيل تحميل البيانات بعد انتهاء callback الخاص بـ Supabase Auth
-        // لتجنب تعليق تسجيل الدخول.
-        setTimeout(function(){
-            refresh();
-        },0);
+        if(event!=="INITIAL_SESSION"){
+
+            setTimeout(function(){
+                refresh();
+            },0);
+
+        }
 
     }else{
 
         document
-        .getElementById(
-            "loginView"
-        )
+        .getElementById("loginView")
         .classList
         .remove("hidden");
 
         document
-        .getElementById(
-            "appView"
-        )
+        .getElementById("appView")
         .classList
         .add("hidden");
 
@@ -9469,6 +9510,54 @@ function(event,session){
 
 });
 
+
+/* =========================================
+   INITIAL SESSION
+========================================= */
+
+(async function(){
+
+    try{
+
+        const result=
+        await db.auth.getSession();
+
+        if(result.error)
+            throw result.error;
+
+        const session=
+        result.data?.session;
+
+        if(session?.user){
+
+            currentUser=session.user;
+
+            document
+            .getElementById("loginView")
+            .classList
+            .add("hidden");
+
+            document
+            .getElementById("appView")
+            .classList
+            .remove("hidden");
+
+            setTimeout(function(){
+                refresh();
+            },0);
+
+        }
+
+    }catch(error){
+
+        console.error(
+            "BADGEIFY SESSION ERROR:",
+            error
+        );
+
+    }
+
+})();
 
 /* =========================================
    INITIAL
