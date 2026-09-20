@@ -9392,6 +9392,7 @@ function render(){
 
 const PUSH_PUBLIC_KEY = "BH73c6DoCgPzRvQGZ08OBJM1KWP4Ih0nJgt92PvrAKFhpYZpAbVFIn98z6cmwdpw5t3MPftO5JAXkPGwZWjttRQ";
 const NOTIFICATION_REGISTER_URL = "https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/register-notification";
+const NOTIFICATION_TEST_URL = "https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/send-test-notification";
 
 async function registerBadgeifyServiceWorker(){
     if(!("serviceWorker" in navigator)) return null;
@@ -9567,21 +9568,55 @@ async function testMobileNotification(){
     }
 
     try{
-        const reg=await navigator.serviceWorker.ready;
-        if(reg.active){
-            reg.active.postMessage({
-                type:"SHOW_NOTIFICATION",
-                title:"BADGEIFY",
-                body:"تم اختبار إشعارات الموبايل بنجاح."
-            });
+        const response=await fetch(
+            NOTIFICATION_TEST_URL,
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    role:"owner",
+                    title:"BADGEIFY",
+                    body:"تم إرسال إشعار اختبار حقيقي من BADGEIFY."
+                })
+            }
+        );
+
+        const data=await response.json();
+
+        if(!response.ok || !data.success){
+            throw new Error(
+                data.error ||
+                "تعذر إرسال إشعار الاختبار"
+            );
         }
-        showToast("تم إرسال إشعار التجربة");
+
+        showToast(
+            "تم إرسال إشعار الاختبار إلى "+
+            (data.sent || 0)+
+            " جهاز."
+        );
+
+        console.log(
+            "BADGEIFY test notification:",
+            data
+        );
+
     }catch(error){
-        new Notification("BADGEIFY",{
-            body:"تم اختبار إشعارات الموبايل بنجاح."
-        });
+        console.error(
+            "BADGEIFY server test notification:",
+            error
+        );
+
+        showToast(
+            "فشل إرسال إشعار الاختبار: "+
+            (error?.message || "خطأ غير معروف"),
+            true
+        );
     }
 }
+
 
 function urlBase64ToUint8Array(base64String){
     const padding="=".repeat((4-base64String.length%4)%4);
