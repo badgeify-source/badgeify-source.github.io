@@ -1088,6 +1088,12 @@ body{
  border-color:rgba(99,179,255,.12);
 }
 \n</style>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b1422">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
 <body>
@@ -1284,6 +1290,17 @@ id="themeBtn"
 class="icon-btn"
 >
 <i class="fa-solid fa-sun"></i>
+</button>
+
+
+<button
+id="notificationBtn"
+class="icon-btn"
+title="إشعارات الموبايل"
+onclick="openNotificationSettings()"
+>
+<i class="fa-solid fa-bell"></i>
+<span id="notificationDot" style="display:none;position:absolute;width:8px;height:8px;border-radius:50%;background:#ef4444;margin:-14px -3px 0 0;"></span>
 </button>
 
 <button
@@ -9283,6 +9300,14 @@ async function refresh(){
         await loadData();
 
         render();
+
+        updateNotificationUI();
+
+        setTimeout(function(){
+            showAutomaticDueNotifications().catch(function(error){
+                console.warn("BADGEIFY notification check:",error);
+            });
+        },300);
 
     }catch(error){
 
