@@ -1848,7 +1848,8 @@ function renderDesktopSubscriptions(rows){
         if(!groups[key]) groups[key]={customer_id:sub.customer_id,customer_name:sub.customer_name||"-",customer_phone:sub.customer_phone||"",subscriptions:[]};
         groups[key].subscriptions.push(sub);
     });
-    container.innerHTML=`<div style="display:grid;gap:16px;padding:16px;">${Object.values(groups).map(function(group){
+    const orderedGroups = sortPortalCustomerGroups(Object.values(groups));
+    container.innerHTML=`<div style="display:grid;gap:16px;padding:16px;">${orderedGroups.map(function(group){
         const total=group.subscriptions.reduce(function(sum,sub){return sum+Number(sub.monthly_fee||0);},0);
         return `<div class="subscription-card" style="margin:0;padding:20px;">
             <div class="sub-top">
@@ -1881,7 +1882,8 @@ function renderMobileSubscriptions(rows){
         if(!groups[key]) groups[key]={customer_id:sub.customer_id,customer_name:sub.customer_name||"-",customer_phone:sub.customer_phone||"",subscriptions:[]};
         groups[key].subscriptions.push(sub);
     });
-    container.innerHTML=Object.values(groups).map(function(group){
+    const orderedGroups = sortPortalCustomerGroups(Object.values(groups));
+    container.innerHTML=orderedGroups.map(function(group){
         const total=group.subscriptions.reduce(function(sum,sub){return sum+Number(sub.monthly_fee||0);},0);
         return `<div class="subscription-card">
             <div class="sub-top">
