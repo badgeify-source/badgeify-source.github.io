@@ -6302,7 +6302,7 @@ async function deleteTrader(id){
    TRADER ACCOUNT
 ========================================= */
 
-function openTraderAccount(traderId){
+function openTraderAccount(traderId, filterStatus=null){
 
     const trader=getTrader(traderId);
 
@@ -6316,9 +6316,77 @@ function openTraderAccount(traderId){
         s=>customerIds.includes(Number(s.customer_id)) && s.status!=="inactive"
     );
 
-    const total=subscriptions.reduce(
-        (sum,s)=>sum+Number(s.monthly_fee||0),0
-    );
+    if(filterStatus!==null){
+        state.traderAccountFilterStatus=filterStatus||"all";
+    }
+
+    const selectedStatus=state.traderAccountFilterStatus||"all";
+
+    const counts={
+        all:subscriptions.length,
+        upcoming:subscriptions.filter(x=>getPaymentState(x).type==="upcoming").length,
+        due:subscriptions.filter(x=>getPaymentState(x).type==="due").length,
+        overdue:subscriptions.filter(x=>getPaymentState(x).type==="overdue").length,
+        paid:subscriptions.filter(x=>getPaymentState(x).type==="paid").length
+    };
+
+    const totals={
+        all:subscriptions.reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        upcoming:subscriptions.filter(x=>getPaymentState(x).type==="upcoming").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        due:subscriptions.filter(x=>getPaymentState(x).type==="due").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        overdue:subscriptions.filter(x=>getPaymentState(x).type==="overdue").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        paid:subscriptions.filter(x=>getPaymentState(x).type==="paid").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0)
+    };
+
+    let filteredSubscriptions=selectedStatus==="all"
+        ? subscriptions.slice()
+        : subscriptions.filter(function(s){
+            return getPaymentState(s).type===selectedStatus;
+        });
+
+    function traderSortInfo(subscription){
+        const paymentState=getPaymentState(subscription);
+        const due=subscriptionDueDate(subscription);
+        const today=dateOnly(isoDate(new Date()));
+        const diff=due ? Math.round((today-due)/86400000) : 999999;
+
+        if(paymentState.type==="overdue"){
+            return {rank:0,distance:diff,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
+        }
+
+        if(paymentState.type==="due"){
+            return {rank:1,distance:0,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
+        }
+
+        if(paymentState.type==="upcoming"){
+            return {rank:2,distance:Math.abs(diff),dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
+        }
+
+        return {rank:3,distance:0,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
+    }
+
+    function sortTraderSubscriptions(list){
+        list.sort(function(a,b){
+            const A=traderSortInfo(a);
+            const B=traderSortInfo(b);
+
+            if(A.rank!==B.rank) return A.rank-B.rank;
+
+            if(A.rank===0 && A.distance!==B.distance){
+                return B.distance-A.distance;
+            }
+
+            if(A.rank===2 && A.distance!==B.distance){
+                return A.distance-B.distance;
+            }
+
+            return A.dueTime-B.dueTime;
+        });
+    }
+
+    sortTraderSubscriptions(filteredSubscriptions);
+
+    const total=totals.all;
 
     const payments=state.payments.filter(function(p){
         const s=getSubscription(p.subscription_id);
@@ -6345,6 +6413,46 @@ function openTraderAccount(traderId){
         const service=getService(subscription.app_service_id);
         return service?[service]:[];
     }
+
+    const grouped={};
+
+    filteredSubscriptions.forEach(function(subscription){
+        const key=String(subscription.customer_id);
+
+        if(!grouped[key]){
+            grouped[key]={
+                customer:getCustomer(subscription.customer_id),
+                subscriptions:[]
+            };
+        }
+
+        grouped[key].subscriptions.push(subscription);
+    });
+
+    const filteredGroups=Object.values(grouped);
+
+    filteredGroups.forEach(function(group){
+        sortTraderSubscriptions(group.subscriptions);
+    });
+
+    filteredGroups.sort(function(a,b){
+        const A=traderSortInfo(a.subscriptions[0]);
+        const B=traderSortInfo(b.subscriptions[0]);
+
+        if(A.rank!==B.rank) return A.rank-B.rank;
+
+        if(A.rank===0 && A.distance!==B.distance){
+            return B.distance-A.distance;
+        }
+
+        if(A.rank===2 && A.distance!==B.distance){
+            return A.distance-B.distance;
+        }
+
+        return A.dueTime-B.dueTime;
+    });
+
+    const groupsCount=filteredGroups.length;
 
     openModal(
         `${t("trader")} — ${esc(trader?.trader_name||"-")}`,
@@ -6373,19 +6481,47 @@ function openTraderAccount(traderId){
 
             <div class="card-head">
                 <h3>${t("customers")}</h3>
-                <span class="muted">${customers.length} ${t("customers")}</span>
+                <span class="muted">${groupsCount} ${t("customers")}</span>
             </div>
 
             <div class="card-body">
 
-                ${
-                customers.length
-                ?
-                customers.map(function(c){
+                <div class="subscription-filters" style="margin-bottom:18px">
 
-                    const customerSubscriptions=subscriptions.filter(function(s){
-                        return Number(s.customer_id)===Number(c.id);
-                    });
+                    <button class="subscription-filter-btn ${selectedStatus==="all"?"active":""}" onclick="openTraderAccount(${traderId},'all')">
+                        <b>${counts.all}</b><span>${t("allSubscriptions")}</span>
+                        <small>${money(totals.all)} ${esc(state.settings.currency||"EGP")}</small>
+                    </button>
+
+                    <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="openTraderAccount(${traderId},'upcoming')">
+                        <b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span>
+                        <small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small>
+                    </button>
+
+                    <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="openTraderAccount(${traderId},'due')">
+                        <b>${counts.due}</b><span>${t("dueToday")}</span>
+                        <small>${money(totals.due)} ${esc(state.settings.currency||"EGP")}</small>
+                    </button>
+
+                    <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="openTraderAccount(${traderId},'overdue')">
+                        <b>${counts.overdue}</b><span>${t("overdue")}</span>
+                        <small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small>
+                    </button>
+
+                    <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="openTraderAccount(${traderId},'paid')">
+                        <b>${counts.paid}</b><span>${t("paid")}</span>
+                        <small>${money(totals.paid)} ${esc(state.settings.currency||"EGP")}</small>
+                    </button>
+
+                </div>
+
+                ${
+                groupsCount>0
+                ?
+                filteredGroups.map(function(group){
+
+                    const c=group.customer;
+                    const customerSubscriptions=group.subscriptions;
 
                     const customerTotal=customerSubscriptions.reduce(
                         (sum,s)=>sum+Number(s.monthly_fee||0),0
