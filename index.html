@@ -2497,8 +2497,7 @@ document.getElementById("langBtn")
 ========================================= */
 
 function openModal(
-    title,
-    body,
+    title,    body,
     footer
 ){
 
@@ -4997,8 +4996,7 @@ async function saveSubscription(id){
 
 
         page_name:
-            document.getElementById(
-                "subPage"
+            document.getElementById(                "subPage"
             ).value,
 
 
@@ -6308,167 +6306,235 @@ async function deleteTrader(id){
 
 function openTraderAccount(traderId){
 
-    const trader=
-    getTrader(traderId);
+    const trader=getTrader(traderId);
 
-    const customers=
-    state.customers
-    .filter(
-        c=>
-        Number(c.trader_id)
-        ===Number(traderId)
+    const customers=state.customers.filter(
+        c=>Number(c.trader_id)===Number(traderId)
     );
 
-    const customerIds=
-    customers.map(c=>Number(c.id));
+    const customerIds=customers.map(c=>Number(c.id));
 
-    const subscriptions=
-    state.subscriptions
-    .filter(
-        s=>
-        customerIds.includes(
-            Number(s.customer_id)
-        )
+    const subscriptions=state.subscriptions.filter(
+        s=>customerIds.includes(Number(s.customer_id)) && s.status!=="inactive"
     );
 
-    const total=
-    subscriptions.reduce(
-        (sum,s)=>
-        sum+Number(s.monthly_fee||0),
-        0
+    const total=subscriptions.reduce(
+        (sum,s)=>sum+Number(s.monthly_fee||0),0
     );
 
-    const payments=
-    state.payments
-    .filter(function(p){
-
-        const s=
-        getSubscription(
-            p.subscription_id
-        );
-
-        return s
-        &&
-        customerIds.includes(
-            Number(s.customer_id)
-        );
-
+    const payments=state.payments.filter(function(p){
+        const s=getSubscription(p.subscription_id);
+        return s && customerIds.includes(Number(s.customer_id));
     });
 
-    const paid=
-    payments.reduce(
-        (sum,p)=>
-        sum+Number(p.amount||0),
-        0
+    const paid=payments.reduce(
+        (sum,p)=>sum+Number(p.amount||0),0
     );
 
+    function servicesForSubscription(subscription){
+        const childRows=state.subscriptionServices.filter(function(row){
+            return String(row.subscription_id)===String(subscription.id);
+        });
+
+        if(childRows.length){
+            return childRows
+                .map(function(row){
+                    return getService(row.app_service_id||row.service_id);
+                })
+                .filter(Boolean);
+        }
+
+        const service=getService(subscription.app_service_id);
+        return service?[service]:[];
+    }
+
     openModal(
+        \`${t("trader")} — ${esc(trader?.trader_name||"-")}\`,
 
-        `${t("trader")} — ${esc(trader.trader_name)}`,
-
-        `
-
-        <div class="stats grid"
-        style="grid-template-columns:repeat(3,1fr)">
+        \`
+        <div class="stats grid" style="grid-template-columns:repeat(3,1fr)">
 
             <div class="stat">
-
-                <h2>
-                ${customers.length}
-                </h2>
-
-                <p>
-                ${t("customers")}
-                </p>
-
+                <h2>${customers.length}</h2>
+                <p>${t("customers")}</p>
             </div>
 
             <div class="stat">
-
-                <h2>
-                ${money(total)}
-                </h2>
-
-                <p>
-                ${t("expected")}
-                </p>
-
+                <h2>${money(total)}</h2>
+                <p>${t("expected")}</p>
             </div>
 
             <div class="stat">
-
-                <h2>
-                ${money(paid)}
-                </h2>
-
-                <p>
-                ${t("paid")}
-                </p>
-
+                <h2>${money(paid)}</h2>
+                <p>${t("paid")}</p>
             </div>
 
         </div>
 
-
-        <div
-        class="card"
-        style="margin-top:15px">
+        <div class="card" style="margin-top:15px">
 
             <div class="card-head">
-
-                <h3>
-                ${t("customers")}
-                </h3>
-
+                <h3>${t("customers")}</h3>
+                <span class="muted">${customers.length} ${t("customers")}</span>
             </div>
 
             <div class="card-body">
 
                 ${
-                customers.map(c=>`
+                customers.length
+                ?
+                customers.map(function(c){
 
-                <div class="list-item">
+                    const customerSubscriptions=subscriptions.filter(function(s){
+                        return Number(s.customer_id)===Number(c.id);
+                    });
 
-                    <div>
+                    const customerTotal=customerSubscriptions.reduce(
+                        (sum,s)=>sum+Number(s.monthly_fee||0),0
+                    );
 
-                        <b>
-                        ${esc(c.client_name)}
-                        </b>
+                    return \`
+                    <div class="card" style="margin-bottom:14px;border-color:rgba(24,119,242,.22);">
 
-                        <div class="muted">
-                        ${esc(c.phone||"")}
+                        <div class="card-head" style="background:rgba(24,119,242,.05)">
+
+                            <div>
+                                <h3>${esc(c.client_name||"-")}</h3>
+                                ${c.phone?\`<div class="muted">${esc(c.phone)}</div>\`:""}
+                            </div>
+
+                            <div style="text-align:left">
+                                <div class="money">
+                                    ${money(customerTotal)} ${esc(state.settings.currency||"EGP")}
+                                </div>
+                                <div class="muted">
+                                    ${customerSubscriptions.length}
+                                    ${customerSubscriptions.length===1?"اشتراك":"اشتراكات"}
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="card-body">
+
+                            ${
+                            customerSubscriptions.length
+                            ?
+                            customerSubscriptions.map(function(s){
+
+                                const services=servicesForSubscription(s);
+                                const paymentState=getPaymentState(s);
+
+                                const serviceNames=services
+                                    .map(function(service){return service.service_name;})
+                                    .filter(Boolean)
+                                    .join(" + ");
+
+                                return \`
+                                <div style="padding:12px;margin-bottom:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);">
+
+                                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+
+                                        <div>
+                                            <strong>${esc(serviceNames||"اشتراك")}</strong>
+
+                                            <div class="muted">
+                                                ${esc(
+                                                    (s.platform||"-")+
+                                                    (s.page_name?" — "+s.page_name:"")
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div>${statusBadge(s)}</div>
+
+                                    </div>
+
+                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px;">
+
+                                        <div>
+                                            <div class="muted">السعر الشهري</div>
+                                            <strong>
+                                                ${money(s.monthly_fee||0)}
+                                                ${esc(s.currency||"EGP")}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <div class="muted">يوم الدفع</div>
+                                            <strong>${esc(s.payment_day||"-")}</strong>
+                                        </div>
+
+                                        <div>
+                                            <div class="muted">حالة الدفع</div>
+                                            <strong>${esc(paymentState.label||paymentState.type||"-")}</strong>
+                                        </div>
+
+                                    </div>
+
+                                    <div class="actions" style="margin-top:10px">
+
+                                        <button class="mini-btn" onclick="openSubscriptionModal(${s.id})">
+                                            <i class="fa-solid fa-pen"></i>
+                                            ${t("edit")}
+                                        </button>
+
+                                        ${
+                                        c.phone
+                                        ?
+                                        \`
+                                        <button
+                                        class="mini-btn wa"
+                                        onclick="sendWhatsApp(${c.id},${s.id},'${paymentState.type==="overdue"?"overdue":paymentState.type==="due"?"due":"payment"}')">
+                                            <i class="fa-brands fa-whatsapp"></i>
+                                            واتساب
+                                        </button>
+                                        \`
+                                        :
+                                        ""
+                                        }
+
+                                    </div>
+
+                                </div>
+                                \`;
+
+                            }).join("")
+                            :
+                            \`
+                            <div class="empty">لا توجد اشتراكات حالية لهذا العميل</div>
+                            \`
+                            }
+
+                            <div class="actions" style="margin-top:8px">
+
+                                <button class="mini-btn" onclick="openCustomerProfile(${c.id})">
+                                    <i class="fa-solid fa-user"></i>
+                                    ${t("open")}
+                                </button>
+
+                            </div>
+
                         </div>
 
                     </div>
+                    \`;
 
-                    <button
-                    class="mini-btn"
-                    onclick="openCustomerProfile(${c.id})">
-
-                    ${t("open")}
-
-                    </button>
-
-                </div>
-
-                `).join("")
-                ||
-                `<div class="empty">${t("noData")}</div>`
+                }).join("")
+                :
+                \`
+                <div class="empty">${t("noData")}</div>
+                \`
                 }
 
             </div>
 
         </div>
+        \`,
 
-        `,
-
-        `<button class="ghost-btn" onclick="closeModal()">${t("cancel")}</button>`
-
+        \`<button class="ghost-btn" onclick="closeModal()">${t("cancel")}</button>\`
     );
-
 }
-
-
 /* =========================================
    SERVICES
 ========================================= */
@@ -7497,7 +7563,6 @@ function loadTraderInvoiceSubscriptions(){
                 getCustomer(
                     s.customer_id
                 );
-
                 const service=
                 getService(
                     s.app_service_id
@@ -9997,8 +10062,7 @@ function openNotificationSettings(){
                 </div>
                 <div style="padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:14px">
                     <b>الحالة:</b>
-                    <span style="color:${enabled ? "#4ade80" : "#f59e0b"}">
-                        ${enabled ? "مفعلة" : "غير مفعلة"}
+                    <span style="color:${enabled ? "#4ade80" : "#f59e0b"}">                        ${enabled ? "مفعلة" : "غير مفعلة"}
                     </span>
                 </div>
                 <button class="gold-btn" style="width:100%" onclick="requestMobileNotifications()">
