@@ -5753,7 +5753,76 @@ function renderTraders(){
     ">
 
     ${
-    state.traders.map(function(trader){
+    state.traders.slice().sort(function(A,B){
+
+        function traderRank(trader){
+
+            const customerIds=state.customers
+                .filter(function(c){
+                    return Number(c.trader_id)===Number(trader.id);
+                })
+                .map(function(c){
+                    return Number(c.id);
+                });
+
+            const subs=state.subscriptions.filter(function(s){
+                return customerIds.includes(Number(s.customer_id))
+                    && s.status!=="inactive";
+            });
+
+            let best={rank:4,value:0};
+
+            subs.forEach(function(s){
+
+                const st=getPaymentState(s);
+
+                if(st.type==="overdue"){
+
+                    const due=subscriptionDueDate(s);
+                    const today=dateOnly(isoDate(new Date()));
+                    const days=Math.max(0,Math.round((today-due)/86400000));
+
+                    if(best.rank>0 || (best.rank===0 && days> -best.value))
+                        best={rank:0,value:-days};
+
+                }else if(st.type==="due"){
+
+                    if(best.rank>1)
+                        best={rank:1,value:0};
+
+                }else if(st.type==="upcoming"){
+
+                    const due=subscriptionDueDate(s);
+                    const today=dateOnly(isoDate(new Date()));
+                    const days=Math.round((due-today)/86400000);
+
+                    if(best.rank>2 || (best.rank===2 && days<best.value))
+                        best={rank:2,value:days};
+
+                }else if(st.type==="paid"){
+
+                    if(best.rank>3)
+                        best={rank:3,value:0};
+
+                }
+
+            });
+
+            return best;
+        }
+
+        const a=traderRank(A);
+        const b=traderRank(B);
+
+        if(a.rank!==b.rank)
+            return a.rank-b.rank;
+
+        if(a.value!==b.value)
+            return a.value-b.value;
+
+        return Number(A.id)-Number(B.id);
+
+    }).map(function(trader){
 
         const count=
         state.customers
