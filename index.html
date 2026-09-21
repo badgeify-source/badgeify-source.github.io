@@ -2497,8 +2497,7 @@ document.getElementById("langBtn")
 ========================================= */
 
 function openModal(
-    title,    body,
-    footer
+    title,    body,    footer
 ){
 
     document.getElementById("modalTitle")
@@ -4999,7 +4998,6 @@ async function saveSubscription(id){
             document.getElementById(                "subPage"
             ).value,
 
-
         monthly_fee:
             totalFee,
 
@@ -6349,9 +6347,9 @@ function openTraderAccount(traderId){
     }
 
     openModal(
-        \`${t("trader")} — ${esc(trader?.trader_name||"-")}\`,
+        `${t("trader")} — ${esc(trader?.trader_name||"-")}`,
 
-        \`
+        `
         <div class="stats grid" style="grid-template-columns:repeat(3,1fr)">
 
             <div class="stat">
@@ -6393,14 +6391,14 @@ function openTraderAccount(traderId){
                         (sum,s)=>sum+Number(s.monthly_fee||0),0
                     );
 
-                    return \`
+                    return `
                     <div class="card" style="margin-bottom:14px;border-color:rgba(24,119,242,.22);">
 
                         <div class="card-head" style="background:rgba(24,119,242,.05)">
 
                             <div>
                                 <h3>${esc(c.client_name||"-")}</h3>
-                                ${c.phone?\`<div class="muted">${esc(c.phone)}</div>\`:""}
+                                ${c.phone?`<div class="muted">${esc(c.phone)}</div>`:""}
                             </div>
 
                             <div style="text-align:left">
@@ -6430,7 +6428,7 @@ function openTraderAccount(traderId){
                                     .filter(Boolean)
                                     .join(" + ");
 
-                                return \`
+                                return `
                                 <div style="padding:12px;margin-bottom:10px;border:1px solid var(--border);border-radius:12px;background:var(--panel2);">
 
                                     <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
@@ -6482,14 +6480,14 @@ function openTraderAccount(traderId){
                                         ${
                                         c.phone
                                         ?
-                                        \`
+                                        `
                                         <button
                                         class="mini-btn wa"
                                         onclick="sendWhatsApp(${c.id},${s.id},'${paymentState.type==="overdue"?"overdue":paymentState.type==="due"?"due":"payment"}')">
                                             <i class="fa-brands fa-whatsapp"></i>
                                             واتساب
                                         </button>
-                                        \`
+                                        `
                                         :
                                         ""
                                         }
@@ -6497,13 +6495,13 @@ function openTraderAccount(traderId){
                                     </div>
 
                                 </div>
-                                \`;
+                                `;
 
                             }).join("")
                             :
-                            \`
+                            `
                             <div class="empty">لا توجد اشتراكات حالية لهذا العميل</div>
-                            \`
+                            `
                             }
 
                             <div class="actions" style="margin-top:8px">
@@ -6518,21 +6516,21 @@ function openTraderAccount(traderId){
                         </div>
 
                     </div>
-                    \`;
+                    `;
 
                 }).join("")
                 :
-                \`
+                `
                 <div class="empty">${t("noData")}</div>
-                \`
+                `
                 }
 
             </div>
 
         </div>
-        \`,
+        `,
 
-        \`<button class="ghost-btn" onclick="closeModal()">${t("cancel")}</button>\`
+        `<button class="ghost-btn" onclick="closeModal()">${t("cancel")}</button>`
     );
 }
 /* =========================================
@@ -7497,7 +7495,6 @@ function openTraderInvoiceModal(){
     );
 
 }
-
 
 function loadTraderInvoiceSubscriptions(){
 
@@ -9997,8 +9994,7 @@ async function requestMobileNotifications(){
         }
 
         localStorage.setItem(
-            "badgeify_push_subscription",
-            JSON.stringify(json)
+            "badgeify_push_subscription",            JSON.stringify(json)
         );
 
         localStorage.setItem(
