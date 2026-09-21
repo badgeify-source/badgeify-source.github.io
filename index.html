@@ -10156,7 +10156,7 @@ async function loadActiveNotificationRecipients(){
         if(ownerRows.length){
             ownerRows.forEach(function(item){
                 const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
-                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">المالك</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="owner-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('owner',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">المالك</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="owner-${esc(String(item.id))}" >إرسال اختبار</button></div>`;
             });
         }else html+=`<div class="notification-empty">لا يوجد جهاز مالك مفعّل حاليًا.</div>`;
         html+=`</div>`;
@@ -10168,7 +10168,7 @@ async function loadActiveNotificationRecipients(){
                 const customer=getCustomer(item.id);
                 const name=customer?.client_name||("عميل #"+item.id);
                 const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
-                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="customer-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('customer',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="customer-${esc(String(item.id))}" >إرسال اختبار</button></div>`;
             });
         }else html+=`<div class="notification-empty">لا يوجد عملاء فعّلوا الإشعارات حاليًا.</div>`;
         html+=`</div>`;
@@ -10180,11 +10180,26 @@ async function loadActiveNotificationRecipients(){
                 const trader=getTrader(item.id);
                 const name=trader?.trader_name||("تاجر #"+item.id);
                 const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
-                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="trader-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('trader',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="trader-${esc(String(item.id))}" >إرسال اختبار</button></div>`;
             });
         }else html+=`<div class="notification-empty">لا يوجد تجار فعّلوا الإشعارات حاليًا.</div>`;
         html+=`</div>`;
         container.innerHTML=html;
+
+        container.querySelectorAll("[data-notification-test]").forEach(function(button){
+            button.addEventListener("click",function(event){
+                event.preventDefault();
+                event.stopPropagation();
+                const parts=String(button.getAttribute("data-notification-test")||"").split("-");
+                const role=parts.shift();
+                const recipientId=parts.join("-");
+                if(!role||!recipientId){
+                    showToast("بيانات المستلم غير صحيحة.",true);
+                    return;
+                }
+                sendTestNotificationToRecipient(role,recipientId,button);
+            });
+        });
     }catch(error){
         console.error("BADGEIFY ACTIVE NOTIFICATION RECIPIENTS:",error);
         container.innerHTML=`<div class="notification-empty" style="color:#ef6262">تعذر تحميل قائمة الأشخاص المفعّلين.</div>`;
