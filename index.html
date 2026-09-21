@@ -4042,7 +4042,16 @@ function setSubscriptionStatusFilter(status){
    SUBSCRIPTION MODAL
 ========================================= */
 
-async function openSubscriptionModal(id=null){
+async async function addAnotherSubscriptionFromCurrent(subscriptionId){
+
+    const source=getSubscription(subscriptionId);
+    if(!source || !source.customer_id){ showToast("تعذر تحديد العميل",true); return; }
+    closeModal();
+    await openSubscriptionModal(null,source.customer_id,source);
+}
+window.addAnotherSubscriptionFromCurrent=addAnotherSubscriptionFromCurrent;
+
+function openSubscriptionModal(id=null,presetCustomerId=null,templateSubscription=null){
     
 function subscriptionServiceRowHTML(
     index,
@@ -4359,11 +4368,28 @@ function subscriptionServiceRowHTML(
     const s =
         id
         ? getSubscription(id)
-        : {
-            status:"active",
-            payment_day:new Date().getDate(),
-            currency:state.settings.currency||"EGP"
-        };
+        : (
+            templateSubscription
+            ? {
+                ...templateSubscription,
+                status:"active"
+            }
+            : {
+                status:"active",
+                payment_day:new Date().getDate(),
+                currency:state.settings.currency||"EGP"
+            }
+        );
+
+    const fixedCustomerId =
+        presetCustomerId
+        ? Number(presetCustomerId)
+        : Number(s?.customer_id || 0);
+
+    const fixedCustomer =
+        fixedCustomerId
+        ? getCustomer(fixedCustomerId)
+        : null;
 
 
     let serviceRows = [];
@@ -4421,20 +4447,20 @@ function subscriptionServiceRowHTML(
         serviceRows = [
 
             {
-
                 app_service_id:
-                    s.app_service_id || "",
+                    (!id && presetCustomerId)
+                    ? ""
+                    : (s.app_service_id || ""),
 
                 price:
-                    Number(
-                        s.monthly_fee || 0
-                    ),
+                    (!id && presetCustomerId)
+                    ? 0
+                    : Number(s.monthly_fee || 0),
 
                 status:
                     s.status || "active",
 
                 notes:""
-
             }
 
         ];
@@ -4467,44 +4493,58 @@ function subscriptionServiceRowHTML(
             <div class="field">
 
                 <label>
-                    ${t("customer")}
+                    \${t("customer")}
                 </label>
 
+                \${
+                    presetCustomerId
+                    ? \`
+                    <div style="padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2);">
+                        <strong>\${esc(fixedCustomer?.client_name || "-")}</strong>
+                        <div class="muted" style="font-size:9px;margin-top:3px">
+                            سيتم إضافة الخدمة كاشتراك جديد لهذا العميل
+                        </div>
+                    </div>
+                    <select id="subCustomer" style="display:none">
+                        <option value="\${fixedCustomerId}" selected>\${esc(fixedCustomer?.client_name || "")}</option>
+                    </select>
+                    \`
+                    :
+                    \`
+                    <select id="subCustomer">
 
-                <select id="subCustomer">
+                        <option value="">
+                            \${t("choose")}
+                        </option>
 
-                    <option value="">
-                        ${t("choose")}
-                    </option>
+                        \${
+                            state.customers
+                            .map(c=>\`
 
+                                <option
+                                    value="\${c.id}"
 
-                    ${
-                        state.customers
-                        .map(c=>`
+                                    \${
+                                        Number(s.customer_id)
+                                        === Number(c.id)
+                                        ? "selected"
+                                        : ""
+                                    }
+                                >
 
-                            <option
-                                value="${c.id}"
+                                    \${esc(c.client_name)}
 
-                                ${
-                                    Number(s.customer_id)
-                                    === Number(c.id)
-                                    ? "selected"
-                                    : ""
-                                }
-                            >
+                                </option>
 
-                                ${esc(c.client_name)}
+                            \`)
+                            .join("")
+                        }
 
-                            </option>
-
-                        `)
-                        .join("")
-                    }
-
-                </select>
+                    </select>
+                    \`
+                }
 
             </div>
-
 
             <!-- =========================
                  يوم الدفع
@@ -4646,10 +4686,18 @@ function subscriptionServiceRowHTML(
                     <button
                         type="button"
                         class="ghost-btn"
-                        onclick="addSubscriptionServiceRow()"
+                        onclick="\${
+                            id
+                            ? "addAnotherSubscriptionFromCurrent(" + id + ")"
+                            : "addSubscriptionServiceRow()"
+                        }"
                     >
 
-                        + إضافة خدمة أخرى
+                        \${
+                            id
+                            ? "+ إضافة خدمة أخرى كاشتراك جديد"
+                            : "+ إضافة خدمة أخرى"
+                        }
 
                     </button>
 
