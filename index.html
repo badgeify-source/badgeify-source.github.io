@@ -4042,7 +4042,7 @@ function setSubscriptionStatusFilter(status){
    SUBSCRIPTION MODAL
 ========================================= */
 
-async async function addAnotherSubscriptionFromCurrent(subscriptionId){
+async function addAnotherSubscriptionFromCurrent(subscriptionId){
 
     const source=getSubscription(subscriptionId);
     if(!source || !source.customer_id){ showToast("تعذر تحديد العميل",true); return; }
