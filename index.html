@@ -1091,7 +1091,10 @@ body{
  background:linear-gradient(145deg,rgba(15,24,38,.98),rgba(9,15,25,.98));
  border-color:rgba(99,179,255,.12);
 }
-\n</style>
+\n
+/* BADGEIFY NOTIFICATION RECIPIENTS */
+.notification-recipients{margin-top:16px;display:flex;flex-direction:column;gap:14px}.notification-recipient-section{border:1px solid var(--border);border-radius:14px;background:var(--panel2);overflow:hidden}.notification-recipient-section-title{padding:11px 13px;font-weight:800;font-size:12px;border-bottom:1px solid var(--border);background:rgba(24,119,242,.055)}.notification-recipient-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-bottom:1px solid var(--border)}.notification-recipient-row:last-child{border-bottom:0}.notification-recipient-info{min-width:0}.notification-recipient-name{font-weight:800;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.notification-recipient-meta{color:var(--muted);font-size:9px;margin-top:3px}.notification-active{color:#4ade80}.notification-test-btn{flex:none;border:1px solid rgba(99,179,255,.22);border-radius:9px;background:rgba(24,119,242,.10);color:#63b3ff;padding:7px 10px;font-family:inherit;font-size:10px;font-weight:700}.notification-test-btn:hover{background:rgba(24,119,242,.18);border-color:rgba(99,179,255,.38)}.notification-test-btn:disabled{opacity:.55;cursor:not-allowed}.notification-empty{padding:12px 13px;color:var(--muted);font-size:10px}@media(max-width:520px){.notification-recipient-row{padding:10px}.notification-test-btn{padding:7px 8px;font-size:9px}}
+</style>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#0b1422">
@@ -10097,164 +10100,131 @@ function updateNotificationUI(){
 }
 
 function openNotificationSettings(){
-    const enabled=
-        ("Notification" in window) &&
-        Notification.permission==="granted";
-
+    const enabled=("Notification" in window)&&Notification.permission==="granted";
     openModal(
         "إشعارات الموبايل",
         `
         <div class="card" style="margin:0">
             <div class="card-body">
-                <div style="font-size:16px;font-weight:800;margin-bottom:8px">
-                    إشعارات BADGEIFY
-                </div>
-                <div style="color:var(--muted);line-height:1.8;margin-bottom:16px">
-                    فعّل الإشعارات على الموبايل لاستقبال تنبيهات الاشتراكات والاستحقاقات.
-                </div>
+                <div style="font-size:16px;font-weight:800;margin-bottom:8px">إشعارات BADGEIFY</div>
+                <div style="color:var(--muted);line-height:1.8;margin-bottom:16px">فعّل الإشعارات على الموبايل لاستقبال تنبيهات الاشتراكات والاستحقاقات.</div>
                 <div style="padding:12px;border:1px solid var(--border);border-radius:12px;margin-bottom:14px">
                     <b>الحالة:</b>
-                    <span style="color:${enabled ? "#4ade80" : "#f59e0b"}">                        ${enabled ? "مفعلة" : "غير مفعلة"}
-                    </span>
+                    <span style="color:${enabled ? "#4ade80" : "#f59e0b"}">${enabled ? "مفعلة" : "غير مفعلة"}</span>
                 </div>
-                <button class="gold-btn" style="width:100%" onclick="requestMobileNotifications()">
-                    <i class="fa-solid fa-bell"></i>
-                    تفعيل إشعارات الموبايل
-                </button>
-                <button class="ghost-btn" style="width:100%;margin-top:10px" onclick="testMobileNotification()">
-                    <i class="fa-solid fa-paper-plane"></i>
-                    تجربة الإشعار
-                </button>
+                <button class="gold-btn" style="width:100%" onclick="requestMobileNotifications()"><i class="fa-solid fa-bell"></i> تفعيل إشعارات الموبايل</button>
+                <button class="ghost-btn" style="width:100%;margin-top:10px" onclick="testMobileNotification()"><i class="fa-solid fa-paper-plane"></i> تجربة إشعار المالك</button>
+                <div id="activeNotificationRecipients" class="notification-recipients"><div class="notification-empty">جاري تحميل الأشخاص الذين فعّلوا الإشعارات...</div></div>
             </div>
-        </div>
-        `,
-        `
-        <button class="ghost-btn" onclick="closeModal()">إغلاق</button>
-        `
+        </div>`,
+        `<button class="ghost-btn" onclick="closeModal()">إغلاق</button>`
     );
+    loadActiveNotificationRecipients();
+}
+
+async function loadActiveNotificationRecipients(){
+    const container=document.getElementById("activeNotificationRecipients");
+    if(!container)return;
+    try{
+        const result=await db.from("notification_subscriptions").select("id,role,owner_user_id,customer_id,trader_id,active,updated_at").eq("active",true);
+        if(result.error)throw result.error;
+        const rows=result.data||[];
+        const grouped={owner:new Map(),customer:new Map(),trader:new Map()};
+        rows.forEach(function(row){
+            if(row.role==="owner"){
+                const id=row.owner_user_id?String(row.owner_user_id):"";
+                if(!id)return;
+                if(!grouped.owner.has(id))grouped.owner.set(id,{id:id,devices:0});
+                grouped.owner.get(id).devices++; return;
+            }
+            if(row.role==="customer"){
+                if(row.customer_id===null||row.customer_id===undefined)return;
+                const id=String(row.customer_id);
+                if(!grouped.customer.has(id))grouped.customer.set(id,{id:id,devices:0});
+                grouped.customer.get(id).devices++; return;
+            }
+            if(row.role==="trader"){
+                if(row.trader_id===null||row.trader_id===undefined)return;
+                const id=String(row.trader_id);
+                if(!grouped.trader.has(id))grouped.trader.set(id,{id:id,devices:0});
+                grouped.trader.get(id).devices++;
+            }
+        });
+        let html="";
+        html+=`<div class="notification-recipient-section"><div class="notification-recipient-section-title">المالك</div>`;
+        const ownerRows=Array.from(grouped.owner.values()).filter(function(item){return !currentUser?.id||String(item.id)===String(currentUser.id);});
+        if(ownerRows.length){
+            ownerRows.forEach(function(item){
+                const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">المالك</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="owner-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('owner',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+            });
+        }else html+=`<div class="notification-empty">لا يوجد جهاز مالك مفعّل حاليًا.</div>`;
+        html+=`</div>`;
+
+        html+=`<div class="notification-recipient-section"><div class="notification-recipient-section-title">العملاء المفعّلون</div>`;
+        const customerRows=Array.from(grouped.customer.values());
+        if(customerRows.length){
+            customerRows.forEach(function(item){
+                const customer=getCustomer(item.id);
+                const name=customer?.client_name||("عميل #"+item.id);
+                const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="customer-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('customer',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+            });
+        }else html+=`<div class="notification-empty">لا يوجد عملاء فعّلوا الإشعارات حاليًا.</div>`;
+        html+=`</div>`;
+
+        html+=`<div class="notification-recipient-section"><div class="notification-recipient-section-title">التجار المفعّلون</div>`;
+        const traderRows=Array.from(grouped.trader.values());
+        if(traderRows.length){
+            traderRows.forEach(function(item){
+                const trader=getTrader(item.id);
+                const name=trader?.trader_name||("تاجر #"+item.id);
+                const deviceText=item.devices>1?` • ${item.devices} أجهزة`:"";
+                html+=`<div class="notification-recipient-row"><div class="notification-recipient-info"><div class="notification-recipient-name">${esc(name)}</div><div class="notification-recipient-meta"><span class="notification-active">مفعّل</span>${deviceText}</div></div><button type="button" class="notification-test-btn" data-notification-test="trader-${esc(String(item.id))}" onclick="sendTestNotificationToRecipient('trader',${JSON.stringify(String(item.id))},this)">إرسال اختبار</button></div>`;
+            });
+        }else html+=`<div class="notification-empty">لا يوجد تجار فعّلوا الإشعارات حاليًا.</div>`;
+        html+=`</div>`;
+        container.innerHTML=html;
+    }catch(error){
+        console.error("BADGEIFY ACTIVE NOTIFICATION RECIPIENTS:",error);
+        container.innerHTML=`<div class="notification-empty" style="color:#ef6262">تعذر تحميل قائمة الأشخاص المفعّلين.</div>`;
+    }
+}
+
+async function sendTestNotificationToRecipient(role,recipientId,button){
+    if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent="جاري الإرسال...";}
+    try{
+        const response=await fetch(NOTIFICATION_TEST_URL,{method:"POST",mode:"cors",headers:{"Content-Type":"application/json","apikey":"sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986","Authorization":"Bearer sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"},body:JSON.stringify({role:role,recipient_id:String(recipientId),title:"BADGEIFY",body:"تم إرسال إشعار اختبار حقيقي من BADGEIFY."})});
+        const responseText=await response.text();
+        let data=null; try{data=JSON.parse(responseText);}catch(e){}
+        if(!response.ok||!data?.success)throw new Error(data?.error||responseText||"تعذر إرسال إشعار الاختبار");
+        const sent=Number(data.sent||0);
+        if(sent>0)showToast("تم إرسال إشعار الاختبار إلى "+sent+" جهاز.");
+        else showToast("لا يوجد جهاز نشط لهذا الشخص حاليًا.",true);
+    }catch(error){
+        console.error("BADGEIFY TARGETED TEST:",error);
+        showToast("فشل إرسال الإشعار: "+(error?.message||"خطأ غير معروف"),true);
+    }finally{
+        if(button){button.disabled=false;button.textContent=button.dataset.originalText||"إرسال اختبار";}
+    }
 }
 
 async function testMobileNotification(){
-
-    console.log("BADGEIFY TEST BUTTON CLICKED");
-
-    if(!("Notification" in window)){
-        showToast("المتصفح لا يدعم الإشعارات", true);
-        return;
-    }
-
-    if(Notification.permission !== "granted"){
-        const ok = await requestMobileNotifications();
-        if(!ok) return;
-    }
-
-    const url =
-        "https://rsvzachgbqsucqgrwguv.supabase.co/functions/v1/send-test-notification";
-
-    console.log("BADGEIFY TEST URL:", url);
-
+    if(!("Notification" in window)){showToast("المتصفح لا يدعم الإشعارات",true);return;}
+    if(Notification.permission!=="granted"){const ok=await requestMobileNotifications();if(!ok)return;}
+    if(!currentUser?.id){showToast("لم يتم التعرف على حساب المالك الحالي.",true);return;}
     try{
         showToast("جاري إرسال إشعار الاختبار...");
-
-        const response = await fetch(
-            url,
-            {
-                method:"POST",
-                mode:"cors",
-                headers:{
-                    "Content-Type":"application/json",
-                    "apikey":"sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
-                    "Authorization":"Bearer sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"
-                },
-                body:JSON.stringify({
-                    role:"owner",
-                    title:"BADGEIFY",
-                    body:"تم إرسال إشعار اختبار حقيقي من BADGEIFY."
-                })
-            }
-        );
-
-        console.log(
-            "BADGEIFY TEST HTTP STATUS:",
-            response.status
-        );
-
-        console.log(
-            "BADGEIFY TEST HTTP OK:",
-            response.ok
-        );
-
-        const responseText = await response.text();
-
-        console.log(
-            "BADGEIFY TEST RESPONSE:",
-            responseText
-        );
-
-        let data = null;
-
-        try{
-            data = JSON.parse(responseText);
-        }catch(parseError){
-            console.error(
-                "BADGEIFY RESPONSE JSON ERROR:",
-                parseError
-            );
-        }
-
-        if(!response.ok){
-            throw new Error(
-                data?.error ||
-                responseText ||
-                ("HTTP " + response.status)
-            );
-        }
-
-        if(!data || data.success !== true){
-            throw new Error(
-                data?.error ||
-                "تعذر إرسال إشعار الاختبار"
-            );
-        }
-
-        console.log(
-            "BADGEIFY TEST SUCCESS:",
-            data
-        );
-
-        const sent = Number(data.sent || 0);
-        const failed = Number(data.failed || 0);
-
-        if(sent > 0){
-            showToast(
-                "تم إرسال إشعار الاختبار إلى " +
-                sent +
-                " جهاز."
-            );
-        }else if(failed > 0){
-            showToast(
-                "الدالة اشتغلت لكن فشل إرسال الإشعار إلى الأجهزة.",
-                true
-            );
-        }else{
-            showToast(
-                "الدالة اشتغلت، لكن لا توجد أجهزة مسجلة حاليًا.",
-                true
-            );
-        }
-
+        const response=await fetch(NOTIFICATION_TEST_URL,{method:"POST",mode:"cors",headers:{"Content-Type":"application/json","apikey":"sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986","Authorization":"Bearer sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"},body:JSON.stringify({role:"owner",recipient_id:currentUser.id,title:"BADGEIFY",body:"تم إرسال إشعار اختبار حقيقي من BADGEIFY."})});
+        const responseText=await response.text(); let data=null; try{data=JSON.parse(responseText);}catch(e){}
+        if(!response.ok||!data?.success)throw new Error(data?.error||responseText||("HTTP "+response.status));
+        const sent=Number(data.sent||0),failed=Number(data.failed||0);
+        if(sent>0)showToast("تم إرسال إشعار الاختبار إلى "+sent+" جهاز.");
+        else if(failed>0)showToast("الدالة اشتغلت لكن فشل إرسال الإشعار إلى الأجهزة.",true);
+        else showToast("الدالة اشتغلت، لكن لا توجد أجهزة مسجلة حاليًا.",true);
     }catch(error){
-
-        console.error(
-            "BADGEIFY TEST ERROR:",
-            error
-        );
-
-        showToast(
-            "فشل إرسال إشعار الاختبار: " +
-            (error?.message || "خطأ غير معروف"),
-            true
-        );
+        console.error("BADGEIFY TEST ERROR:",error);
+        showToast("فشل إرسال إشعار الاختبار: "+(error?.message||"خطأ غير معروف"),true);
     }
 }
 
