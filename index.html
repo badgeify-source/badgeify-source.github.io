@@ -4043,7 +4043,6 @@ function setSubscriptionStatusFilter(status){
 ========================================= */
 
 async function addAnotherSubscriptionFromCurrent(subscriptionId){
-
     const source=getSubscription(subscriptionId);
     if(!source || !source.customer_id){ showToast("تعذر تحديد العميل",true); return; }
     closeModal();
@@ -4051,7 +4050,7 @@ async function addAnotherSubscriptionFromCurrent(subscriptionId){
 }
 window.addAnotherSubscriptionFromCurrent=addAnotherSubscriptionFromCurrent;
 
-function openSubscriptionModal(id=null,presetCustomerId=null,templateSubscription=null){
+async function openSubscriptionModal(id=null,presetCustomerId=null,templateSubscription=null){
     
 function subscriptionServiceRowHTML(
     index,
@@ -4370,10 +4369,7 @@ function subscriptionServiceRowHTML(
         ? getSubscription(id)
         : (
             templateSubscription
-            ? {
-                ...templateSubscription,
-                status:"active"
-            }
+            ? {...templateSubscription,status:"active"}
             : {
                 status:"active",
                 payment_day:new Date().getDate(),
@@ -4381,15 +4377,8 @@ function subscriptionServiceRowHTML(
             }
         );
 
-    const fixedCustomerId =
-        presetCustomerId
-        ? Number(presetCustomerId)
-        : Number(s?.customer_id || 0);
-
-    const fixedCustomer =
-        fixedCustomerId
-        ? getCustomer(fixedCustomerId)
-        : null;
+    const fixedCustomerId = presetCustomerId ? Number(presetCustomerId) : Number(s?.customer_id || 0);
+    const fixedCustomer = fixedCustomerId ? getCustomer(fixedCustomerId) : null;
 
 
     let serviceRows = [];
@@ -4447,20 +4436,18 @@ function subscriptionServiceRowHTML(
         serviceRows = [
 
             {
+
                 app_service_id:
-                    (!id && presetCustomerId)
-                    ? ""
-                    : (s.app_service_id || ""),
+                    (!id && presetCustomerId) ? "" : (s.app_service_id || ""),
 
                 price:
-                    (!id && presetCustomerId)
-                    ? 0
-                    : Number(s.monthly_fee || 0),
+                    (!id && presetCustomerId) ? 0 : Number(s.monthly_fee || 0),
 
                 status:
                     s.status || "active",
 
                 notes:""
+
             }
 
         ];
@@ -4468,29 +4455,15 @@ function subscriptionServiceRowHTML(
     }
 
 
+    const customerFieldHtml = presetCustomerId
+        ? '<div style="padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2);"><strong>' + esc(fixedCustomer?.client_name || "-") + '</strong><div class="muted" style="font-size:9px;margin-top:3px">سيتم إضافة الخدمة كاشتراك جديد لهذا العميل</div></div>' + '<select id="subCustomer" style="display:none"><option value="' + fixedCustomerId + '" selected>' + esc(fixedCustomer?.client_name || "") + '</option></select>'
+        : '<select id="subCustomer"><option value="">' + t("choose") + '</option>' + state.customers.map(function(c){ return '<option value="' + c.id + '" ' + (Number(s.customer_id) === Number(c.id) ? "selected" : "") + '>' + esc(c.client_name) + '</option>'; }).join("") + '</select>';
+
     /*
      * =========================================
      * فتح النافذة
      * =========================================
      */
-
-    const customerFieldHtml = presetCustomerId
-        ? '<div style="padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2);"><strong>'
-          + esc(fixedCustomer?.client_name || "-")
-          + '</strong><div class="muted" style="font-size:9px;margin-top:3px">سيتم إضافة الخدمة كاشتراك جديد لهذا العميل</div></div>'
-          + '<select id="subCustomer" style="display:none"><option value="' + fixedCustomerId + '" selected>'
-          + esc(fixedCustomer?.client_name || "")
-          + '</option></select>'
-        : '<select id="subCustomer"><option value="">'
-          + t("choose")
-          + '</option>'
-          + state.customers.map(function(c){
-                return '<option value="' + c.id + '" '
-                    + (Number(s.customer_id) === Number(c.id) ? 'selected' : '')
-                    + '>' + esc(c.client_name) + '</option>';
-            }).join("")
-          + '</select>';
-
 
     openModal(
 
@@ -4514,9 +4487,13 @@ function subscriptionServiceRowHTML(
                     ${t("customer")}
                 </label>
 
+
                 ${customerFieldHtml}
 
-            </div>       <!-- =========================
+            </div>
+
+
+            <!-- =========================
                  يوم الدفع
             ========================== -->
 
@@ -4656,18 +4633,10 @@ function subscriptionServiceRowHTML(
                     <button
                         type="button"
                         class="ghost-btn"
-                        onclick="${
-                            id
-                            ? "addAnotherSubscriptionFromCurrent(" + id + ")"
-                            : "addSubscriptionServiceRow()"
-                        }"
+                        onclick="${id ? "addAnotherSubscriptionFromCurrent(" + id + ")" : "addSubscriptionServiceRow()"}"
                     >
 
-                        ${
-                            id
-                            ? "+ إضافة خدمة أخرى كاشتراك جديد"
-                            : "+ إضافة خدمة أخرى"
-                        }
+                        ${id ? "+ إضافة خدمة أخرى كاشتراك جديد" : "+ إضافة خدمة أخرى"}
 
                     </button>
 
@@ -6320,7 +6289,7 @@ async function deleteTrader(id){
    TRADER ACCOUNT
 ========================================= */
 
-function openTraderAccount(traderId, filterStatus=null){
+function openTraderAccount(traderId){
 
     const trader=getTrader(traderId);
 
@@ -6334,77 +6303,9 @@ function openTraderAccount(traderId, filterStatus=null){
         s=>customerIds.includes(Number(s.customer_id)) && s.status!=="inactive"
     );
 
-    if(filterStatus!==null){
-        state.traderAccountFilterStatus=filterStatus||"all";
-    }
-
-    const selectedStatus=state.traderAccountFilterStatus||"all";
-
-    const counts={
-        all:subscriptions.length,
-        upcoming:subscriptions.filter(x=>getPaymentState(x).type==="upcoming").length,
-        due:subscriptions.filter(x=>getPaymentState(x).type==="due").length,
-        overdue:subscriptions.filter(x=>getPaymentState(x).type==="overdue").length,
-        paid:subscriptions.filter(x=>getPaymentState(x).type==="paid").length
-    };
-
-    const totals={
-        all:subscriptions.reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        upcoming:subscriptions.filter(x=>getPaymentState(x).type==="upcoming").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        due:subscriptions.filter(x=>getPaymentState(x).type==="due").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        overdue:subscriptions.filter(x=>getPaymentState(x).type==="overdue").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        paid:subscriptions.filter(x=>getPaymentState(x).type==="paid").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0)
-    };
-
-    let filteredSubscriptions=selectedStatus==="all"
-        ? subscriptions.slice()
-        : subscriptions.filter(function(s){
-            return getPaymentState(s).type===selectedStatus;
-        });
-
-    function traderSortInfo(subscription){
-        const paymentState=getPaymentState(subscription);
-        const due=subscriptionDueDate(subscription);
-        const today=dateOnly(isoDate(new Date()));
-        const diff=due ? Math.round((today-due)/86400000) : 999999;
-
-        if(paymentState.type==="overdue"){
-            return {rank:0,distance:diff,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
-        }
-
-        if(paymentState.type==="due"){
-            return {rank:1,distance:0,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
-        }
-
-        if(paymentState.type==="upcoming"){
-            return {rank:2,distance:Math.abs(diff),dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
-        }
-
-        return {rank:3,distance:0,dueTime:due?due.getTime():Number.MAX_SAFE_INTEGER};
-    }
-
-    function sortTraderSubscriptions(list){
-        list.sort(function(a,b){
-            const A=traderSortInfo(a);
-            const B=traderSortInfo(b);
-
-            if(A.rank!==B.rank) return A.rank-B.rank;
-
-            if(A.rank===0 && A.distance!==B.distance){
-                return B.distance-A.distance;
-            }
-
-            if(A.rank===2 && A.distance!==B.distance){
-                return A.distance-B.distance;
-            }
-
-            return A.dueTime-B.dueTime;
-        });
-    }
-
-    sortTraderSubscriptions(filteredSubscriptions);
-
-    const total=totals.all;
+    const total=subscriptions.reduce(
+        (sum,s)=>sum+Number(s.monthly_fee||0),0
+    );
 
     const payments=state.payments.filter(function(p){
         const s=getSubscription(p.subscription_id);
@@ -6431,46 +6332,6 @@ function openTraderAccount(traderId, filterStatus=null){
         const service=getService(subscription.app_service_id);
         return service?[service]:[];
     }
-
-    const grouped={};
-
-    filteredSubscriptions.forEach(function(subscription){
-        const key=String(subscription.customer_id);
-
-        if(!grouped[key]){
-            grouped[key]={
-                customer:getCustomer(subscription.customer_id),
-                subscriptions:[]
-            };
-        }
-
-        grouped[key].subscriptions.push(subscription);
-    });
-
-    const filteredGroups=Object.values(grouped);
-
-    filteredGroups.forEach(function(group){
-        sortTraderSubscriptions(group.subscriptions);
-    });
-
-    filteredGroups.sort(function(a,b){
-        const A=traderSortInfo(a.subscriptions[0]);
-        const B=traderSortInfo(b.subscriptions[0]);
-
-        if(A.rank!==B.rank) return A.rank-B.rank;
-
-        if(A.rank===0 && A.distance!==B.distance){
-            return B.distance-A.distance;
-        }
-
-        if(A.rank===2 && A.distance!==B.distance){
-            return A.distance-B.distance;
-        }
-
-        return A.dueTime-B.dueTime;
-    });
-
-    const groupsCount=filteredGroups.length;
 
     openModal(
         `${t("trader")} — ${esc(trader?.trader_name||"-")}`,
@@ -6499,47 +6360,19 @@ function openTraderAccount(traderId, filterStatus=null){
 
             <div class="card-head">
                 <h3>${t("customers")}</h3>
-                <span class="muted">${groupsCount} ${t("customers")}</span>
+                <span class="muted">${customers.length} ${t("customers")}</span>
             </div>
 
             <div class="card-body">
 
-                <div class="subscription-filters" style="margin-bottom:18px">
-
-                    <button class="subscription-filter-btn ${selectedStatus==="all"?"active":""}" onclick="openTraderAccount(${traderId},'all')">
-                        <b>${counts.all}</b><span>${t("allSubscriptions")}</span>
-                        <small>${money(totals.all)} ${esc(state.settings.currency||"EGP")}</small>
-                    </button>
-
-                    <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="openTraderAccount(${traderId},'overdue')">
-                        <b>${counts.overdue}</b><span>${t("overdue")}</span>
-                        <small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small>
-                    </button>
-
-                    <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="openTraderAccount(${traderId},'due')">
-                        <b>${counts.due}</b><span>${t("dueToday")}</span>
-                        <small>${money(totals.due)} ${esc(state.settings.currency||"EGP")}</small>
-                    </button>
-
-                    <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="openTraderAccount(${traderId},'upcoming')">
-                        <b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span>
-                        <small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small>
-                    </button>
-
-                    <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="openTraderAccount(${traderId},'paid')">
-                        <b>${counts.paid}</b><span>${t("paid")}</span>
-                        <small>${money(totals.paid)} ${esc(state.settings.currency||"EGP")}</small>
-                    </button>
-
-                </div>
-
                 ${
-                groupsCount>0
+                customers.length
                 ?
-                filteredGroups.map(function(group){
+                customers.map(function(c){
 
-                    const c=group.customer;
-                    const customerSubscriptions=group.subscriptions;
+                    const customerSubscriptions=subscriptions.filter(function(s){
+                        return Number(s.customer_id)===Number(c.id);
+                    });
 
                     const customerTotal=customerSubscriptions.reduce(
                         (sum,s)=>sum+Number(s.monthly_fee||0),0
