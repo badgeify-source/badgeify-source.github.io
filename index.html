@@ -2127,62 +2127,53 @@ function showToast(message,error=false){
 
 async function savePortalWhatsAppMessages(){
 
-    const values={
+    const customerMessage =
+        document.getElementById("msgCustomerPortal").value;
 
-        wa_customer_portal:
-        document.getElementById(
-            "msgCustomerPortal"
-        ).value,
+    const traderMessage =
+        document.getElementById("msgTraderPortal").value;
 
-        wa_trader_portal:
-        document.getElementById(
-            "msgTraderPortal"
-        ).value
-
+    const values = {
+        wa_customer_portal: customerMessage,
+        wa_trader_portal: traderMessage
     };
 
     try{
 
-        for(
-            const [key,value]
-            of Object.entries(values)
-        ){
+        for(const [key,value] of Object.entries(values)){
 
-            const result=
-            await db
-            .from("app_settings")
-            .upsert(
-                {
-                    setting_key:key,
-                    setting_value:value,
-                    updated_at:
-                    new Date().toISOString()
-                },
-                {
-                    onConflict:"setting_key"
-                }
-            );
+            const result =
+                await db
+                .from("app_settings")
+                .upsert(
+                    {
+                        setting_key:key,
+                        setting_value:value,
+                        updated_at:new Date().toISOString()
+                    },
+                    {onConflict:"setting_key"}
+                );
 
             if(result.error)
                 throw result.error;
 
+            // تحديث الذاكرة فوراً
+            state.settings[key] = value;
         }
 
-        await refresh();
+        // إعادة تحميل الإعدادات من Supabase للتأكد
+        await loadData();
+        render();
 
         showToast("تم حفظ رسائل روابط العملاء والتجار");
 
     }catch(error){
 
-        showToast(
-            error.message,
-            true
-        );
+        showToast(error.message,true);
 
     }
 
 }
-
 
 /* =========================================
    ACTIVITY
@@ -6076,35 +6067,52 @@ async function copyTraderPortalLink(){
 }
 
 
-function sendTraderPortalWhatsApp(
+async function sendTraderPortalWhatsApp(
     phone,
     url,
     traderName
 ){
 
-    const template =
-        state.settings.wa_trader_portal
-        ||
-        "مرحباً {{trader_name}}\n\nهذا هو رابط حساب التاجر الخاص بك:\n{{portal_link}}\n\nيمكنك فتح الرابط لمتابعة العملاء والاشتراكات الخاصة بك.";
+    let template = "";
 
-    const message =
-        buildPortalMessage(
-            template,
-            {
-                client_name: "",
-                trader_name: traderName || "",
-                portal_link: url,
-                company_name: state.settings.company_name || "BADGEIFY"
-            }
-        );
+    try{
+        const result =
+            await db
+            .from("app_settings")
+            .select("setting_value,updated_at")
+            .eq("setting_key","wa_trader_portal")
+            .order("updated_at",{ascending:false})
+            .limit(1);
 
-    openWhatsAppBusiness(
-        phone,
-        message
+        if(result.error)
+            throw result.error;
+
+        template =
+            result.data?.[0]?.setting_value
+            || state.settings.wa_trader_portal
+            || "";
+    }catch(error){
+        template = state.settings.wa_trader_portal || "";
+    }
+
+    if(!template){
+        template =
+            "مرحباً {{trader_name}}\n\nهذا هو رابط حساب التاجر الخاص بك:\n{{portal_link}}\n\nيمكنك فتح الرابط لمتابعة العملاء والاشتراكات الخاصة بك.";
+    }
+
+    const message = buildPortalMessage(
+        template,
+        {
+            client_name: "",
+            trader_name: traderName || "",
+            portal_link: url,
+            company_name: state.settings.company_name || "BADGEIFY"
+        }
     );
 
-}
+    openWhatsAppBusiness(phone, message);
 
+}
 
 /* =========================================
    TRADER MODAL
@@ -8741,10 +8749,9 @@ function openWhatsAppBusiness(number, message){
 
 /* إرسال رابط العميل على واتساب */
 
-function sendPortalWhatsApp(customerId, link){
+async function sendPortalWhatsApp(customerId, link){
 
-    const customer =
-        getCustomer(customerId);
+    const customer = getCustomer(customerId);
 
     if(!customer){
         showToast("العميل غير موجود", true);
@@ -8756,29 +8763,46 @@ function sendPortalWhatsApp(customerId, link){
         return;
     }
 
-    const template =
-        state.settings.wa_customer_portal
-        ||
-        "السلام عليكم {{client_name}}\n\nيمكنك متابعة اشتراكاتك والمدفوعات الخاصة بك من خلال بوابة العميل:\n\n{{portal_link}}\n\nBADGEIFY";
+    let template = "";
 
-    const message =
-        buildPortalMessage(
-            template,
-            {
-                client_name: customer.client_name || "",
-                trader_name: "",
-                portal_link: link,
-                company_name: state.settings.company_name || "BADGEIFY"
-            }
-        );
+    try{
+        const result =
+            await db
+            .from("app_settings")
+            .select("setting_value,updated_at")
+            .eq("setting_key","wa_customer_portal")
+            .order("updated_at",{ascending:false})
+            .limit(1);
 
-    openWhatsAppBusiness(
-        customer.phone,
-        message
+        if(result.error)
+            throw result.error;
+
+        template =
+            result.data?.[0]?.setting_value
+            || state.settings.wa_customer_portal
+            || "";
+    }catch(error){
+        template = state.settings.wa_customer_portal || "";
+    }
+
+    if(!template){
+        template =
+            "السلام عليكم {{client_name}}\n\nيمكنك متابعة اشتراكاتك والمدفوعات الخاصة بك من خلال بوابة العميل:\n\n{{portal_link}}\n\nBADGEIFY";
+    }
+
+    const message = buildPortalMessage(
+        template,
+        {
+            client_name: customer.client_name || "",
+            trader_name: "",
+            portal_link: link,
+            company_name: state.settings.company_name || "BADGEIFY"
+        }
     );
 
-}
+    openWhatsAppBusiness(customer.phone, message);
 
+}
 
 /* /* إلغاء رابط العميل */
 
