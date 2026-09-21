@@ -6493,9 +6493,9 @@ function openTraderAccount(traderId, filterStatus=null){
                         <small>${money(totals.all)} ${esc(state.settings.currency||"EGP")}</small>
                     </button>
 
-                    <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="openTraderAccount(${traderId},'upcoming')">
-                        <b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span>
-                        <small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small>
+                    <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="openTraderAccount(${traderId},'overdue')">
+                        <b>${counts.overdue}</b><span>${t("overdue")}</span>
+                        <small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small>
                     </button>
 
                     <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="openTraderAccount(${traderId},'due')">
@@ -6503,9 +6503,9 @@ function openTraderAccount(traderId, filterStatus=null){
                         <small>${money(totals.due)} ${esc(state.settings.currency||"EGP")}</small>
                     </button>
 
-                    <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="openTraderAccount(${traderId},'overdue')">
-                        <b>${counts.overdue}</b><span>${t("overdue")}</span>
-                        <small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small>
+                    <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="openTraderAccount(${traderId},'upcoming')">
+                        <b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span>
+                        <small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small>
                     </button>
 
                     <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="openTraderAccount(${traderId},'paid')">
