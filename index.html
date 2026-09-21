@@ -4493,38 +4493,38 @@ function subscriptionServiceRowHTML(
             <div class="field">
 
                 <label>
-                    \${t("customer")}
+                    ${t("customer")}
                 </label>
 
-                \${
+                ${
                     presetCustomerId
-                    ? \`
+                    ? `
                     <div style="padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2);">
-                        <strong>\${esc(fixedCustomer?.client_name || "-")}</strong>
+                        <strong>${esc(fixedCustomer?.client_name || "-")}</strong>
                         <div class="muted" style="font-size:9px;margin-top:3px">
                             سيتم إضافة الخدمة كاشتراك جديد لهذا العميل
                         </div>
                     </div>
                     <select id="subCustomer" style="display:none">
-                        <option value="\${fixedCustomerId}" selected>\${esc(fixedCustomer?.client_name || "")}</option>
+                        <option value="${fixedCustomerId}" selected>${esc(fixedCustomer?.client_name || "")}</option>
                     </select>
-                    \`
+                    `
                     :
-                    \`
+                    `
                     <select id="subCustomer">
 
                         <option value="">
-                            \${t("choose")}
+                            ${t("choose")}
                         </option>
 
-                        \${
+                        ${
                             state.customers
-                            .map(c=>\`
+                            .map(c=>`
 
                                 <option
-                                    value="\${c.id}"
+                                    value="${c.id}"
 
-                                    \${
+                                    ${
                                         Number(s.customer_id)
                                         === Number(c.id)
                                         ? "selected"
@@ -4532,16 +4532,16 @@ function subscriptionServiceRowHTML(
                                     }
                                 >
 
-                                    \${esc(c.client_name)}
+                                    ${esc(c.client_name)}
 
                                 </option>
 
-                            \`)
+                            `)
                             .join("")
                         }
 
                     </select>
-                    \`
+                    `
                 }
 
             </div>
