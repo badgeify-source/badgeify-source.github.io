@@ -2125,6 +2125,65 @@ function showToast(message,error=false){
 }
 
 
+async function savePortalWhatsAppMessages(){
+
+    const values={
+
+        wa_customer_portal:
+        document.getElementById(
+            "msgCustomerPortal"
+        ).value,
+
+        wa_trader_portal:
+        document.getElementById(
+            "msgTraderPortal"
+        ).value
+
+    };
+
+    try{
+
+        for(
+            const [key,value]
+            of Object.entries(values)
+        ){
+
+            const result=
+            await db
+            .from("app_settings")
+            .upsert(
+                {
+                    setting_key:key,
+                    setting_value:value,
+                    updated_at:
+                    new Date().toISOString()
+                },
+                {
+                    onConflict:"setting_key"
+                }
+            );
+
+            if(result.error)
+                throw result.error;
+
+        }
+
+        await refresh();
+
+        showToast("تم حفظ رسائل روابط العملاء والتجار");
+
+    }catch(error){
+
+        showToast(
+            error.message,
+            true
+        );
+
+    }
+
+}
+
+
 /* =========================================
    ACTIVITY
 ========================================= */
@@ -6023,30 +6082,32 @@ function sendTraderPortalWhatsApp(
     traderName
 ){
 
-    const number =
-        whatsappNumber(phone);
-
+    const template =
+        state.settings.wa_trader_portal
+        ||
+        "مرحباً {{trader_name}}\n\nهذا هو رابط حساب التاجر الخاص بك:\n{{portal_link}}\n\nيمكنك فتح الرابط لمتابعة العملاء والاشتراكات الخاصة بك.";
 
     const message =
-        "مرحباً "
-        + traderName
-        + "\n\n"
-        + "هذا هو رابط حساب التاجر الخاص بك:\n"
-        + url
-        + "\n\n"
-        + "يمكنك فتح الرابط لمتابعة العملاء والاشتراكات الخاصة بك.";
+        buildPortalMessage(
+            template,
+            {
+                client_name: "",
+                trader_name: traderName || "",
+                portal_link: url,
+                company_name: state.settings.company_name || "BADGEIFY"
+            }
+        );
 
-
-    window.open(
-        "https://wa.me/"
-        + number
-        + "?text="
-        + encodeURIComponent(message),
-        "_blank"
+    openWhatsAppBusiness(
+        phone,
+        message
     );
 
 }
-    
+
+
+/* =========================================
+   TRADER MODAL
 /* =========================================
    TRADER MODAL
 ========================================= */
@@ -8610,6 +8671,74 @@ async function copyCustomerPortal(link){
 }
 
 
+/* =========================================
+   PORTAL WHATSAPP MESSAGES
+========================================= */
+
+function buildPortalMessage(template, values){
+
+    return String(template || "").replace(
+        /{{(client_name|trader_name|portal_link|company_name)}}/g,
+        function(_, key){
+            return values[key] ?? "";
+        }
+    );
+
+}
+
+function openWhatsAppBusiness(number, message){
+
+    number = whatsappNumber(number);
+
+    if(!number){
+        showToast("رقم الهاتف غير صحيح", true);
+        return;
+    }
+
+    const encodedMessage =
+        encodeURIComponent(message || "");
+
+    const normalUrl =
+        "https://wa.me/"
+        + number
+        + "?text="
+        + encodedMessage;
+
+    if(/Android/i.test(navigator.userAgent)){
+
+        const businessIntent =
+            "intent://send"
+            + "?phone=" + number
+            + "&text=" + encodedMessage
+            + "#Intent;"
+            + "scheme=whatsapp;"
+            + "package=com.whatsapp.w4b;"
+            + "end";
+
+        let fallbackTimer =
+            setTimeout(function(){
+                window.location.href = normalUrl;
+            },1800);
+
+        try{
+            window.location.href = businessIntent;
+        }catch(error){
+            clearTimeout(fallbackTimer);
+            window.location.href = normalUrl;
+        }
+
+    }else{
+
+        window.open(
+            normalUrl,
+            "_blank"
+        );
+
+    }
+
+}
+
+
 /* إرسال رابط العميل على واتساب */
 
 function sendPortalWhatsApp(customerId, link){
@@ -8627,41 +8756,31 @@ function sendPortalWhatsApp(customerId, link){
         return;
     }
 
-
-    let number =
-        String(customer.phone)
-        .replace(/\D/g,"");
-
-
-    if(number.startsWith("0")){
-        number =
-            "20" +
-            number.substring(1);
-    }
-
+    const template =
+        state.settings.wa_customer_portal
+        ||
+        "السلام عليكم {{client_name}}\n\nيمكنك متابعة اشتراكاتك والمدفوعات الخاصة بك من خلال بوابة العميل:\n\n{{portal_link}}\n\nBADGEIFY";
 
     const message =
-        "السلام عليكم " +
-        (customer.client_name || "") +
-        "\n\n" +
-        "يمكنك متابعة اشتراكاتك والمدفوعات الخاصة بك من خلال بوابة العميل:\n\n" +
-        link +
-        "\n\n" +
-        "BADGEIFY";
+        buildPortalMessage(
+            template,
+            {
+                client_name: customer.client_name || "",
+                trader_name: "",
+                portal_link: link,
+                company_name: state.settings.company_name || "BADGEIFY"
+            }
+        );
 
-
-    window.open(
-        "https://wa.me/" +
-        number +
-        "?text=" +
-        encodeURIComponent(message),
-        "_blank"
+    openWhatsAppBusiness(
+        customer.phone,
+        message
     );
 
 }
 
 
-/* إلغاء رابط العميل */
+/* /* إلغاء رابط العميل */
 
 async function deactivateCustomerPortal(customerId){
 
@@ -9295,6 +9414,50 @@ function renderSettings(){
 
             </div>
 
+
+
+            <div class="card" style="margin-top:16px;background:rgba(24,119,242,.035);border-color:rgba(99,179,255,.14)">
+
+                <div class="card-head">
+                    <h3>رسائل روابط العملاء والتجار</h3>
+                </div>
+
+                <div class="card-body">
+
+                    <div class="muted" style="margin-bottom:15px;line-height:1.9">
+                        اكتب الرسالة التي يتم إرسالها تلقائياً عند الضغط على «إرسال واتساب» لرابط العميل أو رابط التاجر.
+                        <br>
+                        المتغيرات: <b>{{client_name}}</b> اسم العميل -
+                        <b>{{trader_name}}</b> اسم التاجر -
+                        <b>{{portal_link}}</b> رابط البوابة -
+                        <b>{{company_name}}</b> اسم النظام.
+                    </div>
+
+                    <div class="field">
+                        <label>رسالة رابط العميل</label>
+                        <textarea id="msgCustomerPortal" placeholder="اكتب رسالة رابط العميل هنا...">${esc(
+                            state.settings.wa_customer_portal
+                            ||
+                            "السلام عليكم {{client_name}}\n\nيمكنك متابعة اشتراكاتك والمدفوعات الخاصة بك من خلال بوابة العميل:\n\n{{portal_link}}\n\nBADGEIFY"
+                        )}</textarea>
+                    </div>
+
+                    <div class="field">
+                        <label>رسالة رابط التاجر</label>
+                        <textarea id="msgTraderPortal" placeholder="اكتب رسالة رابط التاجر هنا...">${esc(
+                            state.settings.wa_trader_portal
+                            ||
+                            "مرحباً {{trader_name}}\n\nهذا هو رابط حساب التاجر الخاص بك:\n{{portal_link}}\n\nيمكنك فتح الرابط لمتابعة العملاء والاشتراكات الخاصة بك."
+                        )}</textarea>
+                    </div>
+
+                    <button class="gold-btn" onclick="savePortalWhatsAppMessages()">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        حفظ رسائل الروابط
+                    </button>
+
+                </div>
+            </div>
 
             <button
             class="gold-btn"
