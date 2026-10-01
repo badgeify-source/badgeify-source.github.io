@@ -2431,41 +2431,108 @@ function sendWhatsApp(
     type
 ){
 
-    const customer=
-    getCustomer(customerId);
+    try{
 
-    const subscription=
-    getSubscription(subscriptionId);
+        const customer =
+            state.customers.find(
+                function(x){
+                    return String(x.id)===String(customerId);
+                }
+            );
 
-    if(!customer?.phone){
+        const subscription =
+            state.subscriptions.find(
+                function(x){
+                    return String(x.id)===String(subscriptionId);
+                }
+            );
+
+        if(!customer){
+
+            showToast(
+                state.lang==="ar"
+                ?"العميل غير موجود"
+                :"Customer not found",
+                true
+            );
+
+            return;
+        }
+
+        if(!customer.phone){
+
+            showToast(
+                state.lang==="ar"
+                ?"لا يوجد رقم هاتف للعميل"
+                :"Customer has no phone number",
+                true
+            );
+
+            return;
+        }
+
+        let template =
+            getWhatsAppTemplates()[type]
+            ||
+            getWhatsAppTemplates().payment
+            ||
+            "السلام عليكم {{client_name}}";
+
+        let message =
+            buildWhatsAppMessage(
+                String(template),
+                customer,
+                subscription
+            );
+
+        const number =
+            whatsappNumber(customer.phone);
+
+        if(!number){
+
+            showToast(
+                state.lang==="ar"
+                ?"رقم الهاتف غير صحيح"
+                :"Invalid phone number",
+                true
+            );
+
+            return;
+        }
+
+        const url =
+            "https://wa.me/"
+            + number
+            + "?text="
+            + encodeURIComponent(message || "");
+
+        /*
+         * زر الاشتراك يستخدم رابط واتساب مباشرة.
+         * لا نعتمد على popup أو intent هنا حتى لا يتعطل
+         * الزر بسبب المتصفح.
+         */
+        window.location.assign(url);
+
+    }catch(error){
+
+        console.error(
+            "Subscription WhatsApp error:",
+            error
+        );
 
         showToast(
             state.lang==="ar"
-            ?"لا يوجد رقم للعميل"
-            :"Customer has no phone number",
+            ?"تعذر فتح واتساب"
+            :"Could not open WhatsApp",
             true
         );
 
-        return;
-
     }
 
-    const templates=
-    getWhatsAppTemplates();
-
-    const message=
-    buildWhatsAppMessage(
-        templates[type]||templates.payment,
-        customer,
-        subscription
-    );
-
-    openWhatsAppBusiness(
-        customer.phone,
-        message
-    );
-
 }
+
+/* تأكيد توفر الدالة لزر الاشتراكات الذي يعمل عبر onclick */
+window.sendWhatsApp = sendWhatsApp;
 
 
 /* =========================================
