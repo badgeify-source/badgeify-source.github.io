@@ -2460,9 +2460,6 @@ function sendWhatsApp(
         subscription
     );
 
-    const number=
-    whatsappNumber(customer.phone);
-
     openWhatsAppBusiness(
         customer.phone,
         message
@@ -9246,12 +9243,17 @@ function openWhatsAppBusiness(number, message){
     number = whatsappNumber(number);
 
     if(!number){
-        showToast("رقم الهاتف غير صحيح", true);
+        showToast(
+            state.lang==="ar"
+            ?"رقم الهاتف غير صحيح"
+            :"Invalid phone number",
+            true
+        );
         return;
     }
 
     const encodedMessage =
-        encodeURIComponent(message || "");
+        encodeURIComponent(String(message || ""));
 
     const normalUrl =
         "https://wa.me/"
@@ -9259,6 +9261,11 @@ function openWhatsAppBusiness(number, message){
         + "?text="
         + encodedMessage;
 
+    /*
+       افتح واتساب من نفس ضغطة المستخدم.
+       استخدام location بدل window.open يمنع
+       مشكلة حظر النوافذ المنبثقة في Chrome.
+    */
     if(/Android/i.test(navigator.userAgent)){
 
         const businessIntent =
@@ -9270,10 +9277,12 @@ function openWhatsAppBusiness(number, message){
             + "package=com.whatsapp.w4b;"
             + "end";
 
-        let fallbackTimer =
-            setTimeout(function(){
+        let fallbackTimer = setTimeout(
+            function(){
                 window.location.href = normalUrl;
-            },1800);
+            },
+            1500
+        );
 
         try{
             window.location.href = businessIntent;
@@ -9284,10 +9293,7 @@ function openWhatsAppBusiness(number, message){
 
     }else{
 
-        window.open(
-            normalUrl,
-            "_blank"
-        );
+        window.location.href = normalUrl;
 
     }
 
