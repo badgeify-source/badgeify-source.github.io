@@ -1520,8 +1520,8 @@ async function loadPortal(){
 
 
         portalData = data;
-
-
+        portalData.baseSubscriptions = data.subscriptions || [];
+        portalData.subscriptions = expandTraderSubscriptionPeriods(portalData.baseSubscriptions);
         renderPortal();
 
 
@@ -1552,8 +1552,13 @@ function renderPortal(){
     const trader =
         portalData.trader;
 
-    const summary =
-        portalData.summary || {};
+    const summary = portalData.summary || {};
+    const baseSubscriptions = portalData.baseSubscriptions || [];
+    const currentRows = (portalData.subscriptions || []).filter(s => s._periodType === "current");
+    const currentMonthlyTotal = baseSubscriptions.reduce((sum,s) => sum + Number(s.monthly_fee || 0), 0);
+    const currentPaid = currentRows.reduce((sum,s) => sum + (s.payment_status === "paid" ? Number(s.monthly_fee || 0) : 0), 0);
+    const overdueTotal = (portalData.subscriptions || []).filter(s => s.payment_status === "overdue")
+        .reduce((sum,s) => sum + Number(s.monthly_fee || 0), 0);
 
 
     document.getElementById("traderName")
@@ -1573,33 +1578,33 @@ function renderPortal(){
 
     document.getElementById("subscriptionsCount")
         .textContent =
-        money(summary.subscriptions_count);
+        money(baseSubscriptions.length);
 
 
     document.getElementById("monthlyTotal")
         .textContent =
-        money(summary.monthly_total)
+        money(currentMonthlyTotal)
         + " "
         + "ج.م";
 
 
     document.getElementById("paidTotal")
         .textContent =
-        money(summary.paid_current_month)
+        money(currentPaid)
         + " "
         + "ج.م";
 
 
     document.getElementById("remainingTotal")
         .textContent =
-        money(summary.remaining_current_month)
+        money(Math.max(0,currentMonthlyTotal-currentPaid))
         + " "
         + "ج.م";
 
 
     document.getElementById("overdueTotal")
         .textContent =
-        money(summary.overdue_total)
+        money(overdueTotal)
         + " "
         + "ج.م";
 
@@ -1751,6 +1756,73 @@ function sortPortalCustomerGroups(groups){
     });
 
     return groups;
+}
+
+function monthKeyForTraderPortal(year, month){
+    return year + "-" + String(month + 1).padStart(2,"0");
+}
+function traderPeriodDueDate(subscription, year, month){
+    const day=Number(subscription.payment_day||1);
+    const lastDay=new Date(year,month+1,0).getDate();
+    return new Date(year,month,Math.min(Math.max(day,1),lastDay));
+}
+function traderPaidMonthSet(){
+    const rows=[];
+    if(Array.isArray(portalData?.payments)) rows.push(...portalData.payments);
+    (portalData?.baseSubscriptions || portalData?.subscriptions || []).forEach(function(s){
+        if(Array.isArray(s.payment_history)) rows.push(...s.payment_history);
+        if(Array.isArray(s.payments)) rows.push(...s.payments);
+        if(Array.isArray(s.paid_months)){
+            s.paid_months.forEach(function(m){rows.push({subscription_id:s.id,paid_month:m});});
+        }
+    });
+    return new Set(rows.map(function(p){
+        return Number(p.subscription_id)+"|"+String(p.paid_month||"").slice(0,7);
+    }));
+}
+function traderPeriodStatus(subscription,dueDate,paid){
+    if(paid) return "paid";
+    const today=new Date(); today.setHours(0,0,0,0);
+    const due=new Date(dueDate); due.setHours(0,0,0,0);
+    if(due.getTime()<today.getTime()) return "overdue";
+    if(due.getTime()===today.getTime()) return "due_today";
+    return "upcoming";
+}
+function expandTraderSubscriptionPeriods(subscriptions){
+    const paidSet=traderPaidMonthSet();
+    const now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
+    const rows=[];
+    (subscriptions||[]).forEach(function(subscription){
+        const created=subscription.created_at?new Date(subscription.created_at):null;
+        let startYear=created&&!isNaN(created.getTime())?created.getFullYear():currentYear;
+        let startMonth=created&&!isNaN(created.getTime())?created.getMonth():currentMonth-1;
+        if(!created||isNaN(created.getTime())){
+            startMonth=currentMonth-1;
+            if(startMonth<0){startMonth=11;startYear=currentYear-1;}
+        }
+        if(startYear>currentYear||(startYear===currentYear&&startMonth>currentMonth)){
+            startYear=currentYear;startMonth=currentMonth;
+        }
+        let y=startYear,m=startMonth;
+        while(y<currentYear||(y===currentYear&&m<=currentMonth)){
+            const key=monthKeyForTraderPortal(y,m);
+            const paid=paidSet.has(Number(subscription.id)+"|"+key);
+            const dueDate=traderPeriodDueDate(subscription,y,m);
+            const isCurrent=y===currentYear&&m===currentMonth;
+            if(isCurrent||!paid){
+                rows.push(Object.assign({},subscription,{
+                    _periodKey:key,
+                    _periodDueDate:dueDate.toISOString().slice(0,10),
+                    _periodLabel:new Intl.DateTimeFormat("ar-EG",{year:"numeric",month:"long"}).format(dueDate),
+                    _periodType:isCurrent?"current":"overdue_history",
+                    due_date:dueDate.toISOString().slice(0,10),
+                    payment_status:traderPeriodStatus(subscription,dueDate,paid)
+                }));
+            }
+            m++; if(m>11){m=0;y++;}
+        }
+    });
+    return rows;
 }
 
 function renderSubscriptions(){
@@ -1986,8 +2058,9 @@ function renderCustomers(){
                                     );
 
 
+                                const currentSubs = subs.filter(s => s._periodType === "current");
                                 const total =
-                                    subs.reduce(
+                                    currentSubs.reduce(
                                         (
                                             sum,
                                             s
@@ -2049,8 +2122,8 @@ function renderCustomers(){
                                         <td>
 
                                             ${money(
-                                                subs.length
-                                            )}
+                                                currentSubs.length
+)}
 
                                         </td>
 
