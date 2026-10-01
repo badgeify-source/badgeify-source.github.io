@@ -2431,107 +2431,113 @@ function sendWhatsApp(
     type
 ){
 
-    try{
-
-        const customer =
-            state.customers.find(
-                function(x){
-                    return String(x.id)===String(customerId);
-                }
-            );
-
-        const subscription =
-            state.subscriptions.find(
-                function(x){
-                    return String(x.id)===String(subscriptionId);
-                }
-            );
-
-        if(!customer){
-
-            showToast(
-                state.lang==="ar"
-                ?"العميل غير موجود"
-                :"Customer not found",
-                true
-            );
-
-            return;
-        }
-
-        if(!customer.phone){
-
-            showToast(
-                state.lang==="ar"
-                ?"لا يوجد رقم هاتف للعميل"
-                :"Customer has no phone number",
-                true
-            );
-
-            return;
-        }
-
-        let template =
-            getWhatsAppTemplates()[type]
-            ||
-            getWhatsAppTemplates().payment
-            ||
-            "السلام عليكم {{client_name}}";
-
-        let message =
-            buildWhatsAppMessage(
-                String(template),
-                customer,
-                subscription
-            );
-
-        const number =
-            whatsappNumber(customer.phone);
-
-        if(!number){
-
-            showToast(
-                state.lang==="ar"
-                ?"رقم الهاتف غير صحيح"
-                :"Invalid phone number",
-                true
-            );
-
-            return;
-        }
-
-        const url =
-            "https://wa.me/"
-            + number
-            + "?text="
-            + encodeURIComponent(message || "");
-
-        /*
-         * زر الاشتراك يستخدم رابط واتساب مباشرة.
-         * لا نعتمد على popup أو intent هنا حتى لا يتعطل
-         * الزر بسبب المتصفح.
-         */
-        window.location.assign(url);
-
-    }catch(error){
-
-        console.error(
-            "Subscription WhatsApp error:",
-            error
+    const customer =
+        state.customers.find(
+            function(x){
+                return String(x.id)===String(customerId);
+            }
         );
 
+    const subscription =
+        state.subscriptions.find(
+            function(x){
+                return String(x.id)===String(subscriptionId);
+            }
+        );
+
+    if(!customer){
         showToast(
-            state.lang==="ar"
-            ?"تعذر فتح واتساب"
-            :"Could not open WhatsApp",
+            "العميل غير موجود",
             true
         );
-
+        return;
     }
+
+    const rawPhone =
+        String(customer.phone || "").replace(/\\D/g,"");
+
+    let number = rawPhone;
+
+    if(number.startsWith("0")){
+        number =
+            "20" + number.substring(1);
+    }
+
+    if(!number || number.length < 10){
+        showToast(
+            "رقم هاتف العميل غير صحيح",
+            true
+        );
+        return;
+    }
+
+    let template = "";
+
+    if(type==="overdue"){
+        template =
+            state.settings.wa_overdue_reminder ||
+            "السلام عليكم {{client_name}}\\nاشتراك {{service_name}} متأخر عن السداد. المبلغ المطلوب {{amount}} {{currency}}.";
+    }else if(type==="due"){
+        template =
+            state.settings.wa_due_reminder ||
+            "السلام عليكم {{client_name}}\\nاليوم موعد دفع اشتراك {{service_name}} بقيمة {{amount}} {{currency}}.";
+    }else{
+        template =
+            state.settings.wa_payment_reminder ||
+            "السلام عليكم {{client_name}}\\nنذكرك بموعد دفع اشتراك {{service_name}} بقيمة {{amount}} {{currency}}.";
+    }
+
+    const service =
+        subscription
+        ? state.services.find(function(x){
+            return String(x.id)===String(subscription.app_service_id);
+        })
+        : null;
+
+    const amount =
+        subscription
+        ? money(subscription.monthly_fee)
+        : "";
+
+    const currency =
+        subscription?.currency ||
+        state.settings.currency ||
+        "EGP";
+
+    const values = {
+        client_name: customer.client_name || "",
+        phone: customer.phone || "",
+        service_name: service?.service_name || "",
+        amount: amount,
+        currency: currency,
+        page_name: subscription?.page_name || "",
+        platform: subscription?.platform || "",
+        company_name: state.settings.company_name || "BADGEIFY"
+    };
+
+    const message =
+        String(template).replace(
+            /{{(\\w+)}}/g,
+            function(_,key){
+                return values[key] ?? "";
+            }
+        );
+
+    const url =
+        "https://wa.me/" +
+        number +
+        "?text=" +
+        encodeURIComponent(message);
+
+    console.log(
+        "Badgeify subscription WhatsApp:",
+        url
+    );
+
+    window.location.href = url;
 
 }
 
-/* تأكيد توفر الدالة لزر الاشتراكات الذي يعمل عبر onclick */
 window.sendWhatsApp = sendWhatsApp;
 
 
