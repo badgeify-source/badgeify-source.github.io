@@ -5669,6 +5669,37 @@ function openPaymentModal(subscriptionId,periodKey){
             </div>
 
 
+            <div class="field">
+                <label>طريقة الدفع</label>
+                <select id="paymentMethod" onchange="togglePaymentMethodDetails()">
+                    <option value="cash">كاش</option>
+                    <option value="instapay">إنستا باي</option>
+                    <option value="vodafone_cash">فودافون كاش</option>
+                    <option value="bank">تحويل بنكي</option>
+                    <option value="visa">فيزا</option>
+                    <option value="other">أخرى</option>
+                </select>
+            </div>
+
+            <div class="field" id="paymentMethodDetailsWrap" style="display:none">
+                <label id="paymentMethodDetailsLabel">رقم الحساب / المحفظة</label>
+                <input id="paymentMethodDetails" type="text">
+            </div>
+
+            <div class="field">
+                <label>اسم الشخص الذي دفع</label>
+                <input id="payerName" type="text">
+            </div>
+
+            <div class="field">
+                <label>صلة الدافع بصاحب الاشتراك</label>
+                <select id="payerRelation">
+                    <option value="subscriber">صاحب الاشتراك نفسه</option>
+                    <option value="relative">قريب / أحد أفراد الأسرة</option>
+                    <option value="other">شخص آخر</option>
+                </select>
+            </div>
+
             <div class="field full">
 
                 <label>
@@ -5712,6 +5743,93 @@ function openPaymentModal(subscriptionId,periodKey){
 }
 
 
+function togglePaymentMethodDetails(){
+    const method=document.getElementById("paymentMethod");
+    const wrap=document.getElementById("paymentMethodDetailsWrap");
+    const label=document.getElementById("paymentMethodDetailsLabel");
+    if(!method||!wrap||!label)return;
+    if(method.value==="instapay"){wrap.style.display="";label.textContent="رقم حساب / إنستا باي";}
+    else if(method.value==="vodafone_cash"){wrap.style.display="";label.textContent="رقم محفظة فودافون كاش";}
+    else if(method.value==="bank"){wrap.style.display="";label.textContent="بيانات التحويل البنكي";}
+    else if(method.value==="visa"){wrap.style.display="";label.textContent="آخر 4 أرقام من البطاقة";}
+    else if(method.value==="other"){wrap.style.display="";label.textContent="تفاصيل طريقة الدفع";}
+    else{wrap.style.display="none";}
+}
+
+function paymentMethodLabel(method){
+    const labels={cash:"كاش",instapay:"إنستا باي",vodafone_cash:"فودافون كاش",bank:"تحويل بنكي",visa:"فيزا",other:"أخرى"};
+    return labels[method]||method||"-";
+}
+
+function getCustomerOutstandingForReceipt(customerId,paidSubscriptionId){
+    const rows=[];
+    (state.subscriptions||[]).forEach(function(s){
+        if(String(s.customer_id)!==String(customerId))return;
+        (getSubscriptionPeriods(s)||[]).forEach(function(p){
+            if(p.periodType==="paid")return;
+            if(String(s.id)===String(paidSubscriptionId)&&p.periodKey===getCurrentSubscriptionPeriod(s)?.periodKey)return;
+            if(paymentExistsForPeriod(s,p.dueDate))return;
+            rows.push({service:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",amount:Number(s.monthly_fee||0),dueDate:p.dueDate});
+        });
+    });
+    return rows;
+}
+
+function buildPaymentReceiptMessage(data){
+    let msg="إيصال سداد\n------------------------------\n";
+    msg+="العميل: "+(data.customerName||"-")+"\n";
+    msg+="الاشتراك: "+(data.serviceName||"-")+"\n";
+    msg+="المبلغ المدفوع: "+money(data.amount)+" "+(data.currency||"EGP")+"\n";
+    msg+="طريقة الدفع: "+paymentMethodLabel(data.paymentMethod)+"\n";
+    if(data.methodDetails){
+        if(data.paymentMethod==="instapay")msg+="حساب إنستا باي: "+data.methodDetails+"\n";
+        else if(data.paymentMethod==="vodafone_cash")msg+="محفظة فودافون كاش: "+data.methodDetails+"\n";
+        else msg+="تفاصيل الدفع: "+data.methodDetails+"\n";
+    }
+    msg+="كان مطلوب السداد في: "+(data.dueDate||"-")+"\n";
+    msg+="واتسدد يوم: "+(data.paymentDate||"-")+"\n";
+    msg+="اسم الدافع: "+(data.payerName||data.customerName||"-")+"\n";
+    msg+="صلة الدافع: "+(data.payerRelationText||"-")+"\n";
+    if(data.outstanding&&data.outstanding.length){
+        msg+="\nاشتراكات أخرى مستحقة:\n";
+        data.outstanding.forEach(function(row){msg+="• "+row.service+": "+money(row.amount)+" "+(data.currency||"EGP")+"\n";});
+        msg+="إجمالي المتبقي: "+money(data.remainingTotal)+" "+(data.currency||"EGP")+"\n";
+    }else msg+="\nلا توجد اشتراكات أخرى مستحقة على العميل.\n";
+    if(data.notes)msg+="ملاحظات: "+data.notes+"\n";
+    return msg+"\nشكراً لكم.";
+}
+
+function showPaymentReceiptModal(data){
+    const message=buildPaymentReceiptMessage(data);
+    let html="<div class='card'><div class='card-body'>";
+    html+="<h3 style='margin-top:0'>إيصال سداد</h3>";
+    html+="<div><b>العميل:</b> "+esc(data.customerName||"-")+"</div>";
+    html+="<div><b>الاشتراك:</b> "+esc(data.serviceName||"-")+"</div>";
+    html+="<div class='money' style='margin-top:10px'>"+esc(money(data.amount))+" "+esc(data.currency||"EGP")+"</div>";
+    html+="<div class='muted'>طريقة الدفع: "+esc(paymentMethodLabel(data.paymentMethod))+(data.methodDetails?" — "+esc(data.methodDetails):"")+"</div>";
+    html+="<div class='muted'>كان مطلوب السداد في: "+esc(data.dueDate||"-")+"</div>";
+    html+="<div class='muted'>واتسدد يوم: "+esc(data.paymentDate||"-")+"</div>";
+    html+="<div class='muted'>اسم الدافع: "+esc(data.payerName||data.customerName||"-")+"</div>";
+    html+="<div class='muted'>صلة الدافع: "+esc(data.payerRelationText||"-")+"</div>";
+    html+="</div></div>";
+    if(data.outstanding&&data.outstanding.length){
+        html+="<div class='card' style='margin-top:12px'><div class='card-body'><b>اشتراكات أخرى مستحقة</b>";
+        data.outstanding.forEach(function(row){html+="<div style='margin-top:8px'>"+esc(row.service)+" — "+esc(money(row.amount))+" "+esc(data.currency||"EGP")+"<div class='muted'>الاستحقاق: "+esc(row.dueDate||"-")+"</div></div>";});
+        html+="<div class='money' style='margin-top:10px'>إجمالي المتبقي: "+esc(money(data.remainingTotal))+" "+esc(data.currency||"EGP")+"</div></div></div>";
+    }else html+="<div class='card' style='margin-top:12px'><div class='card-body'>لا توجد اشتراكات أخرى مستحقة على العميل.</div></div>";
+    openModal("إيصال السداد",html,"<button class='ghost-btn' onclick='closeModal()'>إغلاق</button><button class='gold-btn' onclick='sendPaymentReceiptWhatsApp()'><i class='fa-brands fa-whatsapp'></i> إرسال الريسيت واتساب</button>");
+    window._lastPaymentReceipt={phone:data.phone||"",message:message};
+}
+
+function sendPaymentReceiptWhatsApp(){
+    const data=window._lastPaymentReceipt;
+    if(!data){showToast("لا يوجد إيصال جاهز للإرسال",true);return;}
+    let number=String(data.phone||"").replace(/\D/g,"");
+    if(number.startsWith("0"))number="20"+number.substring(1);
+    if(!number||number.length<10){showToast("رقم هاتف العميل غير صحيح",true);return;}
+    window.location.href="https://wa.me/"+number+"?text="+encodeURIComponent(data.message);
+}
+
 async function confirmPayment(subscriptionId,periodKey){
 
     const s=
@@ -5749,6 +5867,11 @@ async function confirmPayment(subscriptionId,periodKey){
     document.getElementById(
         "paymentNotes"
     ).value;
+
+    const paymentMethod=document.getElementById("paymentMethod")?.value||"cash";
+    const methodDetails=document.getElementById("paymentMethodDetails")?.value.trim()||"";
+    const payerName=document.getElementById("payerName")?.value.trim()||customer?.client_name||"";
+    const payerRelation=document.getElementById("payerRelation")?.value||"subscriber";
 
     try{
 
@@ -5795,9 +5918,28 @@ async function confirmPayment(subscriptionId,periodKey){
 
         await refresh();
 
-        showToast(
-            t("successPayment")
-        );
+        const outstanding=getCustomerOutstandingForReceipt(s.customer_id,subscriptionId);
+        const remainingTotal=outstanding.reduce(function(sum,row){return sum+Number(row.amount||0);},0);
+        const relationText={subscriber:"صاحب الاشتراك نفسه",relative:"قريب / أحد أفراد الأسرة",other:"شخص آخر"};
+
+        showPaymentReceiptModal({
+            customerName:customer?.client_name||"-",
+            phone:customer?.phone||"",
+            serviceName:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",
+            amount:amount,
+            currency:s.currency||state.settings.currency||"EGP",
+            paymentMethod:paymentMethod,
+            methodDetails:methodDetails,
+            dueDate:due,
+            paymentDate:paymentDate,
+            payerName:payerName,
+            payerRelationText:relationText[payerRelation]||payerRelation,
+            outstanding:outstanding,
+            remainingTotal:remainingTotal,
+            notes:notes
+        });
+
+        showToast(t("successPayment"));
 
     }catch(error){
 
