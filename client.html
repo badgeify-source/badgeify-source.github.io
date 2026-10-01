@@ -940,8 +940,48 @@ function renderPortal(data){
 
     renderWhatsapp(customer);
 
-    renderSubscriptions(
+    const portalSubscriptions = expandPortalSubscriptionPeriods(
         data.subscriptions || [],
+        data.payments || []
+    );
+
+    const currentKey = monthKeyForPortal(
+        new Date().getFullYear(),
+        new Date().getMonth()
+    );
+
+    const currentRows = portalSubscriptions.filter(
+        s => s._periodKey === currentKey
+    );
+
+    const currentPaid = currentRows.reduce(
+        (sum,s) => sum + (
+            s.payment_status?.code === "paid"
+                ? Number(s.monthly_fee || 0)
+                : 0
+        ),
+        0
+    );
+
+    const currentMonthlyTotal = (data.subscriptions || []).reduce(
+        (sum,s) => sum + Number(s.monthly_fee || 0),
+        0
+    );
+
+    document.getElementById("monthlyTotal").textContent =
+        money(currentMonthlyTotal,data.company?.currency || "EGP");
+
+    document.getElementById("paidCurrentMonth").textContent =
+        money(currentPaid,data.company?.currency || "EGP");
+
+    document.getElementById("remainingCurrentMonth").textContent =
+        money(Math.max(0,currentMonthlyTotal-currentPaid),data.company?.currency || "EGP");
+
+    document.getElementById("subscriptionsCount").textContent =
+        (data.subscriptions || []).length;
+
+    renderSubscriptions(
+        portalSubscriptions,
         data.company?.currency || "EGP"
     );
 
@@ -1045,6 +1085,96 @@ function sortPortalSubscriptions(subscriptions){
 
         return A.dueTime-B.dueTime;
     });
+}
+
+function monthKeyForPortal(year, month){
+    return year + "-" + String(month + 1).padStart(2,"0");
+}
+
+function portalPeriodDueDate(subscription, year, month){
+    const day = Number(subscription.payment_day || 1);
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(Math.max(day,1), lastDay));
+}
+
+function portalPeriodStatus(subscription, dueDate, paid){
+    if(paid){
+        return {code:"paid",label:"مدفوع"};
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const due = new Date(dueDate);
+    due.setHours(0,0,0,0);
+
+    if(due.getTime() < today.getTime()){
+        const days = Math.round((today - due) / 86400000);
+        return {code:"overdue",label:"متأخر "+days+" يوم"};
+    }
+
+    if(due.getTime() === today.getTime()){
+        return {code:"due_today",label:"مستحق اليوم"};
+    }
+
+    return {code:"upcoming",label:"قادم"};
+}
+
+function expandPortalSubscriptionPeriods(subscriptions, payments){
+    const paidSet = new Set(
+        (payments || []).map(function(p){
+            const sid = Number(p.subscription_id);
+            const month = String(p.paid_month || "").slice(0,7);
+            return sid + "|" + month;
+        })
+    );
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    const rows = [];
+
+    (subscriptions || []).forEach(function(subscription){
+        const created = subscription.created_at ? new Date(subscription.created_at) : null;
+        let startYear = created && !isNaN(created.getTime()) ? created.getFullYear() : currentYear;
+        let startMonth = created && !isNaN(created.getTime()) ? created.getMonth() : currentMonth - 1;
+
+        if(startYear > currentYear || (startYear === currentYear && startMonth > currentMonth)){
+            startYear = currentYear;
+            startMonth = currentMonth;
+        }
+
+        if(!created || isNaN(created.getTime())){
+            startMonth = currentMonth - 1;
+            if(startMonth < 0){ startMonth = 11; startYear = currentYear - 1; }
+        }
+
+        let y = startYear;
+        let m = startMonth;
+
+        while(y < currentYear || (y === currentYear && m <= currentMonth)){
+            const key = monthKeyForPortal(y,m);
+            const paid = paidSet.has(Number(subscription.id) + "|" + key);
+            const dueDate = portalPeriodDueDate(subscription,y,m);
+            const isCurrent = y === currentYear && m === currentMonth;
+
+            if(isCurrent || !paid){
+                rows.push(Object.assign({}, subscription, {
+                    _periodKey:key,
+                    _periodDueDate:dueDate.toISOString().slice(0,10),
+                    _periodLabel:new Intl.DateTimeFormat("ar-EG",{year:"numeric",month:"long"}).format(dueDate),
+                    _periodType:isCurrent ? "current" : "overdue_history",
+                    due_date:dueDate.toISOString().slice(0,10),
+                    payment_status:portalPeriodStatus(subscription,dueDate,paid)
+                }));
+            }
+
+            m++;
+            if(m > 11){ m=0; y++; }
+        }
+    });
+
+    return rows;
 }
 
 function renderSubscriptions(
