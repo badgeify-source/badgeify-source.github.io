@@ -2914,7 +2914,7 @@ function renderCalendar(){
                 <div
                 class="event
                 ${st.type==="overdue"?"over":""}"
-                onclick="openPaymentModal(${s.id},\'${s._periodKey}\')">
+                onclick="openPaymentModal(${s.id},'${s._periodKey}')">
 
                 <b>
                 ${esc(c?.client_name||"-")}
@@ -5475,7 +5475,7 @@ function openPaymentModal(subscriptionId,periodKey){
 
         <button
         class="gold-btn"
-        onclick="confirmPayment(${subscriptionId},\'${periodKey}\')">
+        onclick="confirmPayment(${subscriptionId},'${periodKey}')">
 
         <i class="fa-solid fa-check"></i>
 
