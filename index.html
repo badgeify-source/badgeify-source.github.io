@@ -5663,7 +5663,7 @@ function openPaymentModal(subscriptionId,periodKey){
             ${t("cancel")}
         </button>
 
-        <button class="gold-btn" onclick="confirmPayment(${subscriptionId},'${periodKey}')">
+        <button class="gold-btn" onclick="window.confirmPayment(${subscriptionId},'${periodKey}')">
             <i class="fa-solid fa-check"></i>
             ${t("confirmPayment")}
         </button>
