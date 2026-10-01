@@ -5567,388 +5567,221 @@ async function deleteSubscription(id){
 
 function openPaymentModal(subscriptionId,periodKey){
 
-    const s=getSubscription(subscriptionId);
-    const customer=getCustomer(s?.customer_id);
+    const s=
+    getSubscription(subscriptionId);
 
-    const period=getSubscriptionPeriods(s).find(function(p){
-        return p.periodKey===periodKey;
-    }) || getCurrentSubscriptionPeriod(s);
+    const customer=
+    getCustomer(s.customer_id);
 
+    const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
     const due=period ? period.dueDate : subscriptionDueDate(s);
 
-    if(paymentExistsForPeriod(s,due)){
+    if(
+        paymentExistsForPeriod(
+            s,
+            due
+        )
+    ){
+
         showToast(t("paid"));
+
         return;
+
     }
 
     openModal(
+
         t("confirmPayment"),
+
         `
+
         <div class="card">
+
             <div class="card-body">
-                <b>${esc(customer?.client_name||"-")}</b>
-                <div class="muted">${esc(getService(s.app_service_id)?.service_name||"-")}</div>
-                <div class="money" style="margin-top:8px">
-                    ${money(s.monthly_fee)} ${esc(s.currency||"EGP")}
-                </div>
+
+                <b>
+                ${esc(customer?.client_name||"-")}
+                </b>
+
                 <div class="muted">
-                    ${t("paymentDay")}: ${s.payment_day}
+
+                ${esc(
+                    getService(
+                        s.app_service_id
+                    )?.service_name||"-"
+                )}
+
                 </div>
-                <div class="muted" style="margin-top:6px">
-                    موعد السداد: ${formatDate(due)}
+
+                <div
+                class="money"
+                style="margin-top:8px">
+
+                ${money(s.monthly_fee)}
+                ${esc(s.currency||"EGP")}
+
                 </div>
+
+                <div class="muted">
+
+                ${t("paymentDay")}:
+                ${s.payment_day}
+
+                </div>
+
             </div>
+
         </div>
 
-        <div class="form-grid" style="margin-top:15px">
+
+        <div
+        class="form-grid"
+        style="margin-top:15px">
 
             <div class="field">
-                <label>${t("amount")}</label>
-                <input id="paymentAmount" type="number" step="0.01" value="${esc(s.monthly_fee||0)}">
+
+                <label>
+                ${t("amount")}
+                </label>
+
+                <input
+                id="paymentAmount"
+                type="number"
+                step="0.01"
+                value="${esc(s.monthly_fee||0)}"
+                >
+
             </div>
 
-            <div class="field">
-                <label>${t("paymentDate")}</label>
-                <input id="paymentDate" type="date" value="${isoDate(new Date())}">
-            </div>
 
             <div class="field">
-                <label>طريقة الدفع</label>
-                <select id="paymentMethod">
-                    <option value="cash">كاش</option>
-                    <option value="instapay">إنستا باي</option>
-                    <option value="vodafone_cash">فودافون كاش</option>
-                    <option value="bank">تحويل بنكي</option>
-                    <option value="visa">فيزا</option>
-                    <option value="other">أخرى</option>
-                </select>
+
+                <label>
+                ${t("paymentDate")}
+                </label>
+
+                <input
+                id="paymentDate"
+                type="date"
+                value="${isoDate(new Date())}"
+                >
+
             </div>
 
-            <div class="field">
-                <label>رقم الحساب / المحفظة / تفاصيل الدفع</label>
-                <input id="paymentMethodDetails" type="text" placeholder="مثال: رقم إنستا باي أو رقم محفظة فودافون كاش">
-            </div>
-
-            <div class="field">
-                <label>اسم الشخص الذي دفع</label>
-                <input id="payerName" type="text" value="${esc(customer?.client_name||"")}">
-            </div>
-
-            <div class="field">
-                <label>صلة الدافع بالمشترك</label>
-                <select id="payerRelation">
-                    <option value="نفس المشترك">نفس المشترك</option>
-                    <option value="الأب">الأب</option>
-                    <option value="الأم">الأم</option>
-                    <option value="الأخ">الأخ</option>
-                    <option value="الأخت">الأخت</option>
-                    <option value="الزوج">الزوج</option>
-                    <option value="الزوجة">الزوجة</option>
-                    <option value="الابن">الابن</option>
-                    <option value="الابنة">الابنة</option>
-                    <option value="قريب/قريبة">قريب/قريبة</option>
-                    <option value="شخص آخر">شخص آخر</option>
-                </select>
-            </div>
 
             <div class="field full">
-                <label>${t("notes")}</label>
-                <textarea id="paymentNotes"></textarea>
+
+                <label>
+                ${t("notes")}
+                </label>
+
+                <textarea
+                id="paymentNotes">
+                </textarea>
+
             </div>
 
         </div>
+
         `,
+
         `
-        <button class="ghost-btn" onclick="closeModal()">
-            ${t("cancel")}
+
+        <button
+        class="ghost-btn"
+        onclick="closeModal()">
+
+        ${t("cancel")}
+
         </button>
 
-        <button class="gold-btn" onclick="window.confirmPayment(${subscriptionId},'${periodKey}')">
-            <i class="fa-solid fa-check"></i>
-            ${t("confirmPayment")}
+        <button
+        class="gold-btn"
+        onclick="confirmPayment(${subscriptionId},'${periodKey}')">
+
+        <i class="fa-solid fa-check"></i>
+
+        ${t("confirmPayment")}
+
         </button>
+
         `
+
     );
+
 }
 
-function getPaymentMethodLabel(method){
-    const labels={
-        cash:"كاش",
-        instapay:"إنستا باي",
-        vodafone_cash:"فودافون كاش",
-        bank:"تحويل بنكي",
-        visa:"فيزا",
-        other:"أخرى"
-    };
-    return labels[method] || method || "غير محدد";
-}
-
-function getOutstandingCustomerSubscriptions(customerId,excludeSubscriptionId){
-
-    const rows=[];
-
-    state.subscriptions
-    .filter(function(s){
-        return String(s.customer_id)===String(customerId)
-            && String(s.id)!==String(excludeSubscriptionId);
-    })
-    .forEach(function(s){
-
-        const periods=getSubscriptionPeriods(s);
-
-        periods.forEach(function(period){
-
-            if(!period?.dueDate) return;
-
-            if(!paymentExistsForPeriod(s,period.dueDate)){
-
-                rows.push({
-                    service:getService(s.app_service_id)?.service_name || s.page_name || "اشتراك",
-                    amount:Number(s.monthly_fee||0),
-                    currency:s.currency || state.settings.currency || "EGP",
-                    dueDate:period.dueDate,
-                    periodKey:period.periodKey
-                });
-
-            }
-
-        });
-
-    });
-
-    return rows.sort(function(a,b){
-        return new Date(a.dueDate)-new Date(b.dueDate);
-    });
-}
-
-function buildPaymentReceiptMessage(data){
-
-    const lines=[];
-
-    lines.push("السلام عليكم " + (data.customerName||""));
-    lines.push("");
-    lines.push("إيصال تأكيد السداد");
-    lines.push("");
-    lines.push("الاشتراك: " + (data.serviceName||"-"));
-    lines.push("المبلغ المدفوع: " + money(data.amount) + " " + (data.currency||"EGP"));
-    lines.push("طريقة الدفع: " + getPaymentMethodLabel(data.paymentMethod));
-
-    if(data.methodDetails){
-        lines.push("رقم الحساب / المحفظة: " + data.methodDetails);
-    }
-
-    lines.push("");
-    lines.push("موعد السداد: " + formatDate(data.dueDate));
-    lines.push("تاريخ السداد: " + formatDate(data.paymentDate));
-    lines.push("اسم الدافع: " + (data.payerName||data.customerName||"-"));
-    lines.push("صلة الدافع بالمشترك: " + (data.payerRelation||"نفس المشترك"));
-
-    if(data.remainingTotal>0){
-        lines.push("");
-        lines.push("إجمالي المتبقي على الاشتراكات: " + money(data.remainingTotal) + " " + (data.currency||"EGP"));
-    }
-
-    if(data.outstanding.length){
-        lines.push("");
-        lines.push("الاشتراكات المتبقية:");
-        data.outstanding.forEach(function(row){
-            lines.push(
-                "- " + row.service +
-                " — " + money(row.amount) + " " + row.currency +
-                " — موعد السداد: " + formatDate(row.dueDate)
-            );
-        });
-    }
-
-    if(data.notes){
-        lines.push("");
-        lines.push("ملاحظات: " + data.notes);
-    }
-
-    lines.push("");
-    lines.push("شكراً لتعاملك معنا.");
-    return lines.join("\n");
-}
-
-function showPaymentReceiptModal(data){
-
-    const message=buildPaymentReceiptMessage(data);
-
-    openModal(
-        "إيصال تأكيد السداد",
-        `
-        <div class="card">
-            <div class="card-body">
-                <div style="font-size:18px;font-weight:800;margin-bottom:10px">
-                    تم تسجيل الدفعة بنجاح
-                </div>
-
-                <div class="muted">
-                    العميل: <b>${esc(data.customerName||"-")}</b>
-                </div>
-
-                <div class="muted">
-                    الاشتراك: <b>${esc(data.serviceName||"-")}</b>
-                </div>
-
-                <div class="muted">
-                    المبلغ المدفوع: <b>${money(data.amount)} ${esc(data.currency||"EGP")}</b>
-                </div>
-
-                <div class="muted">
-                    طريقة الدفع: <b>${esc(getPaymentMethodLabel(data.paymentMethod))}</b>
-                </div>
-
-                ${data.methodDetails ? `
-                <div class="muted">
-                    رقم الحساب / المحفظة: <b>${esc(data.methodDetails)}</b>
-                </div>` : ""}
-
-                <div class="muted">
-                    موعد السداد: <b>${esc(formatDate(data.dueDate))}</b>
-                </div>
-
-                <div class="muted">
-                    تاريخ السداد: <b>${esc(formatDate(data.paymentDate))}</b>
-                </div>
-
-                <div class="muted">
-                    اسم الدافع: <b>${esc(data.payerName||data.customerName||"-")}</b>
-                </div>
-
-                <div class="muted">
-                    صلة الدافع: <b>${esc(data.payerRelation||"نفس المشترك")}</b>
-                </div>
-            </div>
-        </div>
-
-        ${data.outstanding.length ? `
-        <div class="card" style="margin-top:12px">
-            <div class="card-body">
-                <b>اشتراكات ما زالت مستحقة</b>
-                <div style="margin-top:8px">
-                    ${data.outstanding.map(function(row){
-                        return `
-                        <div style="padding:8px 0;border-bottom:1px solid rgba(128,128,128,.15)">
-                            <div><b>${esc(row.service)}</b></div>
-                            <div class="muted">
-                                المتبقي: ${money(row.amount)} ${esc(row.currency)}
-                                — موعد السداد: ${esc(formatDate(row.dueDate))}
-                            </div>
-                        </div>
-                        `;
-                    }).join("")}
-                </div>
-                <div class="money" style="margin-top:10px">
-                    إجمالي المتبقي: ${money(data.remainingTotal)} ${esc(data.currency||"EGP")}
-                </div>
-            </div>
-        </div>
-        ` : `
-        <div class="card" style="margin-top:12px">
-            <div class="card-body">
-                <span class="badge paid">لا توجد اشتراكات أخرى مستحقة حالياً</span>
-            </div>
-        </div>
-        `}
-
-        ${data.notes ? `
-        <div class="card" style="margin-top:12px">
-            <div class="card-body">
-                <b>ملاحظات</b>
-                <div class="muted" style="margin-top:6px">${esc(data.notes)}</div>
-            </div>
-        </div>` : ""}
-        `,
-        `
-        <button class="ghost-btn" onclick="closeModal()">إغلاق</button>
-        <button class="gold-btn" onclick='sendPaymentReceiptWhatsApp(${JSON.stringify(message)})'>
-            <i class="fa-brands fa-whatsapp"></i>
-            إرسال الريسيت للعميل
-        </button>
-        `
-    );
-}
-
-function sendPaymentReceiptWhatsApp(message){
-
-    const customer=state.customers.find(function(c){
-        return String(c.id)===String(window._lastReceiptCustomerId);
-    });
-
-    if(!customer){
-        showToast("العميل غير موجود",true);
-        return;
-    }
-
-    const raw=String(customer.phone||"").replace(/\D/g,"");
-    let number=raw;
-
-    if(number.startsWith("0")){
-        number="20"+number.substring(1);
-    }
-
-    if(!number || number.length<10){
-        showToast("رقم هاتف العميل غير صحيح",true);
-        return;
-    }
-
-    const url="https://wa.me/"+number+"?text="+encodeURIComponent(message);
-    window.location.href=url;
-}
 
 async function confirmPayment(subscriptionId,periodKey){
 
-    const s=getSubscription(subscriptionId);
+    const s=
+    getSubscription(subscriptionId);
 
-    const period=getSubscriptionPeriods(s).find(function(p){
-        return p.periodKey===periodKey;
-    }) || getCurrentSubscriptionPeriod(s);
-
+    const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
     const due=period ? period.dueDate : subscriptionDueDate(s);
 
-    if(paymentExistsForPeriod(s,due)){
+    if(
+        paymentExistsForPeriod(
+            s,
+            due
+        )
+    ){
+
         closeModal();
+
         return;
+
     }
 
-    const amount=Number(document.getElementById("paymentAmount").value||0);
-    const paymentDate=document.getElementById("paymentDate").value;
-    const notes=document.getElementById("paymentNotes").value;
-    const paymentMethod=document.getElementById("paymentMethod").value;
-    const methodDetails=document.getElementById("paymentMethodDetails").value.trim();
-    const payerName=document.getElementById("payerName").value.trim();
-    const payerRelation=document.getElementById("payerRelation").value;
+    const amount=
+    Number(
+        document.getElementById(
+            "paymentAmount"
+        ).value||0
+    );
 
-    if(amount<=0){
-        showToast("أدخل مبلغ الدفع",true);
-        return;
-    }
+    const paymentDate=
+    document.getElementById(
+        "paymentDate"
+    ).value;
 
-    if(!paymentDate){
-        showToast(t("paymentDateRequired"),true);
-        return;
-    }
-
-    if((paymentMethod==="instapay" || paymentMethod==="vodafone_cash") && !methodDetails){
-        showToast("أدخل رقم الحساب أو المحفظة",true);
-        return;
-    }
+    const notes=
+    document.getElementById(
+        "paymentNotes"
+    ).value;
 
     try{
 
-        const result=await db
+        const result=
+        await db
         .from("subscription_payments")
         .insert({
-            subscription_id:subscriptionId,
+
+            subscription_id:
+            subscriptionId,
+
             amount:amount,
-            currency:s.currency || state.settings.currency || "EGP",
-            payment_date:paymentDate,
-            paid_month:periodKey || monthKey(due),
+
+            currency:
+            s.currency
+            ||
+            state.settings.currency
+            ||
+            "EGP",
+
+            payment_date:
+            paymentDate,
+
+            paid_month:
+            periodKey || monthKey(due),
+
             notes:notes
+
         });
 
-        if(result.error) throw result.error;
+        if(result.error)
+            throw result.error;
+
 
         await logActivity(
             "PAYMENT",
@@ -5957,50 +5790,26 @@ async function confirmPayment(subscriptionId,periodKey){
             "Confirmed payment"
         );
 
-        window._lastReceiptCustomerId=s.customer_id;
-
-        await refresh();
-
-        const outstanding=getOutstandingCustomerSubscriptions(
-            s.customer_id,
-            subscriptionId
-        );
-
-        const remainingTotal=outstanding.reduce(function(sum,row){
-            return sum + Number(row.amount||0);
-        },0);
 
         closeModal();
 
-        showPaymentReceiptModal({
-            customerName:getCustomer(s.customer_id)?.client_name || "",
-            serviceName:getService(s.app_service_id)?.service_name || s.page_name || "اشتراك",
-            amount:amount,
-            currency:s.currency || state.settings.currency || "EGP",
-            paymentMethod:paymentMethod,
-            methodDetails:methodDetails,
-            dueDate:due,
-            paymentDate:paymentDate,
-            payerName:payerName,
-            payerRelation:payerRelation,
-            outstanding:outstanding,
-            remainingTotal:remainingTotal,
-            notes:notes
-        });
+        await refresh();
 
-        showToast(t("successPayment"));
+        showToast(
+            t("successPayment")
+        );
 
     }catch(error){
 
-        console.error("confirmPayment error:",error);
-        showToast(error.message,true);
+        showToast(
+            error.message,
+            true
+        );
 
     }
 
 }
 
-
-window.confirmPayment=confirmPayment;
 
 /* =========================================
    PAYMENT EDIT
