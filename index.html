@@ -1585,6 +1585,8 @@ allSubscriptions:"كل الاشتراكات",
 upcomingSubscriptions:"القادمة",
 paidAmountMonth:"إجمالي المدفوع هذا الشهر",
 remainingAmount:"إجمالي المتبقي",
+overdueThisMonth:"إجمالي المتأخر لهذا الشهر",
+overduePreviousMonth:"إجمالي المتأخر للشهر السابق",
 editPayment:"تعديل الدفع",
 paymentDateRequired:"اختر تاريخ الدفع"
 
@@ -1731,6 +1733,8 @@ allSubscriptions:"All subscriptions",
 upcomingSubscriptions:"Upcoming",
 paidAmountMonth:"Total paid this month",
 remainingAmount:"Total remaining",
+overdueThisMonth:"Total overdue this month",
+overduePreviousMonth:"Total overdue previous month",
 editPayment:"Edit payment",
 paymentDateRequired:"Choose payment date"
 
@@ -2641,11 +2645,122 @@ function renderDashboard(){
         0
     );
 
-    const remainingAmount=
-    Math.max(
-        0,
-        expected-paidAmount
+    const today=
+    new Date();
+
+    today.setHours(0,0,0,0);
+
+    const currentMonthKey=
+    monthKey(today);
+
+    const previousMonthDate=
+    new Date(
+        today.getFullYear(),
+        today.getMonth()-1,
+        1
     );
+
+    const previousMonthKey=
+    monthKey(previousMonthDate);
+
+    function isSubscriptionStartedInOrBefore(
+        subscription,
+        targetYear,
+        targetMonth
+    ){
+
+        if(!subscription.created_at)
+            return true;
+
+        const created=
+        dateOnly(subscription.created_at);
+
+        if(!created)
+            return true;
+
+        return new Date(
+            created.getFullYear(),
+            created.getMonth(),
+            1
+        ) <=
+        new Date(
+            targetYear,
+            targetMonth,
+            1
+        );
+
+    }
+
+    let overdueThisMonthAmount=0;
+    let overduePreviousMonthAmount=0;
+
+    active.forEach(function(subscription){
+
+        const currentDue=
+        periodDueDate(
+            subscription,
+            today.getFullYear(),
+            today.getMonth()
+        );
+
+        const currentPaid=
+        state.payments.some(function(payment){
+            return Number(payment.subscription_id)
+            ===Number(subscription.id)
+            &&
+            String(payment.paid_month||"")
+            ===currentMonthKey;
+        });
+
+        if(
+            currentDue<today
+            &&
+            !currentPaid
+            &&
+            isSubscriptionStartedInOrBefore(
+                subscription,
+                today.getFullYear(),
+                today.getMonth()
+            )
+        ){
+
+            overdueThisMonthAmount +=
+            Number(subscription.monthly_fee||0);
+
+        }
+
+        const previousDue=
+        periodDueDate(
+            subscription,
+            previousMonthDate.getFullYear(),
+            previousMonthDate.getMonth()
+        );
+
+        const previousPaid=
+        state.payments.some(function(payment){
+            return Number(payment.subscription_id)
+            ===Number(subscription.id)
+            &&
+            String(payment.paid_month||"")
+            ===previousMonthKey;
+        });
+
+        if(
+            !previousPaid
+            &&
+            isSubscriptionStartedInOrBefore(
+                subscription,
+                previousMonthDate.getFullYear(),
+                previousMonthDate.getMonth()
+            )
+        ){
+
+            overduePreviousMonthAmount +=
+            Number(subscription.monthly_fee||0);
+
+        }
+
+    });
 
     document.getElementById("content")
     .innerHTML=`
@@ -2775,6 +2890,36 @@ function renderDashboard(){
             </h2>
 
             <p>${t("remainingAmount")}</p>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-icon">
+            <i class="fa-solid fa-calendar-xmark"></i>
+            </div>
+
+            <h2>
+            ${money(overdueThisMonthAmount)}
+            </h2>
+
+            <p>${t("overdueThisMonth")}</p>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-icon">
+            <i class="fa-solid fa-calendar-minus"></i>
+            </div>
+
+            <h2>
+            ${money(overduePreviousMonthAmount)}
+            </h2>
+
+            <p>${t("overduePreviousMonth")}</p>
 
         </div>
 
