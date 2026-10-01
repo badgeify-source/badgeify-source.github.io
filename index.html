@@ -5835,6 +5835,9 @@ async function confirmPayment(subscriptionId,periodKey){
     const s=
     getSubscription(subscriptionId);
 
+    const customer=
+    getCustomer(s.customer_id);
+
     const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
     const due=period ? period.dueDate : subscriptionDueDate(s);
 
