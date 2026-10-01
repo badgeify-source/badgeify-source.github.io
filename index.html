@@ -4069,7 +4069,11 @@ function renderSubscriptions(){
                 groups.map(function(group){
                     const customer=group.customer;
                     const subs=group.subscriptions;
-                    const total=subs.reduce(function(sum,s){return sum+Number(s.monthly_fee||0);},0);
+                    // إجمالي الاشتراك الشهري يعتمد على دورة الشهر الحالي فقط
+                    // حتى لا يتضاعف بسبب وجود شهر قديم متأخر.
+                    const total=subs
+                        .filter(function(s){return s._periodType!=="overdue";})
+                        .reduce(function(sum,s){return sum+Number(s.monthly_fee||0);},0);
                     const currencies=[...new Set(subs.map(function(s){return s.currency||"EGP";}))].join(" / ");
                     const serviceNames=[...new Set(subs.flatMap(servicesForSubscription).map(function(service){return service.service_name;}))];
                     const platforms=subs.map(function(s){return (s.platform||"-")+(s.page_name?" - "+s.page_name:"");});
