@@ -5583,19 +5583,19 @@ function openPaymentModal(subscriptionId,periodKey){
 
     openModal(
         t("confirmPayment"),
-        \`
+        `
         <div class="card">
             <div class="card-body">
-                <b>\${esc(customer?.client_name||"-")}</b>
-                <div class="muted">\${esc(getService(s.app_service_id)?.service_name||"-")}</div>
+                <b>${esc(customer?.client_name||"-")}</b>
+                <div class="muted">${esc(getService(s.app_service_id)?.service_name||"-")}</div>
                 <div class="money" style="margin-top:8px">
-                    \${money(s.monthly_fee)} \${esc(s.currency||"EGP")}
+                    ${money(s.monthly_fee)} ${esc(s.currency||"EGP")}
                 </div>
                 <div class="muted">
-                    \${t("paymentDay")}: \${s.payment_day}
+                    ${t("paymentDay")}: ${s.payment_day}
                 </div>
                 <div class="muted" style="margin-top:6px">
-                    موعد السداد: \${formatDate(due)}
+                    موعد السداد: ${formatDate(due)}
                 </div>
             </div>
         </div>
@@ -5603,13 +5603,13 @@ function openPaymentModal(subscriptionId,periodKey){
         <div class="form-grid" style="margin-top:15px">
 
             <div class="field">
-                <label>\${t("amount")}</label>
-                <input id="paymentAmount" type="number" step="0.01" value="\${esc(s.monthly_fee||0)}">
+                <label>${t("amount")}</label>
+                <input id="paymentAmount" type="number" step="0.01" value="${esc(s.monthly_fee||0)}">
             </div>
 
             <div class="field">
-                <label>\${t("paymentDate")}</label>
-                <input id="paymentDate" type="date" value="\${isoDate(new Date())}">
+                <label>${t("paymentDate")}</label>
+                <input id="paymentDate" type="date" value="${isoDate(new Date())}">
             </div>
 
             <div class="field">
@@ -5631,7 +5631,7 @@ function openPaymentModal(subscriptionId,periodKey){
 
             <div class="field">
                 <label>اسم الشخص الذي دفع</label>
-                <input id="payerName" type="text" value="\${esc(customer?.client_name||"")}">
+                <input id="payerName" type="text" value="${esc(customer?.client_name||"")}">
             </div>
 
             <div class="field">
@@ -5652,22 +5652,22 @@ function openPaymentModal(subscriptionId,periodKey){
             </div>
 
             <div class="field full">
-                <label>\${t("notes")}</label>
+                <label>${t("notes")}</label>
                 <textarea id="paymentNotes"></textarea>
             </div>
 
         </div>
-        \`,
-        \`
+        `,
+        `
         <button class="ghost-btn" onclick="closeModal()">
-            \${t("cancel")}
+            ${t("cancel")}
         </button>
 
-        <button class="gold-btn" onclick="confirmPayment(\${subscriptionId},'\${periodKey}')">
+        <button class="gold-btn" onclick="confirmPayment(${subscriptionId},'${periodKey}')">
             <i class="fa-solid fa-check"></i>
-            \${t("confirmPayment")}
+            ${t("confirmPayment")}
         </button>
-        \`
+        `
     );
 }
 
@@ -5776,7 +5776,7 @@ function showPaymentReceiptModal(data){
 
     openModal(
         "إيصال تأكيد السداد",
-        \`
+        `
         <div class="card">
             <div class="card-body">
                 <div style="font-size:18px;font-weight:800;margin-bottom:10px">
@@ -5784,89 +5784,89 @@ function showPaymentReceiptModal(data){
                 </div>
 
                 <div class="muted">
-                    العميل: <b>\${esc(data.customerName||"-")}</b>
+                    العميل: <b>${esc(data.customerName||"-")}</b>
                 </div>
 
                 <div class="muted">
-                    الاشتراك: <b>\${esc(data.serviceName||"-")}</b>
+                    الاشتراك: <b>${esc(data.serviceName||"-")}</b>
                 </div>
 
                 <div class="muted">
-                    المبلغ المدفوع: <b>\${money(data.amount)} \${esc(data.currency||"EGP")}</b>
+                    المبلغ المدفوع: <b>${money(data.amount)} ${esc(data.currency||"EGP")}</b>
                 </div>
 
                 <div class="muted">
-                    طريقة الدفع: <b>\${esc(getPaymentMethodLabel(data.paymentMethod))}</b>
+                    طريقة الدفع: <b>${esc(getPaymentMethodLabel(data.paymentMethod))}</b>
                 </div>
 
-                \${data.methodDetails ? \`
+                ${data.methodDetails ? `
                 <div class="muted">
-                    رقم الحساب / المحفظة: <b>\${esc(data.methodDetails)}</b>
-                </div>\` : ""}
+                    رقم الحساب / المحفظة: <b>${esc(data.methodDetails)}</b>
+                </div>` : ""}
 
                 <div class="muted">
-                    موعد السداد: <b>\${esc(formatDate(data.dueDate))}</b>
-                </div>
-
-                <div class="muted">
-                    تاريخ السداد: <b>\${esc(formatDate(data.paymentDate))}</b>
+                    موعد السداد: <b>${esc(formatDate(data.dueDate))}</b>
                 </div>
 
                 <div class="muted">
-                    اسم الدافع: <b>\${esc(data.payerName||data.customerName||"-")}</b>
+                    تاريخ السداد: <b>${esc(formatDate(data.paymentDate))}</b>
                 </div>
 
                 <div class="muted">
-                    صلة الدافع: <b>\${esc(data.payerRelation||"نفس المشترك")}</b>
+                    اسم الدافع: <b>${esc(data.payerName||data.customerName||"-")}</b>
+                </div>
+
+                <div class="muted">
+                    صلة الدافع: <b>${esc(data.payerRelation||"نفس المشترك")}</b>
                 </div>
             </div>
         </div>
 
-        \${data.outstanding.length ? \`
+        ${data.outstanding.length ? `
         <div class="card" style="margin-top:12px">
             <div class="card-body">
                 <b>اشتراكات ما زالت مستحقة</b>
                 <div style="margin-top:8px">
-                    \${data.outstanding.map(function(row){
-                        return \`
+                    ${data.outstanding.map(function(row){
+                        return `
                         <div style="padding:8px 0;border-bottom:1px solid rgba(128,128,128,.15)">
-                            <div><b>\${esc(row.service)}</b></div>
+                            <div><b>${esc(row.service)}</b></div>
                             <div class="muted">
-                                المتبقي: \${money(row.amount)} \${esc(row.currency)}
-                                — موعد السداد: \${esc(formatDate(row.dueDate))}
+                                المتبقي: ${money(row.amount)} ${esc(row.currency)}
+                                — موعد السداد: ${esc(formatDate(row.dueDate))}
                             </div>
                         </div>
-                        \`;
+                        `;
                     }).join("")}
                 </div>
                 <div class="money" style="margin-top:10px">
-                    إجمالي المتبقي: \${money(data.remainingTotal)} \${esc(data.currency||"EGP")}
+                    إجمالي المتبقي: ${money(data.remainingTotal)} ${esc(data.currency||"EGP")}
                 </div>
             </div>
         </div>
-        \` : \`
+        ` : `
         <div class="card" style="margin-top:12px">
             <div class="card-body">
                 <span class="badge paid">لا توجد اشتراكات أخرى مستحقة حالياً</span>
             </div>
         </div>
-        \`}
+        `}
 
-        \${data.notes ? \`
+        ${data.notes ? `
         <div class="card" style="margin-top:12px">
             <div class="card-body">
                 <b>ملاحظات</b>
-                <div class="muted" style="margin-top:6px">\${esc(data.notes)}</div>
+                <div class="muted" style="margin-top:6px">${esc(data.notes)}</div>
             </div>
-        </div>\` : ""}
-        \`,
-        \`
+        </div>` : ""}
+        `,
+        `
         <button class="ghost-btn" onclick="closeModal()">إغلاق</button>
-        <button class="gold-btn" onclick='sendPaymentReceiptWhatsApp(\${JSON.stringify(message)})'>
+        <button class="gold-btn" onclick='sendPaymentReceiptWhatsApp(${JSON.stringify(message)})'>
             <i class="fa-brands fa-whatsapp"></i>
             إرسال الريسيت للعميل
         </button>
-        \`
+        `
     );
 }
 
