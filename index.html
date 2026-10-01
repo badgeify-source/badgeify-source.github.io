@@ -8081,6 +8081,110 @@ function generateInvoiceNumber(prefix="INV"){
 
 
 /* =========================================
+   INVOICE FILE NAME
+   اسم الملف الافتراضي عند طباعة/حفظ PDF
+========================================= */
+
+function cleanInvoiceFileName(value){
+
+    return String(value || "")
+        .replace(/[\\/:*?"<>|]/g,"-")
+        .replace(/[\x00-\x1F]/g,"")
+        .replace(/\\s+/g," ")
+        .trim()
+        .replace(/^[. ]+|[. ]+$/g,"")
+        .slice(0,180);
+
+}
+
+function getInvoiceFileName(invoice){
+
+    const trader =
+        getTrader(invoice.trader_id);
+
+    const customer =
+        getCustomer(invoice.customer_id);
+
+    const items =
+        state.invoiceItems.filter(
+            x => Number(x.invoice_id) === Number(invoice.id)
+        );
+
+    if(
+        invoice.invoice_type === "trader"
+        || trader
+    ){
+
+        const customerNames =
+            [...new Set(
+                items.map(function(item){
+
+                    return getCustomer(
+                        item.customer_id
+                    )?.client_name
+                    || getCustomer(
+                        getSubscription(
+                            item.subscription_id
+                        )?.customer_id
+                    )?.client_name
+                    || "";
+
+                }).filter(Boolean)
+            )];
+
+        const names =
+            customerNames.join(" - ")
+            || "عملاء";
+
+        return cleanInvoiceFileName(
+            [
+                trader?.trader_name || "تاجر",
+                names,
+                money(invoice.total),
+                invoice.currency || "EGP"
+            ].join(" - ")
+        ) || ("فاتورة-" + invoice.id);
+
+    }
+
+    const subscription =
+        getSubscription(
+            invoice.subscription_id
+        );
+
+    const customerName =
+        customer?.client_name
+        || getCustomer(
+            subscription?.customer_id
+        )?.client_name
+        || "عميل";
+
+    const serviceName =
+        getService(
+            subscription?.app_service_id
+        )?.service_name
+        || "";
+
+    const pageName =
+        subscription?.page_name
+        || "";
+
+    const detail =
+        pageName
+        || serviceName
+        || "اشتراك";
+
+    return cleanInvoiceFileName(
+        [
+            customerName,
+            detail
+        ].filter(Boolean).join(" - ")
+    ) || ("فاتورة-" + invoice.id);
+
+}
+
+
+/* =========================================
    PRINT INVOICE
 ========================================= */
 
@@ -8150,7 +8254,7 @@ function printInvoice(id){
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>${esc(invoice.invoice_number || ("#" + invoice.id))}</title>
+<title>${esc(getInvoiceFileName(invoice))}</title>
 <style>
 *{box-sizing:border-box}
 body{
