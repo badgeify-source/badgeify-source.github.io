@@ -5817,8 +5817,114 @@ function showPaymentReceiptModal(data){
         data.outstanding.forEach(function(row){html+="<div style='margin-top:8px'>"+esc(row.service)+" — "+esc(money(row.amount))+" "+esc(data.currency||"EGP")+"<div class='muted'>الاستحقاق: "+esc(row.dueDate||"-")+"</div></div>";});
         html+="<div class='money' style='margin-top:10px'>إجمالي المتبقي: "+esc(money(data.remainingTotal))+" "+esc(data.currency||"EGP")+"</div></div></div>";
     }else html+="<div class='card' style='margin-top:12px'><div class='card-body'>لا توجد اشتراكات أخرى مستحقة على العميل.</div></div>";
-    openModal("إيصال السداد",html,"<button class='ghost-btn' onclick='closeModal()'>إغلاق</button><button class='gold-btn' onclick='sendPaymentReceiptWhatsApp()'><i class='fa-brands fa-whatsapp'></i> إرسال الريسيت واتساب</button>");
-    window._lastPaymentReceipt={phone:data.phone||"",message:message};
+    openModal("إيصال السداد",html,"<button class='ghost-btn' onclick='closeModal()'>إغلاق</button><button class='ghost-btn' onclick='printPaymentReceipt()'><i class='fa-solid fa-print'></i> طباعة / حفظ PDF</button><button class='gold-btn' onclick='sendPaymentReceiptWhatsApp()'><i class='fa-brands fa-whatsapp'></i> إرسال الريسيت واتساب</button>");
+    window._lastPaymentReceipt={phone:data.phone||"",message:message}; window._lastPaymentReceiptData=data;
+}
+
+function getPaymentReceiptFileName(data){
+    const clean=function(value){
+        return String(value||"")
+            .replace(/[\\/:*?"<>|]/g,"")
+            .replace(/\\s+/g," ")
+            .trim();
+    };
+    const customer=clean(data.customerName)||"عميل";
+    const service=clean(data.serviceName)||"اشتراك";
+    const date=clean(data.paymentDate)||isoDate(new Date());
+    return "إيصال سداد - "+customer+" - "+service+" - "+date;
+}
+
+function printPaymentReceipt(){
+    const data=window._lastPaymentReceiptData;
+
+    if(!data){
+        showToast("لا يوجد إيصال جاهز للطباعة",true);
+        return;
+    }
+
+    const popup=window.open("","_blank");
+
+    if(!popup){
+        showToast("اسمح بفتح النوافذ المنبثقة لطباعة الريسيت",true);
+        return;
+    }
+
+    const filename=getPaymentReceiptFileName(data);
+
+    let outstandingRows="";
+
+    if(data.outstanding&&data.outstanding.length){
+        outstandingRows=data.outstanding.map(function(row){
+            return "<tr><td>"+esc(row.service)+"</td><td>"+esc(row.dueDate||"-")+"</td><td>"+esc(money(row.amount))+" "+esc(data.currency||"EGP")+"</td></tr>";
+        }).join("");
+    }else{
+        outstandingRows="<tr><td colspan='3' style='text-align:center'>لا توجد اشتراكات أخرى مستحقة</td></tr>";
+    }
+
+    const logo="https://scontent.fcai19-6.fna.fbcdn.net/v/t39.30808-6/668525850_2199653773906597_7853828551378894356_n.jpg?stp=dst-jpg_tt6&cstp=mx1024x1024&ctp=s1024x1024&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=jN9zzk0cgtMQ7kNvwGOSJ86&_nc_oc=AdoPY9Oiv9RuWpzZqiZhQtBL8_D44BTxrXRyP8FXc-1TwAiHTok27pi88YUHp6Juwsc&_nc_zt=23&_nc_ht=scontent.fcai19-6.fna&_nc_gid=J5MCcle55wDvCYr-oi3x0g&_nc_ss=7b2a8&oh=00_AQKYoylM8WFVIVRJFICZbjPr5qJ0RbK-vvanL5q7naqABg&oe=6AB4F454";
+
+    popup.document.write(`
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>${esc(filename)}</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6fa;color:#172033;font-family:Tahoma,Arial,sans-serif}
+.page{width:min(850px,94%);margin:35px auto;background:#fff;border-radius:18px;padding:35px;box-shadow:0 10px 35px rgba(0,0,0,.08)}
+.head{display:flex;justify-content:space-between;align-items:center;gap:25px;border-bottom:3px solid #1877F2;padding-bottom:22px}
+.brand{display:flex;align-items:center;gap:14px}.logo{width:65px;height:65px;border-radius:16px;object-fit:cover}
+.brand-name{font-size:28px;font-weight:900;color:#1877F2}.tag{font-size:11px;color:#6b7280;margin-top:5px}
+.receipt-title{font-size:20px;font-weight:900;color:#1877F2}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:25px 0}
+.info-card{background:#f7faff;border:1px solid #dcecff;border-radius:13px;padding:15px}
+.label{font-size:11px;color:#738095}.value{font-size:15px;font-weight:800;margin-top:6px}
+table{width:100%;border-collapse:collapse;margin-top:20px}
+th,td{padding:12px 10px;border-bottom:1px solid #e8edf3;text-align:right}th{background:#1877F2;color:#fff;font-size:12px}td{font-size:12px}
+.total-box{margin-top:22px;margin-right:auto;width:min(330px,100%);background:#f4f9ff;border:1px solid #cfe4ff;border-radius:15px;padding:18px}
+.total{font-size:23px;font-weight:900;color:#1877F2}
+.footer{text-align:center;color:#8a94a6;font-size:11px;margin-top:30px;padding-top:18px;border-top:1px solid #e7ebf0}
+.print{position:fixed;left:25px;top:25px;border:0;background:#1877F2;color:#fff;padding:11px 18px;border-radius:10px;cursor:pointer;font-weight:bold}
+@media print{body{background:#fff}.page{width:100%;margin:0;box-shadow:none;border-radius:0}.print{display:none}}
+</style>
+</head>
+<body>
+<button class="print" onclick="window.print()">طباعة / حفظ PDF</button>
+<div class="page">
+<div class="head">
+<div class="brand"><img class="logo" src="${logo}" alt="BADGEIFY"><div><div class="brand-name">BADGEIFY</div><div class="tag">VERIFIED TRUST & SECURITY</div></div></div>
+<div><div class="receipt-title">إيصال سداد</div><div style="font-size:12px;color:#687386;margin-top:7px">${esc(data.paymentDate||"-")}</div></div>
+</div>
+
+<div class="info">
+<div class="info-card"><div class="label">العميل</div><div class="value">${esc(data.customerName||"-")}</div></div>
+<div class="info-card"><div class="label">الاشتراك</div><div class="value">${esc(data.serviceName||"-")}</div></div>
+<div class="info-card"><div class="label">المبلغ المدفوع</div><div class="value">${esc(money(data.amount))} ${esc(data.currency||"EGP")}</div></div>
+<div class="info-card"><div class="label">طريقة الدفع</div><div class="value">${esc(paymentMethodLabel(data.paymentMethod))}${data.methodDetails?" — "+esc(data.methodDetails):""}</div></div>
+<div class="info-card"><div class="label">موعد الاستحقاق</div><div class="value">${esc(data.dueDate||"-")}</div></div>
+<div class="info-card"><div class="label">تاريخ السداد</div><div class="value">${esc(data.paymentDate||"-")}</div></div>
+<div class="info-card"><div class="label">اسم الدافع</div><div class="value">${esc(data.payerName||data.customerName||"-")}</div></div>
+<div class="info-card"><div class="label">صلة الدافع</div><div class="value">${esc(data.payerRelationText||"-")}</div></div>
+</div>
+
+<h3>الاشتراكات الأخرى المستحقة</h3>
+<table><thead><tr><th>الاشتراك</th><th>الاستحقاق</th><th>المبلغ</th></tr></thead><tbody>${outstandingRows}</tbody></table>
+
+<div class="total-box">
+<div style="font-size:12px;color:#738095">إجمالي المتبقي</div>
+<div class="total">${esc(money(data.remainingTotal||0))} ${esc(data.currency||"EGP")}</div>
+</div>
+
+${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border-right:4px solid #1877F2;font-size:12px'>ملاحظات: "+esc(data.notes)+"</div>":""}
+
+<div class="footer">BADGEIFY — VERIFIED TRUST & SECURITY</div>
+</div>
+</body>
+</html>`);
+
+    popup.document.close();
+    setTimeout(function(){popup.focus();},300);
 }
 
 function sendPaymentReceiptWhatsApp(){
