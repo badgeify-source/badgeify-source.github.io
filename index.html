@@ -2645,6 +2645,12 @@ function renderDashboard(){
         0
     );
 
+    const remainingAmount=
+    Math.max(
+        0,
+        expected-paidAmount
+    );
+
     const today=
     new Date();
 
