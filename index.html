@@ -5,7 +5,7 @@
 <link rel="apple-touch-icon" href="https://scontent.fcai19-6.fna.fbcdn.net/v/t39.30808-6/668525850_2199653773906597_7853828551378894356_n.jpg?stp=dst-jpg_tt6&cstp=mx1024x1024&ctp=s1024x1024&_nc_cat=100&_nc_map=urlgen_bucketless&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=jN9zzk0cgtMQ7kNvwGOSJ86&_nc_oc=AdoPY9Oiv9RuWpzZqiZhQtBL8_D44BTxrXRyP8FXc-1TwAiHTok27pi88YUHp6Juwsc&_nc_zt=23&_nc_ht=scontent.fcai19-6.fna&_nc_gid=PmmhCnA1B2KzQiH8DYsXBQ&_nc_ss=7b2a8&oh=00_AQKqnwl8B7dVOtEjnpzaItsasUBUada5CRckPyYfHoityw&oe=6AB52C94">
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1">\n<meta name="badgeify-billing-fix" content="2026-10-01">
 
 <title>Badgeify</title>
 
@@ -1908,6 +1908,83 @@ function paymentExistsForPeriod(
 }
 
 
+function periodDueDate(subscription, year, month){
+    const day=Number(subscription.payment_day || subscription.renewal_day || 1);
+    return new Date(year, month, clampDay(year, month, day));
+}
+
+function getSubscriptionPeriods(subscription){
+    if(!subscription || subscription.status==="inactive") return [];
+    const now=new Date();
+    const currentStart=new Date(now.getFullYear(),now.getMonth(),1);
+    const currentKey=monthKey(now);
+
+    let startDate=subscription.created_at ? dateOnly(subscription.created_at) : null;
+    const payments=state.payments.filter(function(payment){
+        return Number(payment.subscription_id)===Number(subscription.id);
+    });
+
+    payments.forEach(function(payment){
+        const key=String(payment.paid_month||"");
+        if(/^\d{4}-\d{2}$/.test(key)){
+            const parts=key.split("-").map(Number);
+            const d=new Date(parts[0],parts[1]-1,1);
+            if(!startDate || d<new Date(startDate.getFullYear(),startDate.getMonth(),1)) startDate=d;
+        }
+    });
+
+    if(!startDate) startDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+    else startDate=new Date(startDate.getFullYear(),startDate.getMonth(),1);
+    if(startDate>currentStart) startDate=currentStart;
+
+    const periods=[];
+    let cursor=new Date(startDate);
+
+    while(cursor<=currentStart){
+        const key=monthKey(cursor);
+        const due=periodDueDate(subscription,cursor.getFullYear(),cursor.getMonth());
+        const paid=payments.some(function(payment){return String(payment.paid_month||"")===key;});
+        const today=dateOnly(isoDate(new Date()));
+
+        let type="upcoming";
+        let text=t("upcoming");
+
+        if(paid){
+            type="paid";
+            text=t("paid");
+        }else{
+            const diff=Math.round((today-due)/86400000);
+            if(diff>0){
+                type="overdue";
+                text=state.lang==="ar" ? t("overdue")+" "+diff+" يوم" : diff+" days overdue";
+            }else if(diff===0){
+                type="due";
+                text=t("dueToday");
+            }
+        }
+
+        if(key===currentKey || !paid){
+            periods.push({
+                periodKey:key,
+                dueDate:due,
+                periodType:type,
+                periodText:text,
+                monthLabel:new Intl.DateTimeFormat(state.lang==="ar"?"ar-EG":"en-US",{year:"numeric",month:"long"}).format(due)
+            });
+        }
+
+        cursor.setMonth(cursor.getMonth()+1);
+    }
+
+    return periods;
+}
+
+function getCurrentSubscriptionPeriod(subscription){
+    const key=monthKey(new Date());
+    const periods=getSubscriptionPeriods(subscription);
+    return periods.find(function(p){return p.periodKey===key;}) || periods[periods.length-1] || null;
+}
+
 function getPaymentState(subscription){
 
     if(subscription.status==="inactive"){
@@ -2837,7 +2914,7 @@ function renderCalendar(){
                 <div
                 class="event
                 ${st.type==="overdue"?"over":""}"
-                onclick="openPaymentModal(${s.id})">
+                onclick="openPaymentModal(${s.id},\'${s._periodKey}\')">
 
                 <b>
                 ${esc(c?.client_name||"-")}
@@ -3765,8 +3842,24 @@ async function deleteCustomer(id){
    SUBSCRIPTIONS
 ========================================= */
 
+function periodStatusBadge(row){
+    return '<span class="badge '+row._periodType+'">'+esc(row._periodText)+'</span><small class="muted" style="margin-right:6px">'+esc(row._periodLabel)+'</small>';
+}
+
 function renderSubscriptions(){
-    const rows=state.subscriptions.filter(function(x){return x.status!=="inactive";});
+    const baseSubscriptions=state.subscriptions.filter(function(x){return x.status!=="inactive";});
+    let rows=[];
+    baseSubscriptions.forEach(function(subscription){
+        getSubscriptionPeriods(subscription).forEach(function(period){
+            rows.push(Object.assign({},subscription,{
+                _periodKey:period.periodKey,
+                _periodDueDate:period.dueDate,
+                _periodType:period.periodType,
+                _periodText:period.periodText,
+                _periodLabel:period.monthLabel
+            }));
+        });
+    });
     function servicesForSubscription(subscription){
         const childRows=state.subscriptionServices.filter(function(row){
             return String(row.subscription_id)===String(subscription.id);
@@ -3790,24 +3883,24 @@ function renderSubscriptions(){
 
     if(selectedStatus!=="all"){
         filteredRows=filteredRows.filter(function(subscription){
-            return getPaymentState(subscription).type===selectedStatus;
+            return subscription._periodType===selectedStatus;
         });
     }
 
     const counts={
         all:rows.length,
-        upcoming:rows.filter(x=>getPaymentState(x).type==="upcoming").length,
-        due:rows.filter(x=>getPaymentState(x).type==="due").length,
-        overdue:rows.filter(x=>getPaymentState(x).type==="overdue").length,
-        paid:rows.filter(x=>getPaymentState(x).type==="paid").length
+        upcoming:rows.filter(x=>x._periodType==="upcoming").length,
+        due:rows.filter(x=>x._periodType==="due").length,
+        overdue:rows.filter(x=>x._periodType==="overdue").length,
+        paid:rows.filter(x=>x._periodType==="paid").length
     };
 
     const totals={
         all:rows.reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        upcoming:rows.filter(x=>getPaymentState(x).type==="upcoming").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        due:rows.filter(x=>getPaymentState(x).type==="due").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        overdue:rows.filter(x=>getPaymentState(x).type==="overdue").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
-        paid:rows.filter(x=>getPaymentState(x).type==="paid").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0)
+        upcoming:rows.filter(x=>x._periodType==="upcoming").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        due:rows.filter(x=>x._periodType==="due").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        overdue:rows.filter(x=>x._periodType==="overdue").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0),
+        paid:rows.filter(x=>x._periodType==="paid").reduce((sum,x)=>sum+Number(x.monthly_fee||0),0)
     };
     /*
      * ترتيب الاشتراكات:
@@ -3820,8 +3913,8 @@ function renderSubscriptions(){
      * داخل كل عميل، مع الحفاظ على تجميع خدمات العميل في بطاقة واحدة.
      */
     function subscriptionSortInfo(subscription){
-        const paymentState=getPaymentState(subscription);
-        const due=subscriptionDueDate(subscription);
+        const paymentState={type:subscription._periodType};
+        const due=subscription._periodDueDate || subscriptionDueDate(subscription);
         const today=dateOnly(isoDate(new Date()));
         const diff=due ? Math.round((today-due)/86400000) : 999999;
 
@@ -3981,7 +4074,7 @@ function renderSubscriptions(){
                     const serviceNames=[...new Set(subs.flatMap(servicesForSubscription).map(function(service){return service.service_name;}))];
                     const platforms=subs.map(function(s){return (s.platform||"-")+(s.page_name?" - "+s.page_name:"");});
                     const paymentDays=subs.map(function(s){return s.payment_day||"-";});
-                    const statusHtml=subs.map(function(s){return statusBadge(s);}).join(" ");
+                    const statusHtml=subs.map(function(s){return '<div style="margin-bottom:4px">'+periodStatusBadge(s)+'</div>';}).join("");
                     const actions=subs.map(function(s){
                         const status=getPaymentState(s);
                         return `
@@ -5250,7 +5343,7 @@ async function deleteSubscription(id){
    PAYMENT CONFIRMATION
 ========================================= */
 
-function openPaymentModal(subscriptionId){
+function openPaymentModal(subscriptionId,periodKey){
 
     const s=
     getSubscription(subscriptionId);
@@ -5258,8 +5351,8 @@ function openPaymentModal(subscriptionId){
     const customer=
     getCustomer(s.customer_id);
 
-    const due=
-    subscriptionDueDate(s);
+    const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
+    const due=period ? period.dueDate : subscriptionDueDate(s);
 
     if(
         paymentExistsForPeriod(
@@ -5382,7 +5475,7 @@ function openPaymentModal(subscriptionId){
 
         <button
         class="gold-btn"
-        onclick="confirmPayment(${subscriptionId})">
+        onclick="confirmPayment(${subscriptionId},\'${periodKey}\')">
 
         <i class="fa-solid fa-check"></i>
 
@@ -5397,13 +5490,13 @@ function openPaymentModal(subscriptionId){
 }
 
 
-async function confirmPayment(subscriptionId){
+async function confirmPayment(subscriptionId,periodKey){
 
     const s=
     getSubscription(subscriptionId);
 
-    const due=
-    subscriptionDueDate(s);
+    const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
+    const due=period ? period.dueDate : subscriptionDueDate(s);
 
     if(
         paymentExistsForPeriod(
@@ -5458,7 +5551,7 @@ async function confirmPayment(subscriptionId){
             paymentDate,
 
             paid_month:
-            monthKey(due),
+            periodKey || monthKey(due),
 
             notes:notes
 
