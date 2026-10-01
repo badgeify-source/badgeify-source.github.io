@@ -4076,14 +4076,14 @@ function renderSubscriptions(){
                     const paymentDays=subs.map(function(s){return s.payment_day||"-";});
                     const statusHtml=subs.map(function(s){return '<div style="margin-bottom:4px">'+periodStatusBadge(s)+'</div>';}).join("");
                     const actions=subs.map(function(s){
-                        const status=getPaymentState(s);
+                        const status={type:s._periodType};
                         return `
                         <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;flex-wrap:wrap;">
                             <span class="muted" style="min-width:95px">
                                 ${esc(servicesForSubscription(s).map(function(service){return service.service_name;}).join(" + ")||"-")}
                             </span>
                             ${status.type!=="paid"?`
-                            <button class="mini-btn pay" onclick="openPaymentModal(${s.id})" title="${t("confirmPayment")}">
+                            <button class="mini-btn pay" onclick="openPaymentModal(${s.id},'${s._periodKey}')" title="${t("confirmPayment")}">
                                 <i class="fa-solid fa-check"></i>
                             </button>`:""}
                             ${customer?.phone?`
