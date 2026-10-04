@@ -700,6 +700,30 @@ const params = new URLSearchParams(window.location.search);
 
 const TOKEN = params.get("token");
 
+/* BADGEIFY: persist the portal token for notification-click navigation */
+async function savePortalTokenForNotifications(){
+    if(!TOKEN || !("indexedDB" in window)) return;
+    try{
+        await new Promise((resolve)=>{
+            const req=indexedDB.open("badgeify_notifications",1);
+            req.onupgradeneeded=function(){
+                const db=req.result;
+                if(!db.objectStoreNames.contains("settings")) db.createObjectStore("settings");
+            };
+            req.onsuccess=function(){
+                const db=req.result;
+                try{
+                    const tx=db.transaction("settings","readwrite");
+                    tx.objectStore("settings").put(TOKEN,"portal_token");
+                    tx.oncomplete=()=>{db.close();resolve();};
+                    tx.onerror=()=>{db.close();resolve();};
+                }catch(e){ db.close(); resolve(); }
+            };
+            req.onerror=()=>resolve();
+        });
+    }catch(e){ console.warn("BADGEIFY token storage:",e); }
+}
+
 let portalData = null;
 
 function escapeHtml(value){
@@ -1653,7 +1677,7 @@ function renderFollowups(followups){
         }).join("");
 }
 
-loadPortal();
+savePortalTokenForNotifications().finally(function(){ loadPortal(); });
 
 
 /* BADGEIFY: force-refresh the portal document without changing the customer token */
