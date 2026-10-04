@@ -53,7 +53,7 @@ self.addEventListener("push",event=>{
     );
 });
 
-async function getStoredPortalToken(){
+async function getStoredPortalToken(role){
     if(!("indexedDB" in self)) return null;
     try{
         return await new Promise(function(resolve){
@@ -66,7 +66,8 @@ async function getStoredPortalToken(){
                 const db=req.result;
                 try{
                     const tx=db.transaction("settings","readonly");
-                    const getReq=tx.objectStore("settings").get("portal_token");
+                    const key=role==="trader" ? "portal_token_trader" : "portal_token_customer";
+                    const getReq=tx.objectStore("settings").get(key);
                     getReq.onsuccess=function(){ const value=getReq.result||null; db.close(); resolve(value); };
                     getReq.onerror=function(){ db.close(); resolve(null); };
                 }catch(e){ db.close(); resolve(null); }
@@ -79,11 +80,19 @@ async function getStoredPortalToken(){
 self.addEventListener("notificationclick",event=>{
     event.notification.close();
     event.waitUntil((async function(){
-        const explicitUrl=event.notification.data?.url;
+        const notificationData=event.notification.data||{};
+        const explicitUrl=notificationData.url;
+        const role=notificationData.role==="trader" ? "trader" : "customer";
         let targetUrl=explicitUrl;
         if(!targetUrl || targetUrl==="./index.html"){
-            const token=await getStoredPortalToken();
-            targetUrl=token ? "./client.html?token="+encodeURIComponent(token) : "./index.html";
+            const token=await getStoredPortalToken(role);
+            if(token){
+                targetUrl=role==="trader"
+                    ? "./trader.html?token="+encodeURIComponent(token)
+                    : "./client.html?token="+encodeURIComponent(token);
+            }else{
+                targetUrl="./index.html";
+            }
         }
         const absoluteUrl=new URL(targetUrl,self.location.href).href;
         const list=await clients.matchAll({type:"window",includeUncontrolled:true});
