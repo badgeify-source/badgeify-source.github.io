@@ -714,7 +714,7 @@ async function savePortalTokenForNotifications(){
                 const db=req.result;
                 try{
                     const tx=db.transaction("settings","readwrite");
-                    tx.objectStore("settings").put(TOKEN,"portal_token");
+                    tx.objectStore("settings").put(TOKEN,"portal_token_customer");
                     tx.oncomplete=()=>{db.close();resolve();};
                     tx.onerror=()=>{db.close();resolve();};
                 }catch(e){ db.close(); resolve(); }
