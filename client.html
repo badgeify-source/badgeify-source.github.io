@@ -979,11 +979,7 @@ function renderPortal(data){
     );
 
     const currentPaid = currentRows.reduce(
-        (sum,s) => sum + (
-            s.payment_status?.code === "paid"
-                ? Number(s.monthly_fee || 0)
-                : 0
-        ),
+        (sum,s) => sum + Number(s._paidAmount || 0),
         0
     );
 
@@ -1145,13 +1141,15 @@ function portalPeriodStatus(subscription, dueDate, paid){
 }
 
 function expandPortalSubscriptionPeriods(subscriptions, payments){
-    const paidSet = new Set(
-        (payments || []).map(function(p){
-            const sid = Number(p.subscription_id);
-            const month = String(p.paid_month || "").slice(0,7);
-            return sid + "|" + month;
-        })
-    );
+    const paidAmounts = new Map();
+    (payments || []).forEach(function(p){
+        const sid = Number(p.subscription_id);
+        const month = String(p.paid_month || "").slice(0,7);
+        const key = sid + "|" + month;
+        paidAmounts.set(key, (paidAmounts.get(key) || 0) + Number(p.amount || 0));
+    });
+
+    const paidSet = new Set(paidAmounts.keys());
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -1189,7 +1187,8 @@ function expandPortalSubscriptionPeriods(subscriptions, payments){
                     _periodLabel:new Intl.DateTimeFormat("ar-EG",{year:"numeric",month:"long"}).format(dueDate),
                     _periodType:isCurrent ? "current" : "overdue_history",
                     due_date:dueDate.toISOString().slice(0,10),
-                    payment_status:portalPeriodStatus(subscription,dueDate,paid)
+                    payment_status:portalPeriodStatus(subscription,dueDate,paid),
+                    _paidAmount:paidAmounts.get(Number(subscription.id) + "|" + key) || 0
                 }));
             }
 
@@ -1288,6 +1287,35 @@ function renderSubscriptions(
                             <div class="detail-value">
                                 ${escapeHtml(fee)}
                             </div>
+
+                        <div class="detail">
+                            <div class="detail-label">
+                                المدفوع فعليًا
+                            </div>
+                            <div class="detail-value" style="color:#35d39a">
+                                ${escapeHtml(money(subscription._paidAmount || 0, subscription.currency || currency))}
+                            </div>
+                        </div>
+
+                        <div class="detail">
+                            <div class="detail-label">
+                                المتبقي
+                            </div>
+                            <div class="detail-value">
+                                ${escapeHtml(money(Math.max(0, Number(subscription.monthly_fee || 0) - Number(subscription._paidAmount || 0)), subscription.currency || currency))}
+                            </div>
+                        </div>
+
+                        ${Number(subscription._paidAmount || 0) > Number(subscription.monthly_fee || 0) ? `
+                        <div class="detail">
+                            <div class="detail-label">
+                                الزيادة المدفوعة
+                            </div>
+                            <div class="detail-value" style="color:#63b3ff">
+                                ${escapeHtml(money(Number(subscription._paidAmount || 0) - Number(subscription.monthly_fee || 0), subscription.currency || currency))}
+                            </div>
+                        </div>
+                        ` : ""}
                         </div>
 
                         <div class="detail">
