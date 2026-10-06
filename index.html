@@ -1268,7 +1268,7 @@ data-t="main">
 </button>
 
 <div class="nav-title">لوحة تحكم صالح</div>
-<button data-page="personalFinance"><i class="fa-solid fa-wallet"></i><span>لوحة تحكم صالح</span></button>
+<button type="button" data-page="personalFinance" onclick="state.page='personalFinance';render();"><i class="fa-solid fa-wallet"></i><span>لوحة تحكم صالح</span></button>
 
 
 </nav>
@@ -1464,6 +1464,7 @@ invoices:"الفواتير",
 followups:"المتابعات",
 settings:"الإعدادات",
 activity:"سجل النشاط",
+personalFinance:"لوحة تحكم صالح",
 main:"الرئيسية",
 
 email:"البريد الإلكتروني",
@@ -10725,7 +10726,8 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
  }catch(e){console.warn('Saleh Finance payment sync:',e.message);}
 }
 function renderPersonalFinance(){
- const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=state.settings.currency||'EGP';
+ try{
+ const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=(state.settings&&state.settings.currency)||'EGP';
  const bal=function(type){const a=financeAccount(type);return a?financeBalance(a.id):0;};
  const cash=bal('cash'),vod=bal('vodafone_cash'),insta=bal('instapay'),total=cash+vod+insta,m=monthKey(new Date());
  const income=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)>0&&x.transaction_type!=='transfer').reduce((s,x)=>s+Number(x.amount),0);
@@ -10733,6 +10735,7 @@ function renderPersonalFinance(){
  const cards=[['إجمالي أموالي',total,'fa-wallet'],['الكاش / الجيب',cash,'fa-money-bill-wave'],['Vodafone Cash',vod,'fa-mobile-screen-button'],['InstaPay',insta,'fa-building-columns']];
  document.getElementById('content').innerHTML='<div class="page-head"><div><h1>لوحة تحكم صالح</h1><p>أموالك الشخصية منفصلة عن نظام العملاء والاشتراكات</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')">مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')">مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()">تحويل</button><button class="ghost-btn" onclick="openSalehLoan()">سلفة جديدة</button></div></div><div class="grid stats">'+cards.map(x=>'<div class="stat"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div><div class="grid stats" style="margin-top:16px"><div class="stat"><h2>'+money(income)+'</h2><p>المقبوضات هذا الشهر</p></div><div class="stat"><h2>'+money(expense)+'</h2><p>المصروفات هذا الشهر</p></div><div class="stat"><h2>'+money(income-expense)+'</h2><p>صافي الحركة</p></div><div class="stat"><h2>'+T.length+'</h2><p>إجمالي الحركات</p></div></div><div class="grid cols" style="margin-top:16px"><div class="card"><div class="card-head"><h3>آخر الحركات</h3></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+T.slice(0,30).map(x=>{const a=A.find(z=>String(z.id)===String(x.account_id)),p=Number(x.amount)>=0;return '<tr><td>'+formatDate(x.transaction_date)+'</td><td>'+esc(x.description||'-')+'</td><td>'+esc(a?.account_name||'-')+'</td><td>'+esc(x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':'تحويل')+'</td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مالية</div></td></tr>'+'</tbody></table></div></div></div><div class="card"><div class="card-head"><h3>حساباتي</h3></div><div class="card-body"><div class="list">'+A.map(a=>'<div class="list-item"><b>'+esc(a.account_name)+'</b><strong class="money">'+money(financeBalance(a.id))+' '+esc(cur)+'</strong></div>').join('')+'</div></div></div></div>';
  setTimeout(renderPersonalFinanceLoans,0);
+ }catch(e){console.error('SALEH FINANCE RENDER ERROR',e);document.getElementById('content').innerHTML='<div class="card"><div class="card-body"><h3>لوحة تحكم صالح</h3><p class="muted">تعذر تحميل لوحة التحكم حاليًا. تأكد من تشغيل ملف قاعدة البيانات في Supabase ثم اضغط تحديث.</p></div></div>';}
 }
 function renderPersonalFinanceLoans(){
  const host=document.getElementById('content');if(!host||state.page!=='personalFinance')return;
