@@ -1267,6 +1267,9 @@ data-t="main">
 <span data-t="activity">سجل النشاط</span>
 </button>
 
+<div class="nav-title">لوحة تحكم صالح</div>
+<button data-page="personalFinance"><i class="fa-solid fa-wallet"></i><span>لوحة تحكم صالح</span></button>
+
 
 </nav>
 
@@ -1433,6 +1436,8 @@ let state={
     invoiceItems:[],
     followups:[],
     logs:[],
+    financeAccounts:[],
+    financeTransactions:[],
     settings:{}
 
 };
@@ -6049,10 +6054,22 @@ async function confirmPayment(subscriptionId,periodKey){
 
             notes:notes
 
-        });
+        })
+        .select()
+        .single();
 
         if(result.error)
             throw result.error;
+
+        await syncSalehPayment(
+            amount,
+            result.data?.id,
+            s.customer_id,
+            paymentMethod,
+            paymentDate,
+            notes,
+            customer?.client_name
+        );
 
 
         await logActivity(
@@ -10659,6 +10676,54 @@ function renderActivity(){
 
 
 
+/* SALEH FINANCE */
+async function loadFinanceData(){
+ try{
+  const a=await db.from('personal_finance_accounts').select('*').order('created_at',{ascending:true});
+  const t=await db.from('personal_finance_transactions').select('*').order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
+  if(a.error)throw a.error;if(t.error)throw t.error;
+  state.financeAccounts=a.data||[];state.financeTransactions=t.data||[];
+  if(!state.financeAccounts.length&&currentUser?.id){
+   const d=[{account_name:'الكاش / الجيب',account_type:'cash',opening_balance:0},{account_name:'Vodafone Cash',account_type:'vodafone_cash',opening_balance:0},{account_name:'InstaPay',account_type:'instapay',opening_balance:0}].map(x=>({...x,user_id:currentUser.id}));
+   const r=await db.from('personal_finance_accounts').insert(d).select('*');if(!r.error)state.financeAccounts=r.data||[];
+  }
+ }catch(e){state.financeAccounts=[];state.financeTransactions=[];console.warn('Saleh Finance not ready:',e.message);}
+}
+function financeAccount(type){return (state.financeAccounts||[]).find(x=>x.account_type===type)||null;}
+function financeBalance(id){const a=(state.financeAccounts||[]).find(x=>String(x.id)===String(id));if(!a)return 0;return Number(a.opening_balance||0)+(state.financeTransactions||[]).filter(x=>String(x.account_id)===String(id)).reduce((s,x)=>s+Number(x.amount||0),0);}
+async function syncSalehPayment(amount,paymentId,customerId,method,date,notes,customerName){
+ try{const map={cash:'cash',vodafone_cash:'vodafone_cash',instapay:'instapay'},type=map[method];if(!type)return;let a=financeAccount(type);
+  if(!a){const r=await db.from('personal_finance_accounts').insert({user_id:currentUser?.id,account_name:type==='cash'?'الكاش / الجيب':type==='vodafone_cash'?'Vodafone Cash':'InstaPay',account_type:type,opening_balance:0}).select('*').single();if(r.error)throw r.error;a=r.data;}
+  const e=await db.from('personal_finance_transactions').select('id').eq('source_type','subscription_payment').eq('source_id',String(paymentId)).maybeSingle();if(e.error)throw e.error;if(e.data)return;
+  const r=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:a.id,amount:Number(amount),transaction_type:'income',category:'مقبوضات العمل',description:'مبلغ مستلم من '+(customerName||'عميل'),source_type:'subscription_payment',source_id:String(paymentId),customer_id:customerId||null,payment_id:paymentId,payment_method:method,transaction_date:date,notes:notes||null});if(r.error)throw r.error;
+ }catch(e){console.warn('Saleh Finance payment sync:',e.message);}
+}
+function renderPersonalFinance(){
+ const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=state.settings.currency||'EGP';
+ const bal=function(type){const a=financeAccount(type);return a?financeBalance(a.id):0;};
+ const cash=bal('cash'),vod=bal('vodafone_cash'),insta=bal('instapay'),total=cash+vod+insta,m=monthKey(new Date());
+ const income=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)>0&&x.transaction_type!=='transfer').reduce((s,x)=>s+Number(x.amount),0);
+ const expense=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)<0&&x.transaction_type==='expense').reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
+ const cards=[['إجمالي أموالي',total,'fa-wallet'],['الكاش / الجيب',cash,'fa-money-bill-wave'],['Vodafone Cash',vod,'fa-mobile-screen-button'],['InstaPay',insta,'fa-building-columns']];
+ document.getElementById('content').innerHTML='<div class="page-head"><div><h1>لوحة تحكم صالح</h1><p>أموالك الشخصية منفصلة عن نظام العملاء والاشتراكات</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')">مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')">مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()">تحويل</button></div></div><div class="grid stats">'+cards.map(x=>'<div class="stat"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div><div class="grid stats" style="margin-top:16px"><div class="stat"><h2>'+money(income)+'</h2><p>المقبوضات هذا الشهر</p></div><div class="stat"><h2>'+money(expense)+'</h2><p>المصروفات هذا الشهر</p></div><div class="stat"><h2>'+money(income-expense)+'</h2><p>صافي الحركة</p></div><div class="stat"><h2>'+T.length+'</h2><p>إجمالي الحركات</p></div></div><div class="grid cols" style="margin-top:16px"><div class="card"><div class="card-head"><h3>آخر الحركات</h3></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+T.slice(0,30).map(x=>{const a=A.find(z=>String(z.id)===String(x.account_id)),p=Number(x.amount)>=0;return '<tr><td>'+formatDate(x.transaction_date)+'</td><td>'+esc(x.description||'-')+'</td><td>'+esc(a?.account_name||'-')+'</td><td>'+esc(x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':'تحويل')+'</td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مالية</div></td></tr>'+'</tbody></table></div></div></div><div class="card"><div class="card-head"><h3>حساباتي</h3></div><div class="card-body"><div class="list">'+A.map(a=>'<div class="list-item"><b>'+esc(a.account_name)+'</b><strong class="money">'+money(financeBalance(a.id))+' '+esc(cur)+'</strong></div>').join('')+'</div></div></div></div>';
+}
+async function openSalehFinanceEntry(kind){
+ const exp=kind==='expense',A=state.financeAccounts||[];
+ openModal(exp?'إضافة مصروف':'إضافة مبلغ مستلم','<div class="form-grid"><div class="field"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0"></div><div class="field"><label>الحساب</label><select id="pfAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>التصنيف</label><input id="pfCategory" value="'+(exp?'أخرى':'دخل شخصي')+'"></div><div class="field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field full"><label>البيان</label><input id="pfDesc"></div><div class="field full"><label>ملاحظات</label><textarea id="pfNotes"></textarea></div></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceEntry(\''+kind+'\')">حفظ</button>');
+}
+async function saveSalehFinanceEntry(kind){
+ const amount=Number(document.getElementById('pfAmount').value||0),account=document.getElementById('pfAccount').value,date=document.getElementById('pfDate').value,category=document.getElementById('pfCategory').value.trim()||'أخرى',description=document.getElementById('pfDesc').value.trim()||category,notes=document.getElementById('pfNotes').value||'';
+ if(amount<=0||!account){showToast('أدخل المبلغ واختر الحساب',true);return;}
+ const r=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:kind==='expense'?-Math.abs(amount):Math.abs(amount),transaction_type:kind,category,description,transaction_date:date,notes});if(r.error){showToast(r.error.message,true);return;}closeModal();await refresh();showToast('تم حفظ الحركة المالية');
+}
+async function openSalehFinanceTransfer(){
+ const A=state.financeAccounts||[];
+ openModal('تحويل بين أموالي','<div class="form-grid"><div class="field"><label>المبلغ</label><input id="ptAmount" type="number" step="0.01"></div><div class="field"><label>من</label><select id="ptFrom"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>إلى</label><select id="ptTo"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>التاريخ</label><input id="ptDate" type="date" value="'+isoDate(new Date())+'"></div></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceTransfer()">تحويل</button>');
+}
+async function saveSalehFinanceTransfer(){
+ const n=Number(document.getElementById('ptAmount').value||0),f=document.getElementById('ptFrom').value,t=document.getElementById('ptTo').value,d=document.getElementById('ptDate').value;if(n<=0||!f||!t||f===t){showToast('راجع المبلغ والحسابات',true);return;}const id=crypto.randomUUID();const r=await db.from('personal_finance_transactions').insert([{user_id:currentUser?.id,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:'تحويل إلى حساب آخر',source_type:'transfer',source_id:id,transaction_date:d},{user_id:currentUser?.id,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:'تحويل من حساب آخر',source_type:'transfer',source_id:id,transaction_date:d}]);if(r.error){showToast(r.error.message,true);return;}closeModal();await refresh();showToast('تم التحويل بنجاح');
+}
+
 /* =========================================
    REFRESH / RENDER
 ========================================= */
@@ -10668,6 +10733,7 @@ async function refresh(){
     try{
 
         await loadData();
+        await loadFinanceData();
 
         render();
 
