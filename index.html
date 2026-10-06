@@ -3825,8 +3825,7 @@ function openCustomerModal(id=null){
                     value="${x.id}"
                     ${Number(c.trader_id)
                     ===Number(x.id)
-                    ?"selected":""
-                    }>
+                    ?"selected":""}>
 
                     ${esc(x.trader_name)}
 
@@ -3836,6 +3835,22 @@ function openCustomerModal(id=null){
                     }
 
                 </select>
+
+            </div>
+
+
+            <div class="field">
+
+                <label>
+                رقم التاجر
+                </label>
+
+                <input
+                id="customerTraderNumber"
+                type="number"
+                value="${c.trader_id ? esc(c.trader_id) : ""}"
+                placeholder="يتم تعبئته تلقائيًا عند اختيار التاجر"
+                >
 
             </div>
 
@@ -3909,10 +3924,88 @@ function openCustomerModal(id=null){
     ).value=
     c.status||"active";
 
+    const traderSelect =
+        document.getElementById("customerTrader");
+
+    const traderNumber =
+        document.getElementById("customerTraderNumber");
+
+    if(traderSelect && traderNumber){
+
+        traderSelect.addEventListener("change",function(){
+
+            traderNumber.value =
+                this.value || "";
+
+        });
+
+        traderNumber.addEventListener("input",function(){
+
+            const traderId =
+                Number(this.value);
+
+            const trader =
+                state.traders.find(function(x){
+                    return Number(x.id) === traderId;
+                });
+
+            if(trader){
+
+                traderSelect.value =
+                    String(trader.id);
+
+            }
+
+        });
+
+    }
+
 }
 
 
 async function saveCustomer(id){
+
+    const traderNumberValue =
+        document.getElementById(
+            "customerTraderNumber"
+        ).value.trim();
+
+    const selectedTraderValue =
+        document.getElementById(
+            "customerTrader"
+        ).value;
+
+    const finalTraderId =
+        traderNumberValue
+        ? Number(traderNumberValue)
+        : (
+            selectedTraderValue
+            ? Number(selectedTraderValue)
+            : null
+        );
+
+    if(finalTraderId !== null){
+
+        const traderExists =
+            state.traders.some(function(trader){
+
+                return Number(trader.id) ===
+                    Number(finalTraderId);
+
+            });
+
+        if(!traderExists){
+
+            showToast(
+                "رقم التاجر غير موجود، اختر تاجرًا صحيحًا أو اكتب رقمه الصحيح",
+                true
+            );
+
+            return;
+
+        }
+
+    }
 
     const data={
 
@@ -3932,17 +4025,7 @@ async function saveCustomer(id){
         ).value.trim(),
 
         trader_id:
-        document.getElementById(
-            "customerTrader"
-        ).value
-        ?
-        Number(
-            document.getElementById(
-                "customerTrader"
-            ).value
-        )
-        :
-        null,
+        finalTraderId,
 
         status:
         document.getElementById(
