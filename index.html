@@ -3840,19 +3840,6 @@ function openCustomerModal(id=null){
 
             <div class="field">
 
-                <label>رقم موبايل العميل</label>
-
-                <input
-                id="customerPhone"
-                value="${esc(c.phone||"")}"
-                placeholder="يتم تعبئته تلقائيًا عند اختيار التاجر"
-                >
-
-            </div>
-
-
-            <div class="field">
-
                 <label>
                 ${t("status")}
                 </label>
@@ -3960,7 +3947,7 @@ async function saveCustomer(id){
         ).value.trim(),
 
         trader_id:
-        finalTraderId,
+        Number(document.getElementById("customerTrader").value) || null,
 
         status:
         document.getElementById(
