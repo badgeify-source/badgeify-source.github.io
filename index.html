@@ -2523,18 +2523,43 @@ function sendWhatsApp(
             }
         );
 
-    const url =
+    const encodedMessage =
+        encodeURIComponent(String(message || ""));
+
+    const normalUrl =
         "https://wa.me/" +
         number +
         "?text=" +
-        encodeURIComponent(message);
+        encodedMessage;
 
-    console.log(
-        "Badgeify subscription WhatsApp:",
-        url
-    );
+    /*
+       عند إرسال رسالة الاشتراك من الموبايل:
+       إجبار Android على فتح WhatsApp Business
+       بدل WhatsApp العادي.
+    */
+    if(/Android/i.test(navigator.userAgent)){
+        const businessIntent =
+            "intent://send" +
+            "?phone=" + number +
+            "&text=" + encodedMessage +
+            "#Intent;" +
+            "scheme=whatsapp;" +
+            "package=com.whatsapp.w4b;" +
+            "end";
 
-    window.location.href = url;
+        let fallbackTimer = setTimeout(function(){
+            window.location.href = normalUrl;
+        }, 1500);
+
+        try{
+            window.location.href = businessIntent;
+        }catch(error){
+            clearTimeout(fallbackTimer);
+            window.location.href = normalUrl;
+        }
+    }else{
+        window.location.href = normalUrl;
+    }
 
 }
 
