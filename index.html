@@ -3838,17 +3838,13 @@ function openCustomerModal(id=null){
 
             </div>
 
-
             <div class="field">
 
-                <label>
-                رقم التاجر
-                </label>
+                <label>رقم موبايل العميل</label>
 
                 <input
-                id="customerTraderNumber"
-                type="number"
-                value="${c.trader_id ? esc(c.trader_id) : ""}"
+                id="customerPhone"
+                value="${esc(c.phone||"")}"
                 placeholder="يتم تعبئته تلقائيًا عند اختيار التاجر"
                 >
 
@@ -3927,85 +3923,24 @@ function openCustomerModal(id=null){
     const traderSelect =
         document.getElementById("customerTrader");
 
-    const traderNumber =
-        document.getElementById("customerTraderNumber");
+    const traderPhone =
+        document.getElementById("customerPhone");
 
-    if(traderSelect && traderNumber){
-
+    if(traderSelect && traderPhone){
         traderSelect.addEventListener("change",function(){
-
-            traderNumber.value =
-                this.value || "";
-
+            const traderId = Number(this.value);
+            const trader = state.traders.find(function(x){
+                return Number(x.id) === traderId;
+            });
+            traderPhone.value = trader?.phone || "";
         });
-
-        traderNumber.addEventListener("input",function(){
-
-            const traderId =
-                Number(this.value);
-
-            const trader =
-                state.traders.find(function(x){
-                    return Number(x.id) === traderId;
-                });
-
-            if(trader){
-
-                traderSelect.value =
-                    String(trader.id);
-
-            }
-
-        });
-
     }
+
 
 }
 
 
 async function saveCustomer(id){
-
-    const traderNumberValue =
-        document.getElementById(
-            "customerTraderNumber"
-        ).value.trim();
-
-    const selectedTraderValue =
-        document.getElementById(
-            "customerTrader"
-        ).value;
-
-    const finalTraderId =
-        traderNumberValue
-        ? Number(traderNumberValue)
-        : (
-            selectedTraderValue
-            ? Number(selectedTraderValue)
-            : null
-        );
-
-    if(finalTraderId !== null){
-
-        const traderExists =
-            state.traders.some(function(trader){
-
-                return Number(trader.id) ===
-                    Number(finalTraderId);
-
-            });
-
-        if(!traderExists){
-
-            showToast(
-                "رقم التاجر غير موجود، اختر تاجرًا صحيحًا أو اكتب رقمه الصحيح",
-                true
-            );
-
-            return;
-
-        }
-
-    }
 
     const data={
 
