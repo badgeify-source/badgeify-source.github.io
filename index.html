@@ -185,6 +185,11 @@ button{
     grid-column:1/-1;
 }
 
+
+/* SALEH FINANCE - PROFESSIONAL FORMS */
+.finance-modal-shell{padding:2px 0}.finance-form-intro{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;border:1px solid var(--border);background:linear-gradient(135deg,rgba(24,119,242,.10),rgba(255,193,7,.06));border-radius:15px}.finance-form-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:rgba(24,119,242,.13);color:#5aa7ff;font-size:18px}.finance-form-intro h4{margin:0 0 4px;font-size:15px}.finance-form-intro p{margin:0;color:var(--muted);font-size:11px}.finance-section-title{grid-column:1/-1;font-size:11px;color:var(--gold2);font-weight:800;padding:4px 2px 0;border-bottom:1px solid var(--border);padding-bottom:8px}.finance-field{position:relative}.finance-field label{font-size:11px;font-weight:700}.finance-field input,.finance-field select,.finance-field textarea{transition:.2s;min-height:43px}.finance-field textarea{min-height:90px}.finance-field input:focus,.finance-field select:focus,.finance-field textarea:focus{box-shadow:0 0 0 3px rgba(24,119,242,.10);border-color:#1877f2}.finance-required label:after{content:' *';color:#ef6262}.finance-modal-actions{width:100%;justify-content:flex-start}.finance-modal-actions button{min-width:105px;font-weight:800}.modal-box.finance-modal{width:min(760px,100%);border-radius:24px}.modal-box.finance-modal .modal-head{padding:18px 22px;background:linear-gradient(180deg,rgba(255,255,255,.025),transparent)}.modal-box.finance-modal .modal-body{padding:20px 22px}.modal-box.finance-modal .modal-foot{padding:15px 22px;background:rgba(0,0,0,.06)}
+@media(max-width:800px){.modal-box.finance-modal{width:100%;border-radius:18px}.modal-box.finance-modal .modal-body{padding:16px}.finance-form-intro{padding:12px}.finance-modal-actions{flex-direction:column-reverse}.finance-modal-actions button{width:100%}}
+
 /* APP */
 
 .app{
@@ -10836,15 +10841,22 @@ function buildLoanAlerts(){
 
 async function openSalehFinanceEntry(kind){
  const exp=kind==='expense',A=state.financeAccounts||[];
- openModal(exp?'إضافة مصروف':'إضافة مبلغ مستلم','<div class="form-grid">'+
- '<div class="field"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0" placeholder="0.00"></div>'+
- '<div class="field"><label>الحساب</label><select id="pfAccount"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
- '<div class="field"><label>'+(exp?'بند المصروف':'نوع المبلغ')+'</label><input id="pfCategory" value="'+(exp?'أخرى':'دخل شخصي')+'" placeholder="'+(exp?'مثال: أكل، مواصلات، فواتير':'مثال: سداد دين، دخل إضافي')+'"></div>'+
- '<div class="field"><label>اسم الشخص / الجهة</label><input id="pfPerson" placeholder="مثال: أحمد أو محل كذا"></div>'+
- '<div class="field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div>'+
- '<div class="field full"><label>البيان</label><input id="pfDesc" placeholder="'+(exp?'مثال: غداء مع أحمد':'مثال: استلمت مبلغ من أحمد')+'"></div>'+
- '<div class="field full"><label>ملاحظات</label><textarea id="pfNotes" placeholder="أي تفاصيل إضافية"></textarea></div>'+
- '</div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceEntry(\''+kind+'\')">حفظ</button>');
+ const title=exp?'إضافة مصروف شخصي':'إضافة مبلغ مستلم';
+ const icon=exp?'fa-arrow-down':'fa-arrow-up';
+ const subtitle=exp?'سجّل المصروف مع الجهة والتصنيف والتفاصيل.':'سجّل المبلغ المستلم ومصدره والحساب الذي دخل إليه.';
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid '+icon+'"></i></div><div><h4>'+title+'</h4><p>'+subtitle+'</p></div></div><div class="form-grid">'+
+ '<div class="finance-section-title">البيانات المالية</div>'+
+ '<div class="field finance-field finance-required"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0" placeholder="0.00" autofocus></div>'+
+ '<div class="field finance-field finance-required"><label>الحساب</label><select id="pfAccount"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+ '<div class="field finance-field"><label>'+(exp?'بند المصروف':'نوع المبلغ')+'</label><input id="pfCategory" value="'+(exp?'أخرى':'دخل شخصي')+'" placeholder="'+(exp?'أكل، مواصلات، فواتير...':'دخل إضافي، سداد دين...')+'"></div>'+
+ '<div class="field finance-field"><label>اسم الشخص / الجهة</label><input id="pfPerson" placeholder="مثال: أحمد أو محل كذا"></div>'+
+ '<div class="field finance-field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div>'+
+ '<div class="finance-section-title">تفاصيل الحركة</div>'+
+ '<div class="field finance-field full"><label>البيان</label><input id="pfDesc" placeholder="'+(exp?'مثال: شراء احتياجات شخصية':'مثال: استلام مبلغ من أحمد')+'"></div>'+
+ '<div class="field finance-field full"><label>ملاحظات إضافية</label><textarea id="pfNotes" placeholder="اكتب أي تفاصيل تريد الاحتفاظ بها..."></textarea></div>'+
+ '</div></div>';
+ openModal(title,body,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceEntry(\''+kind+'\')"><i class="fa-solid fa-check"></i> حفظ الحركة</button></div>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveSalehFinanceEntry(kind){
  const amount=Number(document.getElementById('pfAmount').value||0),
@@ -10868,14 +10880,18 @@ async function saveSalehFinanceEntry(kind){
 }
 async function openSalehFinanceTransfer(){
  const A=state.financeAccounts||[];
- openModal('تحويل بين أموالي','<div class="form-grid">'+
- '<div class="field"><label>المبلغ</label><input id="ptAmount" type="number" step="0.01" min="0"></div>'+
- '<div class="field"><label>من</label><select id="ptFrom"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
- '<div class="field"><label>إلى</label><select id="ptTo"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
- '<div class="field"><label>التاريخ</label><input id="ptDate" type="date" value="'+isoDate(new Date())+'"></div>'+
- '<div class="field full"><label>سبب / بيان التحويل</label><input id="ptDesc" placeholder="مثال: تحويل فلوس من الكاش إلى فودافون كاش"></div>'+
- '<div class="field full"><label>ملاحظات</label><textarea id="ptNotes"></textarea></div>'+
- '</div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceTransfer()">تحويل</button>');
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-right-left"></i></div><div><h4>تحويل بين حساباتك</h4><p>انقل مبلغًا من محفظة أو حساب إلى حساب آخر بدون اعتباره دخلًا أو مصروفًا.</p></div></div><div class="form-grid">'+
+ '<div class="finance-section-title">تفاصيل التحويل</div>'+
+ '<div class="field finance-field finance-required"><label>المبلغ</label><input id="ptAmount" type="number" step="0.01" min="0" placeholder="0.00"></div>'+
+ '<div class="field finance-field finance-required"><label>من الحساب</label><select id="ptFrom"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+ '<div class="field finance-field finance-required"><label>إلى الحساب</label><select id="ptTo"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+ '<div class="field finance-field"><label>التاريخ</label><input id="ptDate" type="date" value="'+isoDate(new Date())+'"></div>'+
+ '<div class="finance-section-title">البيان</div>'+
+ '<div class="field finance-field full"><label>سبب / بيان التحويل</label><input id="ptDesc" placeholder="مثال: تحويل من الكاش إلى Vodafone Cash"></div>'+
+ '<div class="field finance-field full"><label>ملاحظات</label><textarea id="ptNotes" placeholder="أي تفاصيل إضافية..."></textarea></div>'+
+ '</div></div>';
+ openModal('تحويل بين أموالك',body,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تنفيذ التحويل</button></div>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveSalehFinanceTransfer(){
  const n=Number(document.getElementById('ptAmount').value||0),
