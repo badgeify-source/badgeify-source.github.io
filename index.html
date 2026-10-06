@@ -1438,6 +1438,9 @@ let state={
     logs:[],
     financeAccounts:[],
     financeTransactions:[],
+    loanPeople:[],
+    loans:[],
+    loanPayments:[],
     settings:{}
 
 };
@@ -10690,6 +10693,28 @@ async function loadFinanceData(){
   }
  }catch(e){state.financeAccounts=[];state.financeTransactions=[];console.warn('Saleh Finance not ready:',e.message);}
 }
+async function loadLoanData(){
+ try{
+  const p=await db.from('personal_finance_loan_people').select('*').order('person_name',{ascending:true});
+  const l=await db.from('personal_finance_loans').select('*').order('loan_date',{ascending:false}).order('created_at',{ascending:false});
+  const r=await db.from('personal_finance_loan_payments').select('*').order('payment_date',{ascending:false}).order('created_at',{ascending:false});
+  if(p.error)throw p.error;if(l.error)throw l.error;if(r.error)throw r.error;
+  state.loanPeople=p.data||[];state.loans=l.data||[];state.loanPayments=r.data||[];
+ }catch(e){
+  state.loanPeople=[];state.loans=[];state.loanPayments=[];
+  console.warn('Saleh Loans not ready:',e.message);
+ }
+}
+function loanPerson(id){return (state.loanPeople||[]).find(x=>String(x.id)===String(id))||null;}
+function loanPaid(loanId){return (state.loanPayments||[]).filter(x=>String(x.loan_id)===String(loanId)).reduce((s,x)=>s+Number(x.amount||0),0);}
+function loanRemaining(loan){return Math.max(0,Number(loan?.amount||0)-loanPaid(loan?.id));}
+function loanStatusText(loan){
+ const rem=loanRemaining(loan);
+ if(rem<=0)return 'مسدد';
+ if(loan?.due_date && String(loan.due_date)<isoDate(new Date()))return 'متأخر';
+ return loanPaid(loan?.id)>0?'مسدد جزئي':'مفتوح';
+}
+
 function financeAccount(type){return (state.financeAccounts||[]).find(x=>x.account_type===type)||null;}
 function financeBalance(id){const a=(state.financeAccounts||[]).find(x=>String(x.id)===String(id));if(!a)return 0;return Number(a.opening_balance||0)+(state.financeTransactions||[]).filter(x=>String(x.account_id)===String(id)).reduce((s,x)=>s+Number(x.amount||0),0);}
 async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date,notes,customerName){
@@ -10706,8 +10731,69 @@ function renderPersonalFinance(){
  const income=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)>0&&x.transaction_type!=='transfer').reduce((s,x)=>s+Number(x.amount),0);
  const expense=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)<0&&x.transaction_type==='expense').reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
  const cards=[['إجمالي أموالي',total,'fa-wallet'],['الكاش / الجيب',cash,'fa-money-bill-wave'],['Vodafone Cash',vod,'fa-mobile-screen-button'],['InstaPay',insta,'fa-building-columns']];
- document.getElementById('content').innerHTML='<div class="page-head"><div><h1>لوحة تحكم صالح</h1><p>أموالك الشخصية منفصلة عن نظام العملاء والاشتراكات</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')">مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')">مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()">تحويل</button></div></div><div class="grid stats">'+cards.map(x=>'<div class="stat"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div><div class="grid stats" style="margin-top:16px"><div class="stat"><h2>'+money(income)+'</h2><p>المقبوضات هذا الشهر</p></div><div class="stat"><h2>'+money(expense)+'</h2><p>المصروفات هذا الشهر</p></div><div class="stat"><h2>'+money(income-expense)+'</h2><p>صافي الحركة</p></div><div class="stat"><h2>'+T.length+'</h2><p>إجمالي الحركات</p></div></div><div class="grid cols" style="margin-top:16px"><div class="card"><div class="card-head"><h3>آخر الحركات</h3></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+T.slice(0,30).map(x=>{const a=A.find(z=>String(z.id)===String(x.account_id)),p=Number(x.amount)>=0;return '<tr><td>'+formatDate(x.transaction_date)+'</td><td>'+esc(x.description||'-')+'</td><td>'+esc(a?.account_name||'-')+'</td><td>'+esc(x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':'تحويل')+'</td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مالية</div></td></tr>'+'</tbody></table></div></div></div><div class="card"><div class="card-head"><h3>حساباتي</h3></div><div class="card-body"><div class="list">'+A.map(a=>'<div class="list-item"><b>'+esc(a.account_name)+'</b><strong class="money">'+money(financeBalance(a.id))+' '+esc(cur)+'</strong></div>').join('')+'</div></div></div></div>';
+ document.getElementById('content').innerHTML='<div class="page-head"><div><h1>لوحة تحكم صالح</h1><p>أموالك الشخصية منفصلة عن نظام العملاء والاشتراكات</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')">مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')">مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()">تحويل</button><button class="ghost-btn" onclick="openSalehLoan()">سلفة جديدة</button></div></div><div class="grid stats">'+cards.map(x=>'<div class="stat"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div><div class="grid stats" style="margin-top:16px"><div class="stat"><h2>'+money(income)+'</h2><p>المقبوضات هذا الشهر</p></div><div class="stat"><h2>'+money(expense)+'</h2><p>المصروفات هذا الشهر</p></div><div class="stat"><h2>'+money(income-expense)+'</h2><p>صافي الحركة</p></div><div class="stat"><h2>'+T.length+'</h2><p>إجمالي الحركات</p></div></div><div class="grid cols" style="margin-top:16px"><div class="card"><div class="card-head"><h3>آخر الحركات</h3></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+T.slice(0,30).map(x=>{const a=A.find(z=>String(z.id)===String(x.account_id)),p=Number(x.amount)>=0;return '<tr><td>'+formatDate(x.transaction_date)+'</td><td>'+esc(x.description||'-')+'</td><td>'+esc(a?.account_name||'-')+'</td><td>'+esc(x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':'تحويل')+'</td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مالية</div></td></tr>'+'</tbody></table></div></div></div><div class="card"><div class="card-head"><h3>حساباتي</h3></div><div class="card-body"><div class="list">'+A.map(a=>'<div class="list-item"><b>'+esc(a.account_name)+'</b><strong class="money">'+money(financeBalance(a.id))+' '+esc(cur)+'</strong></div>').join('')+'</div></div></div></div>';
+ setTimeout(renderPersonalFinanceLoans,0);
 }
+function renderPersonalFinanceLoans(){
+ const host=document.getElementById('content');if(!host||state.page!=='personalFinance')return;
+ const loans=state.loans||[],cur=state.settings.currency||'EGP';
+ const open=loans.filter(x=>loanRemaining(x)>0);
+ const overdue=open.filter(x=>x.due_date&&String(x.due_date)<isoDate(new Date()));
+ const dueSoon=open.filter(x=>{if(!x.due_date)return false;const d=Math.ceil((new Date(x.due_date+'T00:00:00')-new Date(isoDate(new Date())+'T00:00:00'))/86400000);return d>=0&&d<=3;});
+ const total=open.reduce((s,x)=>s+loanRemaining(x),0);
+ const rows=open.map(x=>{const p=loanPerson(x.person_id),rem=loanRemaining(x),st=loanStatusText(x);return '<tr><td><b>'+esc(p?.person_name||'شخص')+'</b></td><td>'+money(x.amount)+' '+esc(cur)+'</td><td>'+money(loanPaid(x.id))+' '+esc(cur)+'</td><td class="money">'+money(rem)+' '+esc(cur)+'</td><td>'+esc(x.due_date||'بدون موعد')+'</td><td><span class="badge '+(st==='متأخر'?'overdue':st==='مسدد جزئي'?'due':'upcoming')+'">'+st+'</span></td><td><button class="mini-btn pay" onclick="openLoanRepayment('+x.id+')">تسجيل سداد</button></td></tr>';}).join('')||'<tr><td colspan="7"><div class="empty">لا توجد سلف مفتوحة حاليًا</div></td></tr>';
+ const box=document.createElement('div');box.className='card';box.style.marginTop='16px';
+ box.innerHTML='<div class="card-head"><h3>السلف والتذكيرات</h3><div class="muted">متبقي '+money(total)+' '+esc(cur)+' • متأخر '+overdue.length+' • مستحق قريبًا '+dueSoon.length+'</div></div><div class="card-body"><div class="grid stats" style="margin-bottom:16px"><div class="stat"><h2>'+money(total)+'</h2><p>إجمالي المتبقي عند الناس</p></div><div class="stat"><h2>'+overdue.length+'</h2><p>سلف متأخرة</p></div><div class="stat"><h2>'+dueSoon.length+'</h2><p>تستحق خلال 3 أيام</p></div><div class="stat"><h2>'+open.length+'</h2><p>سلف مفتوحة</p></div></div><div class="table-wrap"><table class="table"><thead><tr><th>الشخص</th><th>أصل السلفة</th><th>المسدد</th><th>المتبقي</th><th>موعد السداد</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+ host.appendChild(box);
+}
+async function openSalehLoan(){
+ const A=state.financeAccounts||[],P=state.loanPeople||[];
+ openModal('إضافة سلفة','<div class="form-grid"><div class="field"><label>الشخص</label><select id="loanPerson"><option value="">اختر شخصًا</option>'+P.map(p=>'<option value="'+p.id+'">'+esc(p.person_name)+'</option>').join('')+'</select></div><div class="field"><label>اسم شخص جديد (اختياري)</label><input id="loanNewPerson"></div><div class="field"><label>المبلغ</label><input id="loanAmount" type="number" min="0" step="0.01"></div><div class="field"><label>من حساب</label><select id="loanAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ السلفة</label><input id="loanDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>موعد السداد</label><input id="loanDue" type="date" value="'+isoDate(new Date(Date.now()+7*86400000))+'"></div><div class="field full"><label>الغرض</label><input id="loanPurpose"></div><div class="field full"><label>ملاحظات</label><textarea id="loanNotes"></textarea></div></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehLoan()">حفظ السلفة</button>');
+}
+async function saveSalehLoan(){
+ const select=document.getElementById('loanPerson').value,newName=document.getElementById('loanNewPerson').value.trim(),amount=Number(document.getElementById('loanAmount').value||0),account=document.getElementById('loanAccount').value,date=document.getElementById('loanDate').value,due=document.getElementById('loanDue').value,purpose=document.getElementById('loanPurpose').value.trim(),notes=document.getElementById('loanNotes').value||'';
+ if(amount<=0||!account||(!select&&!newName)){showToast('أدخل الشخص والمبلغ واختر الحساب',true);return;}
+ let personId=select;
+ if(!personId){
+  const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser?.id,person_name:newName}).select('*').single();
+  if(p.error){showToast(p.error.message,true);return;}personId=p.data.id;
+ }
+ const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,amount,wallet_account_id:account,loan_date:date,due_date:due||null,purpose:purpose||null,notes:notes||null}).select('*').single();
+ if(l.error){showToast(l.error.message,true);return;}
+ const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:-Math.abs(amount),transaction_type:'adjustment',category:'سلفة',description:'سلفة لـ '+(newName||loanPerson(personId)?.person_name||'شخص'),source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:notes||null});
+ if(tx.error){console.warn('Loan wallet sync:',tx.error.message);}
+ closeModal();await refresh();showToast('تم تسجيل السلفة');
+}
+async function openLoanRepayment(loanId){
+ const loan=(state.loans||[]).find(x=>String(x.id)===String(loanId));if(!loan)return;
+ const p=loanPerson(loan.person_id),rem=loanRemaining(loan),A=state.financeAccounts||[];
+ openModal('تسجيل سداد — '+esc(p?.person_name||'شخص'),'<div class="form-grid"><div class="field"><label>المتبقي</label><input value="'+money(rem)+'" disabled></div><div class="field"><label>المبلغ المسدد</label><input id="loanPayAmount" type="number" min="0" max="'+rem+'" step="0.01"></div><div class="field"><label>استلام في</label><select id="loanPayAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ السداد</label><input id="loanPayDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field full"><label>ملاحظات</label><textarea id="loanPayNotes"></textarea></div></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveLoanRepayment('+loan.id+')">حفظ السداد</button>');
+}
+async function saveLoanRepayment(loanId){
+ const loan=(state.loans||[]).find(x=>String(x.id)===String(loanId));if(!loan)return;
+ const rem=loanRemaining(loan),amount=Number(document.getElementById('loanPayAmount').value||0),account=document.getElementById('loanPayAccount').value,date=document.getElementById('loanPayDate').value,notes=document.getElementById('loanPayNotes').value||'';
+ if(amount<=0||amount>rem||!account){showToast('أدخل مبلغ السداد واختر الحساب',true);return;}
+ const p=await db.from('personal_finance_loan_payments').insert({user_id:currentUser?.id,loan_id:loanId,amount,wallet_account_id:account,payment_date:date,notes}).select('*').single();
+ if(p.error){showToast(p.error.message,true);return;}
+ const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:Math.abs(amount),transaction_type:'adjustment',category:'سداد سلفة',description:'سداد من '+(loanPerson(loan.person_id)?.person_name||'شخص'),source_type:'loan_payment',source_id:String(p.data.id),transaction_date:date,notes});
+ if(tx.error){console.warn('Loan repayment wallet sync:',tx.error.message);}
+ const newRemaining=rem-amount;
+ await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser?.id);
+ closeModal();await refresh();showToast(newRemaining<=0?'تم سداد السلفة بالكامل':'تم تسجيل السداد');
+}
+function buildLoanAlerts(){
+ const alerts=[],today=isoDate(new Date());
+ (state.loans||[]).forEach(function(loan){
+  const rem=loanRemaining(loan);if(rem<=0||!loan.due_date)return;
+  const d=Math.ceil((new Date(String(loan.due_date)+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+  if(d>2)return;
+  const p=loanPerson(loan.person_id),name=p?.person_name||'شخص';
+  let body=d<0?'السلفة على '+name+' متأخرة '+Math.abs(d)+' يوم.':d===0?'السلفة على '+name+' مستحقة اليوم.':d===1?'السلفة على '+name+' مستحقة غدًا.':'السلفة على '+name+' مستحقة خلال يومين.';
+  alerts.push({id:'loan_'+loan.id+'_'+d,title:'تذكير سلفة',body:body+' المتبقي: '+money(rem)+' '+(state.settings.currency||'EGP')});
+ });
+ return alerts;
+}
+
 async function openSalehFinanceEntry(kind){
  const exp=kind==='expense',A=state.financeAccounts||[];
  openModal(exp?'إضافة مصروف':'إضافة مبلغ مستلم','<div class="form-grid"><div class="field"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0"></div><div class="field"><label>الحساب</label><select id="pfAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>التصنيف</label><input id="pfCategory" value="'+(exp?'أخرى':'دخل شخصي')+'"></div><div class="field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field full"><label>البيان</label><input id="pfDesc"></div><div class="field full"><label>ملاحظات</label><textarea id="pfNotes"></textarea></div></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehFinanceEntry(\''+kind+'\')">حفظ</button>');
@@ -10735,6 +10821,7 @@ async function refresh(){
 
         await loadData();
         await loadFinanceData();
+        await loadLoanData();
 
         render();
 
@@ -10809,7 +10896,10 @@ function render(){
         renderSettings,
 
         activity:
-        renderActivity
+        renderActivity,
+
+        personalFinance:
+        renderPersonalFinance
 
     };
 
@@ -11240,7 +11330,7 @@ function buildDueAlerts(){
 async function showAutomaticDueNotifications(){
     if(!("Notification" in window) || Notification.permission!=="granted") return;
 
-    const alerts=buildDueAlerts();
+    const alerts=buildDueAlerts().concat(buildLoanAlerts());
     if(!alerts.length) return;
 
     const sentKey="badgeify_sent_due_notifications_"+new Date().toISOString().slice(0,10);
