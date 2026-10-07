@@ -16,6 +16,7 @@ create table if not exists public.personal_finance_loans (
   user_id uuid not null references auth.users(id) on delete cascade,
   person_id bigint not null references public.personal_finance_loan_people(id) on delete cascade,
   amount numeric(14,2) not null check (amount > 0),
+  loan_direction text not null default 'lent' check (loan_direction in ('lent','borrowed')),
   wallet_account_id bigint references public.personal_finance_accounts(id) on delete set null,
   loan_date date not null default current_date,
   due_date date,
@@ -35,6 +36,21 @@ create table if not exists public.personal_finance_loan_payments (
   notes text,
   created_at timestamptz not null default now()
 );
+
+-- ترقية آمنة للجدول الموجود: السجلات القديمة تعتبر "فلوس مسلفها" (lent) لأنها كانت تعمل بالنظام القديم بهذه الصورة.
+alter table public.personal_finance_loans
+  add column if not exists loan_direction text not null default 'lent';
+
+update public.personal_finance_loans
+set loan_direction = 'lent'
+where loan_direction is null;
+
+alter table public.personal_finance_loans
+  drop constraint if exists personal_finance_loans_loan_direction_check;
+
+alter table public.personal_finance_loans
+  add constraint personal_finance_loans_loan_direction_check
+  check (loan_direction in ('lent','borrowed'));
 
 create index if not exists idx_pf_loan_people_user on public.personal_finance_loan_people(user_id);
 create index if not exists idx_pf_loans_user_person on public.personal_finance_loans(user_id, person_id);
