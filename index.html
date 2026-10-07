@@ -10846,43 +10846,47 @@ async function saveSalehReconcile(accountId){
  if(r.error){showToast(r.error.message,true);return;}
  closeModal();await refresh();showToast('تمت مطابقة رصيد '+account.account_name);
 }
-async function saveSalehOpeningBalance(){
- const accountId=document.getElementById('salehOpeningAccount')?.value;
- const amount=Number(document.getElementById('salehOpeningAmount')?.value);
- const notes=(document.getElementById('salehOpeningNotes')?.value||'').trim();
- if(!accountId||!Number.isFinite(amount)){showToast('ادخل الحساب ورصيد افتتاحي صحيح.',true);return;}
- const account=(state.financeAccounts||[]).find(a=>String(a.id)===String(accountId));
- if(!account){showToast('الحساب غير موجود.',true);return;}
+async function saveSalehOpeningBalances(){
+ const A=state.financeAccounts||[];
+ const fields=[
+  {id:'salehOpenCash',type:'cash',label:'الكاش / الجيب'},
+  {id:'salehOpenInstapay',type:'instapay',label:'InstaPay'},
+  {id:'salehOpenVodafone',type:'vodafone_cash',label:'Vodafone Cash'}
+ ];
+ const values=fields.map(f=>({ ...f, amount:Number(document.getElementById(f.id)?.value||0) }));
+ if(values.some(x=>!Number.isFinite(x.amount))){showToast('تأكد من إدخال كل الأرصدة بشكل صحيح.',true);return;}
  try{
-  const up=await db.from('personal_finance_accounts')
-   .update({opening_balance:amount,updated_at:new Date().toISOString()})
-   .eq('id',account.id).eq('user_id',currentUser.id).select('*').single();
-  if(up.error)throw up.error;
-  if(notes){
-   const oldNote=(account.opening_balance_note||'').trim();
-   // نحفظ الملاحظة داخل الذاكرة فقط إذا لم يوجد عمود مخصص؛ الرصيد نفسه هو المصدر الرسمي.
-   console.info('Opening balance note:',notes,oldNote);
+  for(const item of values){
+   const account=A.find(a=>String(a.account_type||a.type||'').toLowerCase()===item.type);
+   if(!account)continue;
+   const up=await db.from('personal_finance_accounts')
+    .update({opening_balance:item.amount,updated_at:new Date().toISOString()})
+    .eq('id',account.id).eq('user_id',currentUser.id);
+   if(up.error)throw up.error;
   }
   closeModal();
   await loadFinanceData();
   render();
-  showToast('تم حفظ الرصيد الافتتاحي لـ '+account.account_name);
+  showToast('تم حفظ الأرصدة الافتتاحية للكاش وInstaPay وVodafone Cash');
  }catch(e){
-  console.error('OPENING BALANCE',e);
-  showToast(e.message||'تعذر حفظ الرصيد الافتتاحي.',true);
+  console.error('OPENING BALANCES',e);
+  showToast(e.message||'تعذر حفظ الأرصدة الافتتاحية.',true);
  }
 }
 function openSalehOpeningBalance(){
  const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
+ const get=(type)=>A.find(a=>String(a.account_type||a.type||'').toLowerCase()===type);
+ const val=(type)=>{const a=get(type);return a?financeBalance(a.id):0;};
  const html='<div class="finance-modal-shell">'+
-  '<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-vault"></i></div><div><h4>تحديد الأرصدة الافتتاحية</h4><p>حدد المبلغ الموجود فعليًا في الحساب قبل بدء تسجيل الحركات على لوحة صالح.</p></div></div>'+
+  '<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-vault"></i></div><div><h4>الأرصدة الافتتاحية</h4><p>حدد الرصيد الموجود فعليًا في كل حساب قبل بدء تسجيل الحركات. الرصيد الافتتاحي لا يُحسب دخلًا ولا ربحًا.</p></div></div>'+
   '<div class="form-grid">'+
-  '<div class="finance-section-title">الحساب والرصيد</div>'+
-  '<div class="field finance-field finance-required"><label>الحساب</label><select id="salehOpeningAccount">'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+' — الرصيد الحالي: '+money(financeBalance(a.id))+' '+esc(cur)+'</option>').join('')+'</select></div>'+
-  '<div class="field finance-field finance-required"><label>الرصيد الافتتاحي</label><input id="salehOpeningAmount" type="number" step="0.01" placeholder="مثال: 5000 أو -500"></div>'+
-  '<div class="field finance-field full"><label>ملاحظات</label><textarea id="salehOpeningNotes" placeholder="مثال: الرصيد الموجود قبل استخدام لوحة صالح"></textarea></div>'+
-  '</div></div>';
- openModal('الرصيد الافتتاحي',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalance()"><i class="fa-solid fa-check"></i> حفظ الرصيد</button></div>');
+  '<div class="field finance-field finance-required"><label>الكاش / الجيب</label><input id="salehOpenCash" type="number" step="0.01" value="'+val('cash')+'" placeholder="مثال: 5000"></div>'+
+  '<div class="field finance-field finance-required"><label>InstaPay</label><input id="salehOpenInstapay" type="number" step="0.01" value="'+val('instapay')+'" placeholder="مثال: 3000"></div>'+
+  '<div class="field finance-field finance-required"><label>Vodafone Cash</label><input id="salehOpenVodafone" type="number" step="0.01" value="'+val('vodafone_cash')+'" placeholder="مثال: 2000"></div>'+
+  '</div>'+
+  '<div class="finance-reconcile-note" style="margin-top:12px">سيتم تحديث الرصيد الافتتاحي لكل حساب فقط، مع الحفاظ على جميع الحركات السابقة وعدم اعتبار المبلغ إيرادًا.</div>'+
+  '</div>';
+ openModal('الأرصدة الافتتاحية',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalances()"><i class="fa-solid fa-check"></i> حفظ الأرصدة</button></div>');
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 function renderPersonalFinanceLoans(){
