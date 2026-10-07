@@ -8901,6 +8901,24 @@ td{font-size:12px}
     .page{width:100%;margin:0;box-shadow:none;border-radius:0}
     .print{display:none}
 }
+
+/* SALEH FINANCE v2 */
+.finance-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
+.finance-search{display:flex;gap:8px;flex:1;min-width:240px}
+.finance-search input,.finance-search select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:var(--panel2);color:var(--text);outline:none}
+.finance-search input:focus,.finance-search select:focus{border-color:var(--blue)}
+.finance-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.finance-kpi{padding:15px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(145deg,rgba(24,119,242,.08),rgba(255,255,255,.015))}
+.finance-kpi span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
+.finance-kpi b{font-size:19px}
+.finance-kpi.profit b{color:var(--green)}
+.finance-kpi.expense b{color:var(--red)}
+.finance-reconcile{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.finance-reconcile .field{margin:0}
+.finance-reconcile-note{font-size:10px;color:var(--muted);line-height:1.8}
+@media(max-width:900px){.finance-kpis{grid-template-columns:repeat(2,1fr)}.finance-reconcile{grid-template-columns:1fr}}
+@media(max-width:520px){.finance-kpis{grid-template-columns:1fr}.finance-search{min-width:100%;flex-direction:column}.finance-toolbar .ghost-btn,.finance-toolbar .gold-btn{width:100%}}
+
 </style>
 </head>
 <body>
@@ -10755,33 +10773,78 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
 function renderPersonalFinance(){
  try{
   const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=(state.settings&&state.settings.currency)||'EGP';
-  const bal=function(type){const a=financeAccount(type);return a?financeBalance(a.id):0;};
-  const cash=bal('cash'),vod=bal('vodafone_cash'),insta=bal('instapay'),total=cash+vod+insta,m=monthKey(new Date());
-  const income=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)>0&&x.transaction_type!=='transfer').reduce((s,x)=>s+Number(x.amount),0);
-  const expense=T.filter(x=>String(x.transaction_date).slice(0,7)===m&&Number(x.amount)<0&&x.transaction_type==='expense').reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
+  const bal=id=>financeBalance(id);
+  const accountBal=type=>{const a=financeAccount(type);return a?bal(a.id):0;};
+  const cash=accountBal('cash'),vod=accountBal('vodafone_cash'),insta=accountBal('instapay');
+  const total=A.reduce((s,a)=>s+bal(a.id),0);
+  const m=monthKey(new Date());
+  const monthRows=T.filter(x=>String(x.transaction_date||'').slice(0,7)===m);
+  const income=monthRows.filter(x=>x.transaction_type==='income'&&Number(x.amount)>0).reduce((s,x)=>s+Number(x.amount),0);
+  const expense=monthRows.filter(x=>x.transaction_type==='expense'&&Number(x.amount)<0).reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
+  const profit=income-expense;
   const activeLoans=(state.loans||[]).filter(x=>x.status!=='cancelled');
   const totalLoans=activeLoans.reduce((s,x)=>s+Number(x.amount||0),0);
   const totalRepaid=(state.loanPayments||[]).filter(p=>activeLoans.some(l=>String(l.id)===String(p.loan_id))).reduce((s,x)=>s+Number(x.amount||0),0);
   const totalLoanRemaining=Math.max(0,totalLoans-totalRepaid);
   const openLoans=activeLoans.filter(x=>loanRemaining(x)>0).length;
   const overdueLoans=activeLoans.filter(x=>loanRemaining(x)>0&&x.due_date&&String(x.due_date)<isoDate(new Date())).length;
+
   const cards=[
    ['إجمالي أموالي',total,'fa-wallet','finance-main'],
    ['الكاش / الجيب',cash,'fa-money-bill-wave',''],
    ['Vodafone Cash',vod,'fa-mobile-screen-button',''],
    ['InstaPay',insta,'fa-building-columns','']
   ];
-  const accountCards=A.map(a=>'<div class="finance-account-card"><div class="finance-account-top"><div class="finance-account-icon"><i class="fa-solid '+(a.account_type==='cash'?'fa-money-bill-wave':a.account_type==='vodafone_cash'?'fa-mobile-screen-button':a.account_type==='instapay'?'fa-building-columns':'fa-wallet')+'"></i></div><div><b>'+esc(a.account_name)+'</b><small>الرصيد الافتتاحي: '+money(Number(a.opening_balance||0))+' '+esc(cur)+'</small></div></div><strong>'+money(financeBalance(a.id))+' <small>'+esc(cur)+'</small></strong></div>').join('');
-  const txRows=T.slice(0,30).map(x=>{const a=A.find(z=>String(z.id)===String(x.account_id)),p=Number(x.amount)>=0;return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+esc(x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية')+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';}).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مالية حتى الآن</div></td></tr>';
+
+  const accountCards=A.map(a=>'<div class="finance-account-card"><div class="finance-account-top"><div class="finance-account-icon"><i class="fa-solid '+(a.account_type==='cash'?'fa-money-bill-wave':a.account_type==='vodafone_cash'?'fa-mobile-screen-button':a.account_type==='instapay'?'fa-building-columns':'fa-wallet')+'"></i></div><div><b>'+esc(a.account_name)+'</b><small>الرصيد الافتتاحي: '+money(Number(a.opening_balance||0))+' '+esc(cur)+'</small></div></div><strong>'+money(bal(a.id))+' <small>'+esc(cur)+'</small></strong><button class="mini-btn" style="margin-top:8px" onclick="openSalehReconcile('+a.id+')">مطابقة الرصيد</button></div>').join('');
+
+  const filterText=(document.getElementById('salehFinanceSearch')?.value||'').trim().toLowerCase();
+  const filterType=document.getElementById('salehFinanceType')?.value||'all';
+  const filtered=T.filter(x=>{
+    const a=A.find(z=>String(z.id)===String(x.account_id));
+    const hay=(String(x.description||'')+' '+String(x.category||'')+' '+String(a?.account_name||'')).toLowerCase();
+    return (!filterText||hay.includes(filterText)) && (filterType==='all'||x.transaction_type===filterType);
+  });
+  const txRows=filtered.slice(0,50).map(x=>{
+    const a=A.find(z=>String(z.id)===String(x.account_id));
+    const p=Number(x.amount)>=0;
+    const type=x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
+    return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';
+  }).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
+
   document.getElementById('content').innerHTML=
-   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>مركز مالي شخصي لمتابعة السيولة، المصروفات، السلف والحركات اليومية.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button></div></div>'+
-   '<div class="finance-hero"><div><span>السيولة الحالية</span><strong>'+money(total)+' <small>'+esc(cur)+'</small></strong><p>إجمالي الأرصدة الفعلية في حساباتك</p></div><div class="finance-hero-side"><span>صافي الشهر</span><b>'+money(income-expense)+' '+esc(cur)+'</b><small>مقبوضات '+money(income)+' • مصروفات '+money(expense)+'</small></div></div>'+
+   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button></div></div>'+
+   '<div class="finance-hero"><div><span>السيولة الحالية</span><strong>'+money(total)+' <small>'+esc(cur)+'</small></strong><p>إجمالي كل حساباتك الحالية</p></div><div class="finance-hero-side"><span>صافي الشهر</span><b>'+money(profit)+' '+esc(cur)+'</b><small>مقبوضات '+money(income)+' • مصروفات '+money(expense)+'</small></div></div>'+
    '<div class="grid stats finance-stat-grid">'+cards.map(x=>'<div class="stat '+x[3]+'"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div>'+
-   '<div class="finance-loan-summary"><div class="finance-summary-title"><div><h3>ملخص السلف</h3><p>صورة سريعة عن كل السلف التي تم صرفها وردّها</p></div><button class="mini-btn pay" onclick="openSalehLoan()">إضافة سلفة</button></div><div class="finance-loan-cards"><div><span>إجمالي السلف</span><b>'+money(totalLoans)+' '+esc(cur)+'</b></div><div><span>إجمالي رد السلف</span><b>'+money(totalRepaid)+' '+esc(cur)+'</b></div><div><span>المتبقي من السلف</span><b>'+money(totalLoanRemaining)+' '+esc(cur)+'</b></div><div><span>سلف مفتوحة</span><b>'+openLoans+'</b><small> منها '+overdueLoans+' متأخرة</small></div></div></div>'+
-   '<div class="finance-account-section"><div class="finance-section-header"><div><h3>حساباتك</h3><p>الأرصدة بعد احتساب الرصيد الافتتاحي وكل الحركات</p></div><button class="mini-btn" onclick="openSalehOpeningBalance()">تعديل الرصيد الافتتاحي</button></div><div class="finance-account-grid">'+(accountCards||'<div class="empty">لا توجد حسابات</div>')+'</div></div>'+
-   '<div class="grid cols finance-main-grid"><div class="card"><div class="card-head"><div><h3>آخر الحركات</h3><span class="muted">آخر 30 حركة</span></div></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div><div class="card"><div class="card-head"><div><h3>مؤشرات سريعة</h3><span class="muted">هذا الشهر</span></div></div><div class="card-body"><div class="finance-mini-metrics"><div><span>المقبوضات</span><b>'+money(income)+' '+esc(cur)+'</b></div><div><span>المصروفات</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div><span>صافي الحركة</span><b>'+money(income-expense)+' '+esc(cur)+'</b></div><div><span>إجمالي الحركات</span><b>'+T.length+'</b></div></div></div></div></div>';
+   '<div class="finance-kpis"><div class="finance-kpi"><span>مقبوضات الشهر</span><b>'+money(income)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>مصروفات الشهر</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي الربح / الحركة</span><b>'+money(profit)+' '+esc(cur)+'</b></div><div class="finance-kpi"><span>عدد الحركات</span><b>'+T.length+'</b></div></div>'+
+   '<div class="finance-loan-summary"><div class="finance-summary-title"><div><h3>ملخص السلف</h3><p>إجمالي السلف، ما تم رده، والمتبقي</p></div><button class="mini-btn pay" onclick="openSalehLoan()">إضافة سلفة</button></div><div class="finance-loan-cards"><div><span>إجمالي السلف</span><b>'+money(totalLoans)+' '+esc(cur)+'</b></div><div><span>إجمالي رد السلف</span><b>'+money(totalRepaid)+' '+esc(cur)+'</b></div><div><span>المتبقي من السلف</span><b>'+money(totalLoanRemaining)+' '+esc(cur)+'</b></div><div><span>سلف مفتوحة</span><b>'+openLoans+'</b><small> منها '+overdueLoans+' متأخرة</small></div></div></div>'+
+   '<div class="finance-account-section"><div class="finance-section-header"><div><h3>حساباتك</h3><p>الرصيد الافتتاحي + كل الحركات المسجلة</p></div><button class="mini-btn" onclick="openSalehOpeningBalance()">تعديل الرصيد الافتتاحي</button></div><div class="finance-account-grid">'+(accountCards||'<div class="empty">لا توجد حسابات</div>')+'</div></div>'+
+   '<div class="card" style="margin-top:16px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
+   '<div class="grid cols finance-main-grid" style="margin-top:16px"><div class="card"><div class="card-head"><div><h3>مؤشرات هذا الشهر</h3><span class="muted">الدخل والمصروف وصافي الحركة</span></div></div><div class="card-body"><div class="finance-mini-metrics"><div><span>المقبوضات</span><b>'+money(income)+' '+esc(cur)+'</b></div><div><span>المصروفات</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div><span>الصافي</span><b>'+money(profit)+' '+esc(cur)+'</b></div></div></div></div><div class="card"><div class="card-head"><div><h3>قاعدة النظام</h3><span class="muted">ممنوع تكرار تسجيل العملية</span></div></div><div class="card-body"><div class="muted" style="line-height:2">دفع العميل من السيستم الأساسي يدخل تلقائيًا في الحساب المختار. التحويل بين حساباتك لا يُحسب دخلًا. المصروف يقلل الرصيد. السلفة والرد عليها يتحركان من الحسابات تلقائيًا.</div></div></div></div>';
   setTimeout(renderPersonalFinanceLoans,0);
- }catch(e){console.error('SALEH FINANCE RENDER ERROR',e);document.getElementById('content').innerHTML='<div class="card"><div class="card-body"><h3>لوحة تحكم صالح</h3><p class="muted">تعذر تحميل لوحة التحكم حاليًا. تأكد من تشغيل ملفات قاعدة البيانات في Supabase ثم اضغط تحديث.</p></div></div>';}
+ }catch(e){console.error('SALEH FINANCE RENDER ERROR',e);document.getElementById('content').innerHTML='<div class="card"><div class="card-body"><h3>لوحة تحكم صالح</h3><p class="muted">تعذر تحميل لوحة التحكم حاليًا. تأكد من تشغيل جداول لوحة صالح في Supabase ثم اضغط تحديث.</p></div></div>';}
+}
+
+async function openSalehReconcile(accountId){
+ const account=(state.financeAccounts||[]).find(a=>String(a.id)===String(accountId));
+ if(!account)return;
+ const cur=(state.settings&&state.settings.currency)||'EGP';
+ const current=financeBalance(account.id);
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>مطابقة الرصيد الفعلي</h4><p>اكتب الرصيد الموجود فعلًا في الحساب، والنظام يسجل الفرق كتسوية بدل ما نعدل التاريخ القديم.</p></div></div><div class="finance-reconcile"><div class="field"><label>الحساب</label><input value="'+esc(account.account_name)+'" disabled></div><div class="field"><label>الرصيد المسجل</label><input value="'+money(current)+' '+esc(cur)+'" disabled></div><div class="field"><label>الرصيد الفعلي الآن</label><input id="reconcileActual" type="number" step="0.01" value="'+current+'"></div></div><div class="finance-reconcile-note" style="margin-top:12px">لو فيه فرق، سيتم تسجيل حركة "تسوية رصيد" بالمبلغ اللازم فقط. هذا يحافظ على سجل الحركات بدل حذف أو تعديل العمليات السابقة.</div></div>';
+ openModal('مطابقة رصيد '+esc(account.account_name),body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehReconcile('+account.id+')"><i class="fa-solid fa-check"></i> حفظ المطابقة</button>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+}
+async function saveSalehReconcile(accountId){
+ const account=(state.financeAccounts||[]).find(a=>String(a.id)===String(accountId));
+ const actual=Number(document.getElementById('reconcileActual')?.value);
+ if(!account||!Number.isFinite(actual)){showToast('اكتب الرصيد الفعلي بشكل صحيح.',true);return;}
+ const current=financeBalance(accountId),diff=actual-current;
+ if(Math.abs(diff)<0.005){closeModal();showToast('الرصيد مطابق بالفعل.');return;}
+ const r=await db.from('personal_finance_transactions').insert({
+  user_id:currentUser?.id,account_id:accountId,amount:diff,transaction_type:'adjustment',category:'تسوية رصيد',description:'تسوية رصيد '+account.account_name,source_type:'reconciliation',source_id:crypto.randomUUID(),transaction_date:isoDate(new Date()),notes:'الرصيد المسجل قبل التسوية: '+current+' — الرصيد الفعلي: '+actual
+ });
+ if(r.error){showToast(r.error.message,true);return;}
+ closeModal();await refresh();showToast('تمت مطابقة رصيد '+account.account_name);
 }
 async function saveSalehOpeningBalance(){
  const accountId=document.getElementById('salehOpeningAccount')?.value;
