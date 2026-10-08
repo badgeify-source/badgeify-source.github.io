@@ -10966,16 +10966,32 @@ async function loadFinanceData(){
  }catch(e){state.financeAccounts=[];state.financeTransactions=[];console.warn('Saleh Finance not ready:',e.message);}
 }
 async function loadLoanData(){
- try{
-  const p=await db.from('personal_finance_loan_people').select('*').order('person_name',{ascending:true});
-  const l=await db.from('personal_finance_loans').select('*').order('loan_date',{ascending:false}).order('created_at',{ascending:false});
-  const r=await db.from('personal_finance_loan_payments').select('*').order('payment_date',{ascending:false}).order('created_at',{ascending:false});
-  if(p.error)throw p.error;if(l.error)throw l.error;if(r.error)throw r.error;
-  state.loanPeople=p.data||[];state.loans=l.data||[];state.loanPayments=r.data||[];
- }catch(e){
-  state.loanPeople=[];state.loans=[];state.loanPayments=[];
-  console.warn('Saleh Loans not ready:',e.message);
- }
+  // Load each loan dataset independently. A problem in loans/payments must never
+  // erase the people list, because adding a person is a valid operation by itself.
+  try{
+    const p=await db.from('personal_finance_loan_people').select('*').order('person_name',{ascending:true});
+    if(p.error) throw p.error;
+    state.loanPeople=p.data||[];
+  }catch(e){
+    console.warn('Saleh loan people not ready:',e.message);
+    state.loanPeople=Array.isArray(state.loanPeople)?state.loanPeople:[];
+  }
+  try{
+    const l=await db.from('personal_finance_loans').select('*').order('loan_date',{ascending:false}).order('created_at',{ascending:false});
+    if(l.error) throw l.error;
+    state.loans=l.data||[];
+  }catch(e){
+    console.warn('Saleh loans not ready:',e.message);
+    state.loans=Array.isArray(state.loans)?state.loans:[];
+  }
+  try{
+    const r=await db.from('personal_finance_loan_payments').select('*').order('payment_date',{ascending:false}).order('created_at',{ascending:false});
+    if(r.error) throw r.error;
+    state.loanPayments=r.data||[];
+  }catch(e){
+    console.warn('Saleh loan payments not ready:',e.message);
+    state.loanPayments=Array.isArray(state.loanPayments)?state.loanPayments:[];
+  }
 }
 function loanPerson(id){return (state.loanPeople||[]).find(x=>String(x.id)===String(id))||null;}
 function loanDirection(loan){return String(loan?.loan_direction||'lent')==='borrowed'?'borrowed':'lent';}
@@ -12453,9 +12469,16 @@ window.salehSavePersonDirect=async function(){
   var name=(document.getElementById('salehPersonName')||{}).value?.trim()||'', phone=(document.getElementById('salehPersonPhone')||{}).value?.trim()||'', notes=(document.getElementById('salehPersonNotes')||{}).value?.trim()||'';
   if(!name){showToast('اكتب اسم الشخص.',true);return;}
   if(!currentUser||!currentUser.id)throw new Error('جلسة المستخدم غير متاحة، أعد تسجيل الدخول.');
-  var q=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:name,phone:phone||null,notes:notes||null});
+  var q=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:name,phone:phone||null,notes:notes||null}).select('*').single();
   if(q.error)throw q.error;
-  closeModal(); if(typeof loadLoanData==='function')await loadLoanData(); if(typeof renderPersonalFinance==='function')renderPersonalFinance(); showToast('تمت إضافة الشخص.');
+  // Update the visible state immediately, then refresh the remaining loan data.
+  if(!Array.isArray(state.loanPeople))state.loanPeople=[];
+  state.loanPeople.push(q.data);
+  state.loanPeople.sort(function(a,b){return String(a.person_name||'').localeCompare(String(b.person_name||''),'ar');});
+  closeModal();
+  if(typeof loadLoanData==='function')await loadLoanData();
+  if(typeof renderPersonalFinance==='function')renderPersonalFinance();
+  showToast('تمت إضافة الشخص وظهر في قائمة الأشخاص.');
  }catch(e){showToast(e.message||'تعذر حفظ الشخص.',true);}
 };
 window.salehPeopleDirect=function(){
