@@ -12074,7 +12074,11 @@ refresh;
    AUTH
 ========================================= */
 
+let salehAuthBooting=false;
+
 async function bootstrapAuth(){
+    if(salehAuthBooting) return;
+    salehAuthBooting=true;
     try{
         const result=await db.auth.getSession();
         const session=result?.data?.session||null;
@@ -12090,6 +12094,8 @@ async function bootstrapAuth(){
         }
     }catch(error){
         console.error("Auth bootstrap failed:",error);
+    }finally{
+        salehAuthBooting=false;
     }
 }
 
@@ -12196,7 +12202,10 @@ bootstrapAuth();
                 msgEl.textContent = "تم تسجيل الدخول، جاري فتح النظام...";
                 document.getElementById("loginView")?.classList.add("hidden");
                 document.getElementById("appView")?.classList.remove("hidden");
-                setTimeout(function(){ window.location.reload(); },150);
+                currentUser = data.user || data.session?.user || null;
+                if(currentUser){
+                    await refresh();
+                }
             }else{
                 msgEl.textContent = "تم تسجيل الدخول ولكن لم يتم إنشاء جلسة.";
             }
