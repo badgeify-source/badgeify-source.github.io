@@ -1120,7 +1120,10 @@ body{
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<style>.finance-smart-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}.finance-smart-card{padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--card);display:flex;flex-direction:column;gap:7px}.finance-smart-card span{font-size:12px;color:var(--muted)}.finance-smart-card b{font-size:21px}.finance-smart-card small{color:var(--muted)}@media(max-width:900px){.finance-smart-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.finance-smart-grid{grid-template-columns:1fr}}</style></head>
+<style>.finance-smart-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}.finance-smart-card{padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--card);display:flex;flex-direction:column;gap:7px}.finance-smart-card span{font-size:12px;color:var(--muted)}.finance-smart-card b{font-size:21px}.finance-smart-card small{color:var(--muted)}@media(max-width:900px){.finance-smart-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.finance-smart-grid{grid-template-columns:1fr}}</style>
+<style>
+.finance-people-list{display:flex;flex-direction:column;gap:9px}.finance-person-row{display:flex;align-items:center;gap:12px;padding:11px;border:1px solid var(--border);background:var(--panel2);border-radius:12px}.finance-person-main{min-width:170px;display:flex;flex-direction:column}.finance-person-main small,.finance-person-summary small{color:var(--muted);font-size:10px}.finance-person-balance{min-width:135px;display:flex;flex-direction:column}.finance-person-balance span{font-size:9px;color:var(--muted)}.finance-person-balance b{font-size:13px}.finance-person-balance.positive b{color:var(--green)}.finance-person-balance.negative b{color:var(--red)}.finance-person-balance.zero b{color:var(--muted)}.finance-person-row-actions{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}.finance-person-account{display:flex;flex-direction:column;gap:14px}.finance-person-summary{display:flex;justify-content:space-between;align-items:center;gap:15px;padding:15px;border:1px solid var(--border);border-radius:14px;background:var(--panel2)}.finance-person-summary>b,.finance-person-summary>div:first-child{display:flex;flex-direction:column}.finance-person-summary b{font-size:17px}.finance-person-net{display:flex;flex-direction:column;text-align:left}.finance-person-net span{font-size:10px;color:var(--muted)}.finance-person-net strong{font-size:20px;color:var(--gold2)}.finance-person-actions{display:flex;gap:7px;flex-wrap:wrap}.finance-person-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.finance-person-kpis>div{padding:11px;border:1px solid var(--border);border-radius:11px;background:var(--panel2);display:flex;flex-direction:column}.finance-person-kpis span{font-size:9px;color:var(--muted)}.finance-person-kpis b{font-size:13px;margin-top:3px}@media(max-width:650px){.finance-person-row{align-items:flex-start;flex-wrap:wrap}.finance-person-main{min-width:45%}.finance-person-balance{min-width:45%}.finance-person-row-actions{width:100%;margin-right:0}.finance-person-actions button{flex:1}.finance-person-kpis{grid-template-columns:1fr}.finance-person-summary{align-items:flex-start;flex-direction:column}.finance-person-net{text-align:right}}
+</style></head>
 
 <body>
 
@@ -12212,6 +12215,84 @@ window.removeSalehExpenseCategory=function(i){const cats=salehExpenseCategories(
 window.openSalehPeople=function(editId){const P=state.loanPeople||[],p=editId?P.find(x=>String(x.id)===String(editId)):null;const body='<div class="form-grid"><div class="field"><label>الاسم</label><input id="salehPersonName" value="'+esc(p?.person_name||'')+'" placeholder="اسم الشخص"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="salehPersonPhone" type="tel" value="'+esc(p?.phone||'')+'" placeholder="01xxxxxxxxx"></div><div class="field full"><label>ملاحظات</label><textarea id="salehPersonNotes">'+esc(p?.notes||'')+'</textarea></div></div>';openModal(p?'تعديل شخص':'إضافة شخص',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPerson('+(p?esc(p.id):'')+')">حفظ</button>');};
 window.saveSalehPerson=async function(editId){const name=(document.getElementById('salehPersonName')?.value||'').trim(),phone=(document.getElementById('salehPersonPhone')?.value||'').trim(),notes=(document.getElementById('salehPersonNotes')?.value||'').trim();if(!name)return showToast('اكتب اسم الشخص.',true);try{let q;if(editId){q=await db.from('personal_finance_loan_people').update({person_name:name,phone:phone||null,notes:notes||null}).eq('id',editId).eq('user_id',currentUser.id);}else{q=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:name,phone:phone||null,notes:notes||null});}if(q.error)throw q.error;closeModal();await loadLoanData();if(typeof renderPersonalFinanceLoans==='function')renderPersonalFinanceLoans();showToast(editId?'تم تعديل الشخص.':'تمت إضافة الشخص.');}catch(e){showToast(e.message||'تعذر حفظ الشخص.',true);}};
 window.deleteSalehPerson=async function(id){if(!confirm('حذف الشخص؟ لا يُنصح بالحذف إذا كان له سلف مسجلة.'))return;try{const q=await db.from('personal_finance_loan_people').delete().eq('id',id).eq('user_id',currentUser.id);if(q.error)throw q.error;await loadLoanData();renderPersonalFinance();showToast('تم حذف الشخص.');}catch(e){showToast(e.message||'تعذر حذف الشخص.',true);}};
-window.openSalehPeopleList=function(){const P=state.loanPeople||[];const rows=P.map(p=>'<div class="finance-account-card" style="margin-bottom:8px"><div class="finance-account-top"><div><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div></div><div style="display:flex;gap:6px;margin-top:8px"><button class="mini-btn" onclick="openSalehPeople(\''+esc(p.id)+'\')">تعديل</button>'+(p.phone?'<a class="mini-btn" href="https://wa.me/'+String(p.phone).replace(/\D/g,'')+'" target="_blank">واتساب</a>':'')+'<button class="mini-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف</button></div></div>').join('')||'<div class="muted">لا يوجد أشخاص مضافون.</div>';openModal('الأشخاص','<div style="margin-bottom:12px"><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص جديد</button></div>'+rows,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');};</script>
+window.openSalehPeopleList=function(){const P=state.loanPeople||[];const rows=P.map(p=>'<div class="finance-account-card" style="margin-bottom:8px"><div class="finance-account-top"><div><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div></div><div style="display:flex;gap:6px;margin-top:8px"><button class="mini-btn" onclick="openSalehPeople(\''+esc(p.id)+'\')">تعديل</button>'+(p.phone?'<a class="mini-btn" href="https://wa.me/'+String(p.phone).replace(/\D/g,'')+'" target="_blank">واتساب</a>':'')+'<button class="mini-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف</button></div></div>').join('')||'<div class="muted">لا يوجد أشخاص مضافون.</div>';openModal('الأشخاص','<div style="margin-bottom:12px"><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص جديد</button></div>'+rows,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');};
+/* SALEH LOAN PEOPLE ACCOUNTS + WHATSAPP */
+(function(){
+ const oldLoansRender=window.renderPersonalFinanceLoans;
+ function personLoanStats(personId){
+  const loans=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled');
+  let lent=0,borrowed=0,paidToMe=0,paidByMe=0;
+  loans.forEach(l=>{
+   const rem=loanRemaining(l);
+   if(loanDirection(l)==='lent'){lent+=rem;paidToMe+=loanPaid(l.id);}
+   else {borrowed+=rem;paidByMe+=loanPaid(l.id);}
+  });
+  return {loans,lent,borrowed,net:lent-borrowed,paidToMe,paidByMe};
+ }
+ function waText(person,st){
+  const name=person?.person_name||'صديقي';
+  let line='';
+  if(st.net>0) line='ليك عندي: '+money(st.net)+' جنيه.';
+  else if(st.net<0) line='عليك ليا: '+money(Math.abs(st.net))+' جنيه.';
+  else line='حسابنا متساوي حاليًا.';
+  return 'أهلاً '+name+'، ده كشف حسابنا الحالي من لوحة حسابات صالح:\n'+line+'\n'+
+    'إجمالي اللي ليك عندي: '+money(st.borrowed)+' جنيه.\n'+
+    'إجمالي اللي ليا عندك: '+money(st.lent)+' جنيه.\n\nلو فيه أي اختلاف بلغني علشان نراجعه.';
+ }
+ window.salehPersonWhatsApp=function(personId){
+  const p=loanPerson(personId); if(!p?.phone){showToast('أضف رقم واتساب للشخص أولاً.',true);return;}
+  const st=personLoanStats(personId);
+  const phone=String(p.phone).replace(/\D/g,'');
+  if(!phone){showToast('رقم الواتساب غير صحيح.',true);return;}
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(waText(p,st)),'_blank');
+ };
+ window.openSalehPersonAccount=function(personId){
+  const p=loanPerson(personId); if(!p)return;
+  const st=personLoanStats(personId);
+  const cur=(state.settings&&state.settings.currency)||'EGP';
+  const rows=st.loans.slice().sort((a,b)=>String(b.loan_date||'').localeCompare(String(a.loan_date||''))).map(l=>{
+    const paid=loanPaid(l.id),rem=loanRemaining(l),dir=loanDirection(l);
+    return '<tr><td>'+esc(l.loan_date||'-')+'</td><td><b>'+esc(dir==='lent'?'أنا اديته فلوس':'أنا استلفت منه')+'</b><br><small class="muted">'+esc(l.purpose||'بدون بيان')+'</small></td><td>'+money(l.amount)+' '+esc(cur)+'</td><td>'+money(paid)+' '+esc(cur)+'</td><td class="money">'+money(rem)+' '+esc(cur)+'</td><td>'+(rem>0?'<button class="mini-btn pay" onclick="openLoanRepayment('+l.id+')">'+(dir==='lent'?'تحصيل منه':'سداد له')+'</button>':'<span class="muted">مكتملة</span>')+'</td></tr>';
+  }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات لهذا الشخص حتى الآن.</div></td></tr>';
+  const netLabel=st.net>0?'ليَّ عنده':st.net<0?'عليَّ له':'متساوي';
+  const body='<div class="finance-person-account"><div class="finance-person-summary"><div><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم واتساب')+'</small></div><div class="finance-person-net"><span>'+netLabel+'</span><strong>'+money(Math.abs(st.net))+' '+esc(cur)+'</strong></div></div><div class="finance-person-actions"><button class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')">أنا اديته فلوس</button><button class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')">أنا استلفت منه</button>'+(p.phone?'<button class="ghost-btn" onclick="salehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> واتساب</button>':'')+'</div><div class="finance-person-kpis"><div><span>ليَّ عنده</span><b>'+money(st.lent)+' '+esc(cur)+'</b></div><div><span>عليَّ له</span><b>'+money(st.borrowed)+' '+esc(cur)+'</b></div><div><span>صافي الحساب</span><b>'+money(Math.abs(st.net))+' '+esc(cur)+'</b></div></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة</th><th>الأصل</th><th>المدفوع</th><th>المتبقي</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  openModal('حساب '+p.person_name,body,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+ };
+ window.openSalehLoanForPerson=function(personId,direction){
+  openSalehLoan();
+  setTimeout(()=>{
+   const sel=document.getElementById('loanPerson');
+   const dir=document.getElementById('loanDirection');
+   if(sel)sel.value=String(personId);
+   if(dir){dir.value=direction;updateSalehLoanDirectionUI();}
+   const np=document.getElementById('loanNewPerson'); if(np)np.value='';
+ },30);
+ };
+ const oldOpenPeople=window.openSalehPeopleList;
+ window.openSalehPeopleList=function(){
+  const P=state.loanPeople||[];
+  const rows=P.map(p=>{
+   const st=personLoanStats(p.id);
+   const net=st.net, label=net>0?'ليَّ عنده':net<0?'عليَّ له':'متساوي';
+   return '<div class="finance-person-row"><div class="finance-person-main"><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div><div class="finance-person-balance '+(net>0?'positive':net<0?'negative':'zero')+'"><span>'+label+'</span><b>'+money(Math.abs(net))+' جنيه</b></div><div class="finance-person-row-actions"><button class="mini-btn" onclick="openSalehPersonAccount(\''+esc(p.id)+'\')">فتح الحساب</button>'+(p.phone?'<button class="mini-btn wa" onclick="salehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> واتساب</button>':'')+'<button class="mini-btn" onclick="openSalehPeople(\''+esc(p.id)+'\')">تعديل</button></div></div>';
+  }).join('')||'<div class="muted">لا يوجد أشخاص مضافون.</div>';
+  openModal('الأشخاص والحسابات','<div style="margin-bottom:12px"><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص جديد</button></div><div class="finance-people-list">'+rows+'</div>','<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+ };
+ window.renderPersonalFinanceLoans=function(){
+  if(typeof oldLoansRender==='function')oldLoansRender();
+  const host=document.getElementById('content'); if(!host||state.page!=='personalFinance')return;
+  const P=state.loanPeople||[];
+  const section=document.createElement('div'); section.className='card finance-people-accounts'; section.style.marginTop='16px';
+  const rows=P.map(p=>{
+    const st=personLoanStats(p.id),net=st.net;
+    return '<div class="finance-person-row"><div class="finance-person-main"><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم واتساب')+'</small></div><div class="finance-person-balance '+(net>0?'positive':net<0?'negative':'zero')+'"><span>'+ (net>0?'ليَّ عنده':net<0?'عليَّ له':'متساوي') +'</span><b>'+money(Math.abs(net))+' جنيه</b></div><div class="finance-person-row-actions"><button class="mini-btn" onclick="openSalehPersonAccount(\''+esc(p.id)+'\')">فتح الحساب</button>'+(p.phone?'<button class="mini-btn wa" onclick="salehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> واتساب</button>':'')+'</div></div>';
+  }).join('')||'<div class="empty">أضف الأشخاص ثم سجل حركاتهم، وكل شخص سيظهر له حساب مستقل هنا.</div>';
+  section.innerHTML='<div class="card-head"><div><h3>حسابات الأشخاص</h3><span class="muted">كل شخص له حساب مستقل، والرصيد يتحسب تلقائيًا من كل الحركات.</span></div><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص</button></div><div class="card-body"><div class="finance-people-list">'+rows+'</div></div>';
+  host.insertBefore(section,host.firstChild);
+ };
+})();
+
+</script>
 </body>
 </html>
