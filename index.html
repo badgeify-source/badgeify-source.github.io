@@ -12145,7 +12145,7 @@ window.saveSalehPlatformTransfer=async function(editId){
   const fc=pfCur(from),tc=pfCur(to);let out=amt;if(fc!==tc){if(rate<=0)throw new Error('أدخل سعر الصرف.');out=fc==='EGP'&&tc==='USD'?amt/rate:amt*rate;}
   if(editId)await pfDeleteBySource('transfer',editId);
   const id=editId||pfId(),note=JSON.stringify({kind:'transfer',rate,from_currency:fc,to_currency:tc,reference,notes});
-  const rows=[{user_id:currentUser.id,account_id:from.id,amount:-amt,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل إلى '+from&&to.account_name?('تحويل إلى '+to.account_name):'تحويل',source_type:'transfer',source_id:id,transaction_date:date,notes:note},{user_id:currentUser.id,account_id:to.id,amount:out,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل من '+from.account_name,source_type:'transfer',source_id:id,transaction_date:date,notes:note}];
+  const rows=[{user_id:currentUser.id,account_id:from.id,amount:-amt,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل إلى '+(to.account_name||'حساب آخر'),source_type:'transfer',source_id:id,transaction_date:date,notes:note},{user_id:currentUser.id,account_id:to.id,amount:out,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل من '+from.account_name,source_type:'transfer',source_id:id,transaction_date:date,notes:note}];
   const ins=await db.from('personal_finance_transactions').insert(rows);if(ins.error)throw ins.error;
   closeModal();await pfReload();showToast(editId?'تم تعديل التحويل بنجاح.':'تم تسجيل التحويل وتحديث الرصيدين.');
  }catch(e){showToast(e.message||'تعذر حفظ التحويل.',true);}
@@ -12200,7 +12200,7 @@ window.initSalehPlatforms=async function(){
 };
 const oldRefresh=window.refresh;
 if(typeof oldRefresh==='function'){
- window.refresh=async function(){const r=await oldRefresh.apply(this,arguments);await window.initSalehPlatforms();return r;};
+ window.refresh=async function(){const r=await oldRefresh.apply(this,arguments);await window.initSalehPlatforms();if(typeof renderPersonalFinance==='function')renderPersonalFinance();return r;};
 }
 })();
 </script>
