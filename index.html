@@ -12308,6 +12308,13 @@ window.openSalehPeopleList=function(){const P=state.loanPeople||[];const rows=P.
  };
 })();
 
+// تأكيد إعادة رسم لوحة صالح بعد تحميل جميع وظائف المنصات وحسابات الأشخاص
+setTimeout(function(){
+  if(state && state.page==='personalFinance'){
+    try{ renderPersonalFinance(); }catch(e){ console.error('SALEH FINAL RENDER',e); }
+  }
+},0);
+
 </script>
 <script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script></body>
 </html>
