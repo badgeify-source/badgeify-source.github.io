@@ -1,4 +1,17 @@
-/* PERSONAL FINANCE — visible feature hub only; preserves the existing dashboard layout */
+<style id="saleh-finance-ui-css">
+.saleh-feature-hub{margin-top:16px;overflow:hidden}
+.saleh-feature-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.saleh-feature-item{min-width:0;text-align:right;border:1px solid var(--border);border-radius:14px;background:var(--panel2);color:var(--text);padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-family:inherit;transition:.18s}
+.saleh-feature-item:hover{transform:translateY(-2px);border-color:rgba(47,140,255,.5);background:rgba(47,140,255,.07)}
+.saleh-feature-icon{width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;background:rgba(47,140,255,.12);color:var(--gold2)}
+.saleh-feature-copy{min-width:0;display:flex;flex-direction:column;gap:3px;flex:1}
+.saleh-feature-copy b{font-size:11px}
+.saleh-feature-copy small{font-size:8px;color:var(--muted);line-height:1.5}
+.saleh-feature-arrow{font-size:9px;color:var(--muted)}
+@media(max-width:1200px){.saleh-feature-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.saleh-feature-grid{grid-template-columns:1fr 1fr}.saleh-feature-item{padding:10px}.saleh-feature-copy small{font-size:7px}}
+@media(max-width:430px){.saleh-feature-grid{grid-template-columns:1fr}}
+</style>\n/* PERSONAL FINANCE — visible feature hub only; preserves the existing dashboard layout */
 (function(){
   function ready(fn){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',fn); else fn(); }
   function addHub(){
