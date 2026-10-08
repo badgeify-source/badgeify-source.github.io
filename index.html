@@ -1136,30 +1136,84 @@ body{
 @media(max-width:900px){.platform-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.platform-total-strip{grid-template-columns:1fr 1fr}.platform-total:last-child{grid-column:1/-1}}
 @media(max-width:560px){.platform-finance-section{padding:12px;border-radius:17px}.platform-finance-head{align-items:stretch;flex-direction:column}.platform-finance-head .actions{display:grid;grid-template-columns:1fr}.platform-total-strip{grid-template-columns:1fr}.platform-total:last-child{grid-column:auto}.platform-grid{grid-template-columns:1fr}.platform-card{min-height:175px;padding:16px}.platform-balance{font-size:26px}}
 </style><style id="saleh-finance-redesign-css">
-#salehFinanceRedesign{--sf-bg:#f5f7fb;--sf-card:#fff;--sf-text:#172033;--sf-muted:#718096;--sf-border:#e5e9f1;--sf-gold:#b58a3a;direction:rtl;background:var(--sf-bg);border-radius:24px;padding:22px;min-height:300px;color:var(--sf-text)}
-#salehFinanceRedesign .finance-page-head{background:linear-gradient(135deg,#172033,#293a58)!important;color:#fff!important;border:0!important;border-radius:22px!important;padding:25px!important;margin:0 0 14px!important;box-shadow:0 14px 35px rgba(23,32,51,.16)!important}
-#salehFinanceRedesign .finance-page-head h1{color:#fff!important;font-size:28px;margin:5px 0}#salehFinanceRedesign .finance-page-head p,#salehFinanceRedesign .finance-kicker{color:rgba(255,255,255,.72)!important}
-#salehFinanceRedesign .page-actions{display:flex;flex-wrap:wrap;gap:7px}#salehFinanceRedesign .page-actions button{border-radius:11px!important}
-#salehFinanceRedesign .finance-hero{border-radius:20px!important;background:linear-gradient(135deg,#fff,#f8f3e8)!important;border:1px solid #eadfc8!important;box-shadow:0 8px 24px rgba(23,32,51,.06)!important;padding:22px!important}
-#salehFinanceRedesign .finance-hero strong{font-size:34px}#salehFinanceRedesign .finance-stat-grid{grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
-#salehFinanceRedesign .stat{border:1px solid var(--sf-border)!important;border-radius:18px!important;background:#fff!important;box-shadow:0 5px 18px rgba(23,32,51,.05)!important;padding:17px!important}
-#salehFinanceRedesign .stat h2{font-size:21px}#salehFinanceRedesign .stat-icon{border-radius:13px!important}
-#salehFinanceRedesign .finance-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 22px}
-#salehFinanceRedesign .finance-kpi{background:#fff;border:1px solid var(--sf-border);border-radius:16px;padding:15px}
-#salehFinanceRedesign .finance-kpi b{font-size:18px}
-#salehFinanceRedesign .finance-account-section,#salehFinanceRedesign .card,#salehFinanceRedesign .platform-finance-section{border-radius:20px!important}
-#salehFinanceRedesign .finance-account-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-#salehFinanceRedesign .finance-account-card{border:1px solid var(--sf-border)!important;border-radius:17px!important;background:#fff!important;box-shadow:none!important;padding:16px!important}
-#salehFinanceRedesign .finance-account-card>strong{font-size:22px}
-#salehFinanceRedesign .card{border:1px solid var(--sf-border)!important;box-shadow:0 5px 18px rgba(23,32,51,.045)!important}
-#salehFinanceRedesign .card-head{padding:17px 20px}.saleh-finance-redesign .table-wrap{border-radius:14px;overflow:auto}
-#salehFinanceRedesign table th{background:#f8f9fc;font-size:11px}#salehFinanceRedesign table td{font-size:12px}
-#content:has(#salehFinanceRedesign) .finance-loans-table,#content:has(#salehFinanceRedesign) .finance-people-accounts{background:#fff;border:1px solid #e5e9f1;border-radius:20px;box-shadow:0 5px 18px rgba(23,32,51,.045);overflow:hidden}
-#content:has(#salehFinanceRedesign) .finance-loans-table .card-head,#content:has(#salehFinanceRedesign) .finance-people-accounts .card-head{padding:18px 20px;background:#fbfcfe}
+#salehFinanceRedesign{--sf-bg:#0a0f18;--sf-panel:#101824;--sf-panel2:#141e2d;--sf-line:rgba(255,255,255,.08);--sf-text:#f5f7fb;--sf-muted:#8d9aae;--sf-gold:#d7ad58;--sf-green:#43d39e;--sf-red:#ff6b78;direction:rtl;background:radial-gradient(circle at 88% 2%,rgba(215,173,88,.10),transparent 28%),radial-gradient(circle at 5% 30%,rgba(48,113,255,.08),transparent 25%),#0a0f18!important;color:var(--sf-text)!important;border:1px solid rgba(255,255,255,.055);border-radius:28px;padding:20px;min-height:500px;overflow:hidden;box-shadow:0 22px 70px rgba(0,0,0,.20)}
+#salehFinanceRedesign *{box-sizing:border-box}
+#salehFinanceRedesign .finance-page-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:22px;min-height:118px;margin:0 0 14px!important;padding:24px 26px!important;border:1px solid rgba(255,255,255,.075)!important;border-radius:22px!important;background:linear-gradient(120deg,#151f2f,#0f1724 58%,#172235)!important;box-shadow:0 18px 45px rgba(0,0,0,.25)!important;color:#fff!important;overflow:hidden}
+#salehFinanceRedesign .finance-page-head:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;left:-75px;top:-115px;background:rgba(215,173,88,.10);filter:blur(3px)}
+#salehFinanceRedesign .finance-kicker{font-size:10px;letter-spacing:3px;font-weight:900;color:var(--sf-gold)!important;margin-bottom:7px}
+#salehFinanceRedesign .finance-page-head h1{font-size:30px!important;line-height:1.15;margin:0 0 7px!important;color:#fff!important;font-weight:900;letter-spacing:-.6px}
+#salehFinanceRedesign .finance-page-head p{margin:0;color:#9ca9ba!important;font-size:12px}
+#salehFinanceRedesign .page-actions{position:relative;z-index:2;display:grid!important;grid-template-columns:repeat(5,auto);gap:7px;max-width:600px}
+#salehFinanceRedesign .page-actions button{min-height:39px!important;border-radius:12px!important;border:1px solid rgba(255,255,255,.09)!important;font-size:11px!important;white-space:nowrap}
+#salehFinanceRedesign .page-actions button:nth-child(n+6){display:none}
+#salehFinanceRedesign .page-actions .gold-btn{background:linear-gradient(135deg,#d9b563,#a97d2f)!important;color:#10151d!important;border:0!important}
+#salehFinanceRedesign .finance-hero{position:relative;display:grid!important;grid-template-columns:1.5fr .8fr;gap:14px;margin:0 0 14px!important;padding:26px 28px!important;min-height:155px;border:1px solid rgba(215,173,88,.20)!important;border-radius:22px!important;background:linear-gradient(135deg,#182436,#0e1724 65%,#121d2b)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 18px 42px rgba(0,0,0,.20)!important;color:#fff!important}
+#salehFinanceRedesign .finance-hero>div:first-child:before{content:"TOTAL LIQUIDITY";display:block;color:var(--sf-gold);font-size:9px;font-weight:900;letter-spacing:2px;margin-bottom:8px}
+#salehFinanceRedesign .finance-hero>div:first-child>span{display:none}
+#salehFinanceRedesign .finance-hero strong{display:block;font-size:42px!important;line-height:1;font-weight:950;letter-spacing:-1.5px;color:#fff}
+#salehFinanceRedesign .finance-hero strong small{font-size:13px;color:#9ba8b8}
+#salehFinanceRedesign .finance-hero p{margin:10px 0 0!important;color:#7f8da1!important;font-size:11px}
+#salehFinanceRedesign .finance-hero-side{align-self:stretch!important;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:8px 20px;border-right:1px solid rgba(255,255,255,.09)}
+#salehFinanceRedesign .finance-hero-side span{font-size:10px!important;color:#8d9aae!important}
+#salehFinanceRedesign .finance-hero-side b{font-size:25px!important;color:var(--sf-green)!important;margin:7px 0}
+#salehFinanceRedesign .finance-hero-side small{font-size:10px;color:#8794a7}
+#salehFinanceRedesign .finance-stat-grid{display:grid!important;grid-template-columns:repeat(4,1fr);gap:10px!important;margin:0 0 12px!important}
+#salehFinanceRedesign .stat{position:relative;padding:15px 16px!important;min-height:112px;border-radius:17px!important;background:linear-gradient(145deg,#111b29,#0d1520)!important;border:1px solid var(--sf-line)!important;box-shadow:none!important;color:#fff!important;overflow:hidden}
+#salehFinanceRedesign .stat-icon{width:34px!important;height:34px!important;border-radius:10px!important;background:rgba(215,173,88,.10)!important;color:var(--sf-gold)!important;display:flex;align-items:center;justify-content:center}
+#salehFinanceRedesign .stat h2{margin:10px 0 2px!important;font-size:20px!important;color:#fff!important;line-height:1.1}
+#salehFinanceRedesign .stat h2 small{font-size:9px;color:#7e8a9c}
+#salehFinanceRedesign .stat p{margin:0!important;color:#7f8da1!important;font-size:10px}
+#salehFinanceRedesign .finance-kpis{display:grid!important;grid-template-columns:repeat(4,1fr);gap:8px!important;margin:0 0 14px!important}
+#salehFinanceRedesign .finance-kpi{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:57px;padding:11px 14px!important;border-radius:14px!important;background:#0e1723!important;border:1px solid var(--sf-line)!important;color:#fff}
+#salehFinanceRedesign .finance-kpi span{font-size:10px;color:#8290a3}
+#salehFinanceRedesign .finance-kpi b{font-size:15px;color:#e8edf4}
+#salehFinanceRedesign .finance-kpi.expense b{color:var(--sf-red)}
+#salehFinanceRedesign .finance-kpi.profit b{color:var(--sf-green)}
+#salehFinanceRedesign .finance-account-section,#salehFinanceRedesign .card,#salehFinanceRedesign .platform-finance-section{border:1px solid var(--sf-line)!important;border-radius:20px!important;background:#0f1825!important;box-shadow:0 12px 32px rgba(0,0,0,.14)!important;color:#fff!important;overflow:hidden}
+#salehFinanceRedesign .finance-section-header,#salehFinanceRedesign .card-head{background:linear-gradient(180deg,#131e2c,#101923)!important;border-bottom:1px solid var(--sf-line)!important;padding:15px 18px!important;color:#fff!important}
+#salehFinanceRedesign .finance-section-header h3,#salehFinanceRedesign .card-head h3{margin:0!important;color:#fff!important;font-size:14px}
+#salehFinanceRedesign .finance-section-header p,#salehFinanceRedesign .card-head .muted{margin:4px 0 0!important;color:#7e8b9e!important;font-size:10px}
+#salehFinanceRedesign .finance-account-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px!important;padding:12px}
+#salehFinanceRedesign .finance-account-card{padding:15px!important;border:1px solid var(--sf-line)!important;border-radius:16px!important;background:linear-gradient(145deg,#141f2d,#0d1622)!important;color:#fff!important;box-shadow:none!important}
+#salehFinanceRedesign .finance-account-card:hover{border-color:rgba(215,173,88,.30)!important;transform:translateY(-2px);transition:.18s}
+#salehFinanceRedesign .finance-account-card b{color:#fff!important;font-size:12px}
+#salehFinanceRedesign .finance-account-card small{color:#758398!important}
+#salehFinanceRedesign .finance-account-card>strong{display:block;margin-top:14px;font-size:22px!important;color:#fff!important}
+#salehFinanceRedesign .finance-account-icon{background:rgba(215,173,88,.10)!important;color:var(--sf-gold)!important}
+#salehFinanceRedesign .finance-toolbar{padding:13px 15px!important;background:#0c141f!important;border-bottom:1px solid var(--sf-line)!important}
+#salehFinanceRedesign .finance-toolbar input,#salehFinanceRedesign .finance-toolbar select{background:#121d2b!important;color:#eaf0f7!important;border-color:var(--sf-line)!important;border-radius:10px!important}
+#salehFinanceRedesign table{color:#dfe6ef!important}
+#salehFinanceRedesign table th{background:#111b28!important;color:#8492a6!important;border-color:var(--sf-line)!important;font-size:9px!important}
+#salehFinanceRedesign table td{border-color:rgba(255,255,255,.055)!important;font-size:11px!important;color:#dbe2eb}
+#salehFinanceRedesign .table-wrap{border-radius:0!important}
+#salehFinanceRedesign .finance-mini-metrics{gap:8px!important}
+#salehFinanceRedesign .finance-mini-metrics>div{background:#101a27!important;border:1px solid var(--sf-line)!important;border-radius:13px!important;padding:12px}
+#salehFinanceRedesign .finance-mini-metrics span{color:#7d8a9d!important;font-size:9px}
+#salehFinanceRedesign .finance-mini-metrics b{color:#fff!important;font-size:15px}
+#salehFinanceRedesign .card-body .muted{color:#7f8da1!important}
+#salehFinanceRedesign .saleh-donations-card{border-color:rgba(215,173,88,.20)!important}
+#salehFinanceRedesign .finance-donation-total{background:#121d2a!important;border:1px solid var(--sf-line)!important;border-radius:12px!important;padding:7px 11px}
+#salehFinanceRedesign .finance-donation-total span{color:#7f8da1!important;font-size:9px}
+#salehFinanceRedesign .finance-donation-total b{color:var(--sf-gold)!important;font-size:14px}
+#content:has(#salehFinanceRedesign) .finance-loans-table,#content:has(#salehFinanceRedesign) .finance-people-accounts{background:#0f1825!important;border:1px solid var(--sf-line)!important;border-radius:20px!important;box-shadow:0 12px 32px rgba(0,0,0,.14)!important;color:#fff!important;overflow:hidden}
+#content:has(#salehFinanceRedesign) .finance-loans-table .card-head,#content:has(#salehFinanceRedesign) .finance-people-accounts .card-head{background:#131e2c!important;border-bottom:1px solid var(--sf-line)!important}
 #content:has(#salehFinanceRedesign) .finance-people-list{padding:10px 14px 16px}
-@media(max-width:1100px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid{grid-template-columns:repeat(2,1fr)}#salehFinanceRedesign .finance-kpis{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:650px){#salehFinanceRedesign{padding:12px;border-radius:16px}#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid,#salehFinanceRedesign .finance-kpis{grid-template-columns:1fr 1fr}#salehFinanceRedesign .finance-page-head{padding:18px!important}#salehFinanceRedesign .finance-page-head h1{font-size:22px}}
-@media(max-width:430px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid,#salehFinanceRedesign .finance-kpis{grid-template-columns:1fr}}
+#content:has(#salehFinanceRedesign) .finance-person-row{background:#111c29!important;border-color:var(--sf-line)!important;color:#fff!important;border-radius:13px!important}
+#content:has(#salehFinanceRedesign) .finance-person-main small{color:#77869a!important}
+#content:has(#salehFinanceRedesign) .finance-person-balance.positive b{color:var(--sf-green)!important}
+#content:has(#salehFinanceRedesign) .finance-person-balance.negative b{color:var(--sf-red)!important}
+#salehFinanceRedesign .mini-btn,#salehFinanceRedesign .ghost-btn,#salehFinanceRedesign .gold-btn{border-radius:10px!important;font-size:10px!important}
+#salehFinanceRedesign .ghost-btn{background:#121d2a!important;border:1px solid var(--sf-line)!important;color:#dbe3ed!important}
+#salehFinanceRedesign .gold-btn{background:linear-gradient(135deg,#d9b563,#a87b2d)!important;color:#10151d!important;border:0!important}
+#salehFinanceRedesign .mini-btn{background:#121d2a!important;border:1px solid var(--sf-line)!important;color:#cbd5e1!important}
+#salehFinanceRedesign .platform-finance-section{padding:0!important}
+#salehFinanceRedesign .platform-finance-head{padding:16px 18px!important;background:#131e2c!important;border-bottom:1px solid var(--sf-line)!important}
+#salehFinanceRedesign .platform-total{background:#111c29!important;border-color:var(--sf-line)!important}
+#salehFinanceRedesign .platform-card{background:linear-gradient(145deg,#141f2d,#0d1622)!important;border-color:var(--sf-line)!important}
+#salehFinanceRedesign .platform-card:hover{border-color:rgba(215,173,88,.32)!important}
+@media(max-width:1100px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid{grid-template-columns:repeat(2,1fr)}#salehFinanceRedesign .finance-kpis{grid-template-columns:repeat(2,1fr)}#salehFinanceRedesign .page-actions{grid-template-columns:repeat(3,1fr);max-width:420px}}
+@media(max-width:720px){#salehFinanceRedesign{padding:10px;border-radius:18px}#salehFinanceRedesign .finance-page-head{flex-direction:column;align-items:stretch;padding:19px!important}#salehFinanceRedesign .finance-page-head h1{font-size:23px!important}#salehFinanceRedesign .page-actions{max-width:none;grid-template-columns:repeat(2,1fr)}#salehFinanceRedesign .finance-hero{grid-template-columns:1fr;padding:21px!important}#salehFinanceRedesign .finance-hero-side{border-right:0;border-top:1px solid rgba(255,255,255,.08);padding:14px 0 0}#salehFinanceRedesign .finance-hero strong{font-size:34px!important}}
+@media(max-width:480px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid,#salehFinanceRedesign .finance-kpis{grid-template-columns:1fr}#salehFinanceRedesign .page-actions{grid-template-columns:1fr 1fr}#salehFinanceRedesign .page-actions button{font-size:10px!important}}
 </style></head>
 
 <body>
