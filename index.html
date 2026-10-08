@@ -12446,7 +12446,7 @@ window.salehPeopleLedgerHTML=function(){
       return '<div class="finance-person-row" style="margin-bottom:8px">'+
         '<div class="finance-person-main"><b>'+esc(p.person_name||'بدون اسم')+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div>'+
         '<div class="finance-person-balance '+(net>0?'positive':net<0?'negative':'zero')+'"><span>'+(net>0?'ليَّ عنده':net<0?'عليَّ له':'متساوي')+'</span><b>'+money(Math.abs(net))+' جنيه</b></div>'+
-        '<div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="openSalehPersonAccount(\\''+esc(p.id)+'\\')">فتح الحساب</button><button type="button" class="mini-btn" onclick="openSalehPeople(\\''+esc(p.id)+'\\')">تعديل</button>'+(p.phone?'<button type="button" class="mini-btn wa" onclick="salehPersonWhatsApp(\\''+esc(p.id)+'\\')">واتساب</button>':'')+'</div></div>';
+        '<div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="openSalehPersonAccount(&quot;'+esc(p.id)+'&quot;)">فتح الحساب</button><button type="button" class="mini-btn" onclick="openSalehPeople(&quot;'+esc(p.id)+'&quot;)">تعديل</button>'+(p.phone?'<button type="button" class="mini-btn wa" onclick="salehPersonWhatsApp(&quot;'+esc(p.id)+'&quot;)">واتساب</button>':'')+'</div></div>';
     }).join('') || '<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>';
     openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="openSalehPeople()">إضافة شخص جديد</button></div><div class="finance-people-list">'+rows+'</div>','<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
   }catch(e){console.error(e);showToast('تعذر فتح قائمة الأشخاص: '+(e.message||e),true);}
