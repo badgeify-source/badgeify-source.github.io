@@ -12327,10 +12327,13 @@ applyTheme();
 
   window.renderSalehPlatforms=function(){
     const A=platformAccounts();
-    const html=A.length?A.map(a=>{
+    const html=NAMES.map(name=>{
+      const a=A.find(x=>String(x.account_name).toLowerCase()===name.toLowerCase());
+      if(!a)return '<div class="platform-card platform-card-empty"><div class="platform-top"><div><div class="platform-name">'+escv(name)+'</div><div class="platform-currency">سيتم تجهيز الحساب تلقائيًا</div></div><span class="platform-tag">USD</span></div><div class="platform-balance">0 <small>USD</small></div></div>';
+      
       const bal=balance(a),deps=transfersFor(a).reduce((s,x)=>s+Math.abs(num(x.amount)),0),deds=deductionsFor(a).reduce((s,x)=>s+Math.abs(num(x.amount)),0),count=deductionsFor(a).length;
       return '<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+escv(a.account_name)+'</div><div class="platform-currency">حساب مستقل للدولار / USDT</div></div><span class="platform-tag">USD</span></div><div class="platform-balance">'+moneyv(bal)+' <small>USD</small></div><div class="platform-mini-stats"><div><span>إجمالي الإيداعات</span><b>'+moneyv(deps)+' USD</b></div><div><span>خصومات الاشتراكات</span><b>'+moneyv(deds)+' USD</b></div><div><span>عدد الخصومات</span><b>'+count+'</b></div></div><div class="platform-actions platform-actions-visible"><button type="button" class="mini-btn" onclick="openSalehPlatformDeposit(\''+escv(a.id)+'\')"><i class="fa-solid fa-plus"></i> إيداع</button><button type="button" class="mini-btn pay" onclick="openSalehPlatformDeduction(\'\',\''+escv(a.id)+'\')"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>';
-    }).join(''):'<div class="empty">جارٍ تجهيز حسابات المنصات...</div>';
+    }).join('');
     const total=A.reduce((s,a)=>s+balance(a),0);
     return '<div class="platform-finance-section"><div class="platform-finance-head"><div><span class="saleh-section-eyebrow">CRYPTO PLATFORMS</span><h3>منصات العملات</h3><p>Bybit Saleh و Bybit Mahmoud و Binance — لكل منصة رصيد وحركات مستقلة.</p></div><div class="platform-total"><span>إجمالي أرصدة المنصات</span><b>'+moneyv(total)+' USD</b></div></div><div class="platform-grid">'+html+'</div></div>';
   };
