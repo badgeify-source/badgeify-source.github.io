@@ -72,3 +72,10 @@ for all using (user_id = auth.uid()) with check (user_id = auth.uid());
 drop policy if exists "pf loan payments owner" on public.personal_finance_loan_payments;
 create policy "pf loan payments owner" on public.personal_finance_loan_payments
 for all using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- People integrity: application also normalizes/validates name + phone before insert.
+-- This index blocks exact duplicate pairs at database level while allowing the same name
+-- with a different phone and the same phone with a different name.
+create unique index if not exists uq_pf_people_name_phone
+on public.personal_finance_loan_people (user_id, person_name, phone)
+where phone is not null;
