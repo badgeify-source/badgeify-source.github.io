@@ -1519,7 +1519,7 @@ let state={
     localStorage.getItem("badgeify_theme")
     ||"dark",
 
-    page:"dashboard",
+    page:"personalFinance",
 
     subscriptionFilterStatus:"all",
 
@@ -11519,11 +11519,19 @@ function render(){
     };
 
 
-    (
-        pages[state.page]
-        ||
-        renderDashboard
-    )();
+    try{
+        (
+            pages[state.page]
+            ||
+            renderDashboard
+        )();
+    }catch(error){
+        console.error("Render error:",error);
+        const host=document.getElementById("content");
+        if(host){
+            host.innerHTML='<div class="card" style="margin:20px"><div class="card-body"><h3>تعذر عرض الصفحة</h3><p class="muted">حصل خطأ في عرض البيانات. جرّب تحديث الصفحة.</p><button class="gold-btn" onclick="refresh()">إعادة تحميل البيانات</button></div></div>';
+        }
+    }
 
 }
 
