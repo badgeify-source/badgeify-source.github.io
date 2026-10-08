@@ -11431,54 +11431,69 @@ async function saveSalehFinanceTransfer(){
    REFRESH / RENDER
 ========================================= */
 
+let salehRefreshRunning=false;
 async function refresh(){
+
+    /* اعرض هيكل الصفحة أولاً، ولا تجعل تحميل Supabase يحجب الواجهة */
+    if(salehRefreshRunning) return;
+    salehRefreshRunning=true;
 
     let loadError=null;
 
     try{
-        await loadData();
-    }catch(error){
-        loadError=error;
-        console.warn("Main data load failed:",error);
-    }
-
-    try{
-        await loadFinanceData();
-    }catch(error){
-        loadError=loadError||error;
-        console.warn("Finance data load failed:",error);
-    }
-
-    try{
-        await loadLoanData();
-    }catch(error){
-        loadError=loadError||error;
-        console.warn("Loan data load failed:",error);
-    }
-
-    /* مهم: اعرض الواجهة حتى لو جدول من جداول البيانات فيه مشكلة */
-    try{
-        render();
-    }catch(error){
-        console.error("Render failed:",error);
-        const host=document.getElementById("content");
-        if(host) host.innerHTML='<div class="card"><div class="card-body"><h3>لوحة التحكم</h3><p class="muted">تم فتح الموقع، لكن يوجد خطأ مؤقت في تحميل بعض البيانات.</p><button class="gold-btn" onclick="location.reload()">إعادة تحميل</button></div></div>';
-    }
-
-    try{
-        updateNotificationUI();
-    }catch(e){ console.warn("Notification UI:",e); }
-
-    setTimeout(function(){
-        if(typeof showAutomaticDueNotifications==="function"){
-            showAutomaticDueNotifications().catch(function(error){
-                console.warn("BADGEIFY notification check:",error);
-            });
+        try{
+            render();
+        }catch(error){
+            console.error("Initial render failed:",error);
         }
-    },300);
 
-    if(loadError){
-        console.warn("Some data could not be loaded:",loadError);
+        try{
+            await loadData();
+        }catch(error){
+            loadError=error;
+            console.warn("Main data load failed:",error);
+        }
+
+        try{
+            await loadFinanceData();
+        }catch(error){
+            loadError=loadError||error;
+            console.warn("Finance data load failed:",error);
+        }
+
+        try{
+            await loadLoanData();
+        }catch(error){
+            loadError=loadError||error;
+            console.warn("Loan data load failed:",error);
+        }
+
+        /* بعد تحميل البيانات نعيد رسم الصفحة بكل البيانات المتاحة */
+        try{
+            render();
+        }catch(error){
+            console.error("Render failed:",error);
+            const host=document.getElementById("content");
+            if(host) host.innerHTML='<div class="card" style="margin:20px"><div class="card-body"><h3>لوحة التحكم</h3><p class="muted">تم فتح الموقع، لكن يوجد خطأ مؤقت في تحميل بعض البيانات.</p></div></div>';
+        }
+
+        try{
+            updateNotificationUI();
+        }catch(e){ console.warn("Notification UI:",e); }
+
+        setTimeout(function(){
+            if(typeof showAutomaticDueNotifications==="function"){
+                showAutomaticDueNotifications().catch(function(error){
+                    console.warn("BADGEIFY notification check:",error);
+                });
+            }
+        },300);
+
+        if(loadError){
+            console.warn("Some data could not be loaded:",loadError);
+        }
+    }finally{
+        salehRefreshRunning=false;
     }
 }
 
