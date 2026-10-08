@@ -5608,6 +5608,16 @@ async function deleteSubscription(id){
 
     try{
 
+        const paymentsResult=await db
+            .from("subscription_payments")
+            .select("id")
+            .eq("subscription_id",id);
+
+        if(paymentsResult.error)
+            throw paymentsResult.error;
+
+        const paymentIds=(paymentsResult.data||[]).map(x=>String(x.id));
+
         const result=
         await db
         .from("subscriptions")
@@ -5617,8 +5627,23 @@ async function deleteSubscription(id){
         if(result.error)
             throw result.error;
 
-        await refresh();
+        if(paymentIds.length){
+            const financeResult=await db
+                .from("personal_finance_transactions")
+                .delete()
+                .eq("source_type","subscription_payment")
+                .in("source_id",paymentIds);
 
+            if(financeResult.error){
+                console.error("Subscription deleted but Saleh Finance cleanup failed:",financeResult.error);
+                showToast(
+                    "تم حذف الاشتراك، لكن تعذر حذف بعض الحركات من لوحة صالح: "+financeResult.error.message,
+                    true
+                );
+            }
+        }
+
+        await refresh();
         showToast(t("deleted"));
 
     }catch(error){
@@ -6195,6 +6220,46 @@ async function openPaymentEditModal(paymentId){
     );
 }
 
+async function deletePayment(paymentId){
+
+    if(!confirm(
+        state.lang==="ar"
+        ?"هل تريد حذف الدفعة؟ سيتم أيضاً خصمها من لوحة صالح."
+        :"Delete this payment? It will also be removed from Saleh Finance."
+    )) return;
+
+    try{
+        const result=await db
+            .from("subscription_payments")
+            .delete()
+            .eq("id",paymentId);
+
+        if(result.error) throw result.error;
+
+        const financeResult=await db
+            .from("personal_finance_transactions")
+            .delete()
+            .eq("source_type","subscription_payment")
+            .eq("source_id",String(paymentId));
+
+        if(financeResult.error){
+            console.error("Payment deleted but Saleh Finance cleanup failed:",financeResult.error);
+            showToast(
+                "تم حذف الدفعة، لكن تعذر حذفها من لوحة صالح: "+financeResult.error.message,
+                true
+            );
+        }else{
+            showToast(t("deleted"));
+        }
+
+        await refresh();
+
+    }catch(error){
+        console.error("deletePayment:",error);
+        showToast(error.message,true);
+    }
+}
+
 async function savePaymentEdit(paymentId){
 
     const amount=Number(document.getElementById("editPaymentAmount").value||0);
@@ -6343,6 +6408,9 @@ function renderPayments(){
                 <div class="actions">
                     <button class="mini-btn" onclick="openPaymentEditModal(${p.id})" title="${t("editPayment")}">
                         <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="mini-btn" onclick="deletePayment(${p.id})" title="حذف الدفعة">
+                        <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
             </td>
