@@ -11254,6 +11254,11 @@ async function saveSalehDonation(){
 async function openSalehReconcile(accountId){
  const account=(state.financeAccounts||[]).find(a=>String(a.id)===String(accountId));
  if(!account)return;
+ if(typeof window.isSalehPlatformAccount==='function' && window.isSalehPlatformAccount(account)){
+   if(typeof window.openSalehPlatformOpeningBalance==='function') return window.openSalehPlatformOpeningBalance(accountId);
+   return showToast('نظام مطابقة رصيد المنصة لم يجهز بعد.',true);
+ }
+ // الحسابات النقدية العادية تظل بالجنيه كما هي.
  const cur=(state.settings&&state.settings.currency)||'EGP';
  const current=financeBalance(account.id);
  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>مطابقة الرصيد الفعلي</h4><p>اكتب الرصيد الموجود فعلًا في الحساب، والنظام يسجل الفرق كتسوية بدل ما نعدل التاريخ القديم.</p></div></div><div class="finance-reconcile"><div class="field"><label>الحساب</label><input value="'+esc(account.account_name)+'" disabled></div><div class="field"><label>الرصيد المسجل</label><input value="'+money(current)+' '+esc(cur)+'" disabled></div><div class="field"><label>الرصيد الفعلي الآن</label><input id="reconcileActual" type="number" step="0.01" value="'+current+'"></div></div><div class="finance-reconcile-note" style="margin-top:12px">لو فيه فرق، سيتم تسجيل حركة "تسوية رصيد" بالمبلغ اللازم فقط. هذا يحافظ على سجل الحركات بدل حذف أو تعديل العمليات السابقة.</div></div>';
@@ -12284,6 +12289,7 @@ applyTheme();
     return txs().filter(x=>x.source_type==='platform_deduction'&&String(x.account_id)===String(a.id)&&currencyOf(x)===cur);
   }
 
+  window.isSalehPlatformAccount=function(a){return isPlatform(a);};
   window.salehCryptoPlatforms=platformAccounts;
   window.pfPlatformAccounts=platformAccounts;
   window.pfPlatformBalance=a=>balance(platformById(a)||a);
