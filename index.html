@@ -11278,7 +11278,7 @@ function buildLoanAlerts(){
 }
 
 async function openSalehFinanceEntry(kind){
- const exp=kind==='expense',A=state.financeAccounts||[];
+ const exp=kind==='expense',A=state.financeAccounts||[],cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
  const title=exp?'إضافة مصروف شخصي':'إضافة مبلغ مستلم';
  const icon=exp?'fa-arrow-down':'fa-arrow-up';
  const subtitle=exp?'سجّل المصروف مع الجهة والتصنيف والتفاصيل.':'سجّل المبلغ المستلم ومصدره والحساب الذي دخل إليه.';
@@ -11286,7 +11286,7 @@ async function openSalehFinanceEntry(kind){
  '<div class="finance-section-title">البيانات المالية</div>'+
  '<div class="field finance-field finance-required"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0" placeholder="0.00" autofocus></div>'+
  '<div class="field finance-field finance-required"><label>الحساب</label><select id="pfAccount"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
- '<div class="field finance-field"><label>'+(exp?'بند المصروف':'نوع المبلغ')+'</label><input id="pfCategory" value="'+(exp?'أخرى':'دخل شخصي')+'" placeholder="'+(exp?'أكل، مواصلات، فواتير...':'دخل إضافي، سداد دين...')+'"></div>'+
+ '<div class="field finance-field"><label>'+(exp?'البند':'نوع المبلغ')+'</label>'+(exp?'<select id="pfCategory"><option value="">اختر البند</option>'+cats.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'<option value="شيء غير معلوم">شيء غير معلوم</option></select>':'<input id="pfCategory" value="دخل شخصي" placeholder="دخل إضافي، سداد دين...">')+'</div>'+
  '<div class="field finance-field"><label>اسم الشخص / الجهة</label><input id="pfPerson" placeholder="مثال: أحمد أو محل كذا"></div>'+
  '<div class="field finance-field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div>'+
  '<div class="finance-section-title">تفاصيل الحركة</div>'+
@@ -11300,7 +11300,7 @@ async function saveSalehFinanceEntry(kind){
  const amount=Number(document.getElementById('pfAmount').value||0),
  account=document.getElementById('pfAccount').value,
  date=document.getElementById('pfDate').value,
- category=document.getElementById('pfCategory').value.trim()||'أخرى',
+ category=document.getElementById('pfCategory').value.trim()||(kind==='expense'?'شيء غير معلوم':'دخل شخصي'),
  person=document.getElementById('pfPerson').value.trim(),
  desc=document.getElementById('pfDesc').value.trim(),
  notes=document.getElementById('pfNotes').value||'';
