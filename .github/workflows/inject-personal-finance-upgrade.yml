@@ -21,13 +21,16 @@ jobs:
           from pathlib import Path
           p = Path("index.html")
           s = p.read_text(encoding="utf-8")
-          tag = '<script src="./personal-finance-upgrade.js?v=20261008"></script>'
-          if tag not in s:
+          tag = '<script src="./personal-finance-upgrade.js?v=20261008-2"></script>'
+          import re
+          s2 = re.sub(r'<script src="./personal-finance-upgrade\\.js\\?v=[^"]+"></script>', tag, s, count=1)
+          if s2 == s:
               marker = "</body>"
               if marker not in s:
                   raise SystemExit("index.html has no closing body tag")
-              s = s.replace(marker, tag + "\n" + marker, 1)
-              p.write_text(s, encoding="utf-8")
+              s2 = s.replace(marker, tag + "\n" + marker, 1)
+          s = s2
+          p.write_text(s, encoding="utf-8")
           t = Path("TEST_SAFE_UPGRADE.txt")
           if t.exists():
               t.unlink()
