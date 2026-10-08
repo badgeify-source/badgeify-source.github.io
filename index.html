@@ -11405,7 +11405,17 @@ function buildLoanAlerts(){
 }
 
 async function openSalehFinanceEntry(kind){
- const exp=kind==='expense',A=state.financeAccounts||[],cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
+ const exp=kind==='expense',A=state.financeAccounts||[];
+ let cats=[];
+ try{
+  cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
+  if(!Array.isArray(cats))cats=[];
+ }catch(e){cats=[];}
+ cats=cats.map(x=>String(x||'').trim()).filter(Boolean);
+ if(exp&&!cats.length){
+  cats=['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم'];
+  try{localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));}catch(e){}
+ }
  const title=exp?'إضافة مصروف شخصي':'إضافة مبلغ مستلم';
  const icon=exp?'fa-arrow-down':'fa-arrow-up';
  const subtitle=exp?'سجّل المصروف مع الجهة والتصنيف والتفاصيل.':'سجّل المبلغ المستلم ومصدره والحساب الذي دخل إليه.';
@@ -11413,7 +11423,7 @@ async function openSalehFinanceEntry(kind){
  '<div class="finance-section-title">البيانات المالية</div>'+
  '<div class="field finance-field finance-required"><label>المبلغ</label><input id="pfAmount" type="number" step="0.01" min="0" placeholder="0.00" autofocus></div>'+
  '<div class="field finance-field finance-required"><label>الحساب</label><select id="pfAccount"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
- '<div class="field finance-field"><label>'+(exp?'البند':'نوع المبلغ')+'</label>'+(exp?'<select id="pfCategory"><option value="">اختر البند</option>'+cats.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+'<option value="شيء غير معلوم">شيء غير معلوم</option></select>':'<input id="pfCategory" value="دخل شخصي" placeholder="دخل إضافي، سداد دين...">')+'</div>'+
+ '<div class="field finance-field"><label>'+(exp?'بند المصروف':'نوع المبلغ')+'</label>'+(exp?'<div style="display:flex;gap:8px;align-items:center"><select id="pfCategory" style="flex:1"><option value="">اختر البند</option>'+cats.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('')+(cats.includes('شيء غير معلوم')?'':'<option value="شيء غير معلوم">شيء غير معلوم</option>')+'</select><button type="button" class="mini-btn" onclick="salehFinanceExpenseCategoriesButton()">إدارة البنود</button></div>':'<input id="pfCategory" value="دخل شخصي" placeholder="دخل إضافي، سداد دين...">')+'</div>'+
  '<div class="field finance-field"><label>اسم الشخص / الجهة</label><input id="pfPerson" placeholder="مثال: أحمد أو محل كذا"></div>'+
  '<div class="field finance-field"><label>التاريخ</label><input id="pfDate" type="date" value="'+isoDate(new Date())+'"></div>'+
  '<div class="finance-section-title">تفاصيل الحركة</div>'+
@@ -12514,5 +12524,5 @@ window.salehFinanceExpenseCategoriesButton=function(){
  };
 })();
 </script>
-<script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script>\n<!-- SALEH FINANCE SAFE FEATURE INITIALIZATION -->\n<script id="saleh-finance-safe-init">(function(){'use strict';function ensureExpenseCategories(){try{const key='saleh_expense_categories';const raw=localStorage.getItem(key);const cats=raw?JSON.parse(raw):[];if(!Array.isArray(cats)||!cats.length)localStorage.setItem(key,JSON.stringify(['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم']));}catch(e){console.warn('Saleh finance safe init:',e);}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureExpenseCategories,{once:true});else ensureExpenseCategories();})();</script>\n</body>
+<script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script>\n<!-- SALEH FINANCE SAFE FEATURE INITIALIZATION -->\n<script id="saleh-finance-safe-init">(function(){'use strict';function ensureExpenseCategories(){try{const key='saleh_expense_categories';const raw=localStorage.getItem(key);const cats=raw?JSON.parse(raw):[];if(!Array.isArray(cats)||!cats.length)localStorage.setItem(key,JSON.stringify(['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم']));}catch(e){console.warn('Saleh finance safe init:',e);}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureExpenseCategories,{once:true});else ensureExpenseCategories();})();</script>\n\n<!-- SALEH FINANCE SAFE EXPENSE FIX -->\n<script id="saleh-finance-expense-safe-fix">(function(){'use strict';window.salehExpenseCategoriesSafe=function(){try{var x=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');return Array.isArray(x)?x.map(function(v){return String(v||'').trim()}).filter(Boolean):[]}catch(e){return[]}};})();</script>\n</body>
 </html>
