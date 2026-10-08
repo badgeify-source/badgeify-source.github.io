@@ -12555,5 +12555,65 @@ function bind(){
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();</script>
+
+<!-- SALEH THREE BUTTONS DIRECT FIX -->
+<script id="saleh-three-buttons-direct-fix">(function(){
+'use strict';
+function sx(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+window.salehOpenPersonDirect=function(editId){
+ try{
+  var P=Array.isArray(state.loanPeople)?state.loanPeople:[], p=editId?P.find(function(x){return String(x.id)===String(editId)}):null;
+  var body='<div class="form-grid"><div class="field"><label>الاسم</label><input id="salehPersonName" value="'+sx(p&&p.person_name||'')+'" placeholder="اسم الشخص"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="salehPersonPhone" type="tel" value="'+sx(p&&p.phone||'')+'" placeholder="01xxxxxxxxx"></div><div class="field full"><label>ملاحظات</label><textarea id="salehPersonNotes">'+sx(p&&p.notes||'')+'</textarea></div></div>';
+  openModal(p?'تعديل شخص':'إضافة شخص',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="window.salehSavePersonDirect()">حفظ</button>');
+ }catch(e){console.error(e);showToast('تعذر فتح إضافة الشخص: '+(e.message||e),true);}
+};
+window.salehSavePersonDirect=async function(){
+ try{
+  var name=(document.getElementById('salehPersonName')||{}).value?.trim()||'', phone=(document.getElementById('salehPersonPhone')||{}).value?.trim()||'', notes=(document.getElementById('salehPersonNotes')||{}).value?.trim()||'';
+  if(!name){showToast('اكتب اسم الشخص.',true);return;}
+  if(!currentUser||!currentUser.id)throw new Error('جلسة المستخدم غير متاحة، أعد تسجيل الدخول.');
+  var q=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:name,phone:phone||null,notes:notes||null});
+  if(q.error)throw q.error;
+  closeModal(); if(typeof loadLoanData==='function')await loadLoanData(); if(typeof renderPersonalFinance==='function')renderPersonalFinance(); showToast('تمت إضافة الشخص.');
+ }catch(e){showToast(e.message||'تعذر حفظ الشخص.',true);}
+};
+window.salehPeopleDirect=function(){
+ try{
+  var P=Array.isArray(state.loanPeople)?state.loanPeople:[];
+  var rows=P.map(function(p){return '<div class="finance-person-row" style="margin-bottom:8px"><div class="finance-person-main"><b>'+sx(p.person_name||'بدون اسم')+'</b><small>'+sx(p.phone||'لا يوجد رقم')+'</small></div><div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+sx(p.id)+'\')">تعديل</button></div></div>';}).join('');
+  openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="window.salehOpenPersonDirect()">إضافة شخص جديد</button></div>'+(rows||'<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>'),'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+ }catch(e){console.error(e);showToast('تعذر فتح الأشخاص: '+(e.message||e),true);}
+};
+window.salehExpenseCategoriesDirect=function(){
+ try{
+  var key='saleh_expense_categories', cats=[];
+  try{cats=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
+  if(!Array.isArray(cats))cats=[];
+  cats=cats.map(function(x){return String(x||'').trim();}).filter(Boolean);
+  if(!cats.length){cats=['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم'];localStorage.setItem(key,JSON.stringify(cats));}
+  var rows=cats.map(function(x,i){return '<div style="display:flex;gap:8px;align-items:center;margin:7px 0"><input value="'+sx(x)+'" disabled style="flex:1"><button type="button" class="mini-btn" onclick="window.salehDeleteExpenseCategoryDirect('+i+')">حذف</button></div>';}).join('');
+  openModal('بنود المصاريف','<div class="field"><label>اسم البند الجديد</label><input id="newExpenseCategory" placeholder="مثال: صيانة السيارة"></div><div style="margin-top:14px">'+rows+'</div>','<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button><button type="button" class="gold-btn" onclick="window.salehAddExpenseCategoryDirect()">إضافة البند</button>');
+ }catch(e){console.error(e);showToast('تعذر فتح بنود المصاريف: '+(e.message||e),true);}
+};
+window.salehAddExpenseCategoryDirect=function(){
+ var v=(document.getElementById('newExpenseCategory')||{}).value?.trim()||'';
+ if(!v){showToast('اكتب اسم البند.',true);return;}
+ var cats=[];try{cats=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');}catch(e){}
+ if(!Array.isArray(cats))cats=[]; if(cats.indexOf(v)>=0){showToast('البند موجود بالفعل.',true);return;}
+ cats.push(v);localStorage.setItem('saleh_expense_categories',JSON.stringify(cats)); window.salehExpenseCategoriesDirect(); showToast('تمت إضافة بند المصروف.');
+};
+window.salehDeleteExpenseCategoryDirect=function(i){
+ var cats=[];try{cats=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');}catch(e){}
+ if(!Array.isArray(cats))cats=[];cats.splice(Number(i),1);localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));window.salehExpenseCategoriesDirect();
+};
+var host=document.getElementById('content');
+document.addEventListener('click',function(e){
+ var b=e.target&&e.target.closest?e.target.closest('button'):null;if(!b)return;
+ var t=(b.textContent||'').replace(/\s+/g,' ').trim();
+ if(t==='الأشخاص'){e.preventDefault();e.stopImmediatePropagation();window.salehPeopleDirect();}
+ else if(t==='إضافة شخص'){e.preventDefault();e.stopImmediatePropagation();window.salehOpenPersonDirect();}
+ else if(t==='بنود المصاريف' || t==='إدارة البنود'){e.preventDefault();e.stopImmediatePropagation();window.salehExpenseCategoriesDirect();}
+},true);
+})();</script>
 </body>
 </html>
