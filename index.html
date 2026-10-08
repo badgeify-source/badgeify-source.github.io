@@ -1310,7 +1310,7 @@ data-t="main">
 
 <nav class="nav">
 
-<button data-page="dashboard" class="active">
+<button data-page="dashboard">
 <i class="fa-solid fa-chart-pie"></i>
 <span data-t="dashboard">لوحة التحكم</span>
 </button>
@@ -1519,7 +1519,7 @@ let state={
     localStorage.getItem("badgeify_theme")
     ||"dark",
 
-    page:"personalFinance",
+    page:"dashboard",
 
     subscriptionFilterStatus:"all",
 
@@ -11432,31 +11432,53 @@ async function saveSalehFinanceTransfer(){
 
 async function refresh(){
 
+    let loadError=null;
+
     try{
-
         await loadData();
+    }catch(error){
+        loadError=error;
+        console.warn("Main data load failed:",error);
+    }
+
+    try{
         await loadFinanceData();
+    }catch(error){
+        loadError=loadError||error;
+        console.warn("Finance data load failed:",error);
+    }
+
+    try{
         await loadLoanData();
+    }catch(error){
+        loadError=loadError||error;
+        console.warn("Loan data load failed:",error);
+    }
 
+    /* مهم: اعرض الواجهة حتى لو جدول من جداول البيانات فيه مشكلة */
+    try{
         render();
+    }catch(error){
+        console.error("Render failed:",error);
+        const host=document.getElementById("content");
+        if(host) host.innerHTML='<div class="card"><div class="card-body"><h3>لوحة التحكم</h3><p class="muted">تم فتح الموقع، لكن يوجد خطأ مؤقت في تحميل بعض البيانات.</p><button class="gold-btn" onclick="location.reload()">إعادة تحميل</button></div></div>';
+    }
 
+    try{
         updateNotificationUI();
+    }catch(e){ console.warn("Notification UI:",e); }
 
-        setTimeout(function(){
+    setTimeout(function(){
+        if(typeof showAutomaticDueNotifications==="function"){
             showAutomaticDueNotifications().catch(function(error){
                 console.warn("BADGEIFY notification check:",error);
             });
-        },300);
+        }
+    },300);
 
-    }catch(error){
-
-        showToast(
-            error.message,
-            true
-        );
-
+    if(loadError){
+        console.warn("Some data could not be loaded:",loadError);
     }
-
 }
 
 
