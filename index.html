@@ -6133,7 +6133,8 @@ async function confirmPayment(subscriptionId,periodKey){
         });
 
         if(financeSync && financeSync.ok===false){
-            showToast("تم تأكيد الدفع، لكن تعذر إضافة المبلغ إلى لوحة صالح. راجع حركة الحساب.",true);
+            console.error("Badgeify → Saleh Finance:",financeSync.message,financeSync.error);
+            showToast("تم تأكيد الدفع، لكن تعذر إضافة المبلغ إلى لوحة صالح: "+(financeSync.message||"خطأ غير معروف"),true);
         }else{
             showToast(t("successPayment"));
         }
@@ -10801,11 +10802,23 @@ function financeBalance(id){
 }
 async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date,notes,customerName){
     const map={cash:'cash',vodafone_cash:'vodafone_cash',instapay:'instapay'};
-    const type=map[method];
+    const type=map[String(method||'').toLowerCase()];
     if(!type) return {ok:true,skipped:true};
 
     try{
-        let a=financeAccount(type);
+        if(!currentUser?.id) throw new Error('لم يتم التعرف على مستخدم لوحة صالح.');
+
+        // نبحث في قاعدة البيانات مباشرة، لأن state قد تكون قديمة.
+        let accountQuery=await db
+            .from('personal_finance_accounts')
+            .select('*')
+            .eq('user_id',currentUser.id)
+            .eq('account_type',type)
+            .maybeSingle();
+
+        if(accountQuery.error) throw accountQuery.error;
+
+        let a=accountQuery.data;
 
         if(!a){
             const accountName=
@@ -10813,10 +10826,10 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
                 type==='vodafone_cash' ? 'Vodafone Cash' :
                 'InstaPay';
 
-            const r=await db
+            const created=await db
                 .from('personal_finance_accounts')
                 .insert({
-                    user_id:currentUser?.id,
+                    user_id:currentUser.id,
                     account_name:accountName,
                     account_type:type,
                     opening_balance:0
@@ -10824,46 +10837,84 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
                 .select('*')
                 .single();
 
-            if(r.error) throw r.error;
-            a=r.data;
+            // لو الحساب اتعمل في نفس اللحظة من جلسة أخرى، نعيد قراءته.
+            if(created.error){
+                const retry=await db
+                    .from('personal_finance_accounts')
+                    .select('*')
+                    .eq('user_id',currentUser.id)
+                    .eq('account_type',type)
+                    .maybeSingle();
+
+                if(retry.error || !retry.data) throw created.error;
+                a=retry.data;
+            }else{
+                a=created.data;
+            }
         }
 
         const existing=await db
             .from('personal_finance_transactions')
-            .select('id')
+            .select('id,account_id,amount')
+            .eq('user_id',currentUser.id)
             .eq('source_type','subscription_payment')
             .eq('source_id',String(paymentId))
             .maybeSingle();
 
         if(existing.error) throw existing.error;
 
-        if(existing.data) return {ok:true,duplicate:true};
+        if(existing.data){
+            return {ok:true,duplicate:true};
+        }
 
-        const r=await db
+        const payload={
+            user_id:currentUser.id,
+            account_id:a.id,
+            amount:Number(amount),
+            transaction_type:'income',
+            category:'مقبوضات العمل',
+            description:'مبلغ مستلم من '+(customerName||'عميل'),
+            source_type:'subscription_payment',
+            source_id:String(paymentId),
+            customer_id:customerId||null,
+            trader_id:traderId||null,
+            payment_id:paymentId||null,
+            payment_method:String(method),
+            transaction_date:date||isoDate(new Date()),
+            notes:notes||null
+        };
+
+        let inserted=await db
             .from('personal_finance_transactions')
-            .insert({
-                user_id:currentUser?.id,
-                account_id:a.id,
-                amount:Number(amount),
-                transaction_type:'income',
-                category:'مقبوضات العمل',
-                description:'مبلغ مستلم من '+(customerName||'عميل'),
-                source_type:'subscription_payment',
-                source_id:String(paymentId),
-                customer_id:customerId||null,
-                trader_id:traderId||null,
-                payment_id:paymentId,
-                payment_method:method,
-                transaction_date:date,
-                notes:notes||null
-            });
+            .insert(payload)
+            .select('id')
+            .single();
 
-        if(r.error) throw r.error;
+        if(inserted.error){
+            // في حالة أن الحركة أضيفت بالفعل من محاولة سابقة، لا نعتبرها فشلًا.
+            const check=await db
+                .from('personal_finance_transactions')
+                .select('id,account_id,amount')
+                .eq('user_id',currentUser.id)
+                .eq('source_type','subscription_payment')
+                .eq('source_id',String(paymentId))
+                .maybeSingle();
 
-        return {ok:true};
+            if(!check.error && check.data){
+                return {ok:true,duplicate:true};
+            }
+
+            throw inserted.error;
+        }
+
+        return {ok:true,id:inserted.data?.id};
     }catch(e){
         console.error('Saleh Finance payment sync:',e);
-        return {ok:false,error:e};
+        return {
+            ok:false,
+            error:e,
+            message:e?.message||'تعذر تسجيل الحركة المالية'
+        };
     }
 }
 
