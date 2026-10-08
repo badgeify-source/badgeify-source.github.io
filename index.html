@@ -12387,17 +12387,11 @@ applyTheme();
     const html=NAMES.map(name=>{
       const a=A.find(x=>String(x.account_name).toLowerCase()===name.toLowerCase());
       if(!a)return '<div class="platform-card platform-card-empty"><div class="platform-top"><div><div class="platform-name">'+escv(name)+'</div><div class="platform-currency">حساب المنصة — USD / USDT</div></div><span class="platform-tag">USD / USDT</span></div><div class="platform-balance">0 <small>USD</small></div><div class="platform-balance">0 <small>USDT</small></div></div>';
-      const usd=balance(a,'USD'),usdt=balance(a,'USDT');
-      const usdDeps=transfersFor(a,'USD').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
-      const usdtDeps=transfersFor(a,'USDT').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
-      const usdDeds=deductionsFor(a,'USD').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
-      const usdtDeds=deductionsFor(a,'USDT').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
-      const count=deductionsFor(a,'USD').length+deductionsFor(a,'USDT').length;
-      return '<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+escv(a.account_name)+'</div><div class="platform-currency">الرصيد مطابق لكل عملة بشكل مستقل</div></div><span class="platform-tag">USD / USDT</span></div><div class="platform-currency-balances"><div class="platform-currency-box"><span>USD</span><b>'+moneyv(usd)+'</b><small>دولار</small></div><div class="platform-currency-box"><span>USDT</span><b>'+moneyv(usdt)+'</b><small>تيثر</small></div></div><div class="platform-mini-stats"><div><span>إيداعات USD</span><b>'+moneyv(usdDeps)+' USD</b></div><div><span>خصومات USD</span><b>'+moneyv(usdDeds)+' USD</b></div><div><span>إيداعات USDT</span><b>'+moneyv(usdtDeps)+' USDT</b></div><div><span>خصومات USDT</span><b>'+moneyv(usdtDeds)+' USDT</b></div><div><span>عدد الخصومات</span><b>'+count+'</b></div></div><div class="platform-actions platform-actions-visible"><button type="button" class="mini-btn" onclick="openSalehPlatformDeposit(\''+escv(a.id)+'\')"><i class="fa-solid fa-plus"></i> إيداع</button><button type="button" class="mini-btn pay" onclick="openSalehPlatformDeduction(\'\',\''+escv(a.id)+'\')"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>';
+      const usdt=balance(a,'USDT');
+      return '<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+escv(a.account_name)+'</div><div class="platform-currency">الرصيد بالـ USDT</div></div><span class="platform-tag">USDT</span></div><div class="platform-currency-balances"><div class="platform-currency-box"><span>USD</span><b>'+moneyv(usd)+'</b><small>دولار</small></div><div class="platform-currency-box"><span>USDT</span><b>'+moneyv(usdt)+'</b><small>تيثر</small></div></div><div class="platform-actions platform-actions-visible"><button type="button" class="mini-btn" onclick="openSalehPlatformDeposit(\''+escv(a.id)+'\')"><i class="fa-solid fa-plus"></i> إيداع</button><button type="button" class="mini-btn pay" onclick="openSalehPlatformDeduction(\'\',\''+escv(a.id)+'\')"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>';
     }).join('');
-    const totalUsd=A.reduce((s,a)=>s+balance(a,'USD'),0);
     const totalUsdt=A.reduce((s,a)=>s+balance(a,'USDT'),0);
-    return '<div class="platform-finance-section"><div class="platform-finance-head"><div><span class="saleh-section-eyebrow">CRYPTO PLATFORMS</span><h3>منصات العملات</h3><p>Bybit Saleh و Bybit Mahmoud و Binance — الرصيد بالدولار وUSDT منفصل لكل منصة.</p></div><div class="platform-total"><span>إجمالي الأرصدة</span><b>'+moneyv(totalUsd)+' USD</b><b>'+moneyv(totalUsdt)+' USDT</b></div></div><div class="platform-grid">'+html+'</div></div>';
+    return '<div class="platform-finance-section"><div class="platform-finance-head"><div><span class="saleh-section-eyebrow">CRYPTO PLATFORMS</span><h3>منصات العملات</h3><p>Bybit Saleh و Bybit Mahmoud و Binance — الرصيد بالـ USDT لكل منصة.</p></div><div class="platform-total"><span>إجمالي الأرصدة</span><b>'+moneyv(totalUsdt)+' USDT</b></div></div><div class="platform-grid">'+html+'</div></div>';
   };
 
   const oldRefresh=window.refresh;
