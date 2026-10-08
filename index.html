@@ -12190,11 +12190,11 @@ window.renderPersonalFinance=function(){
  },0);
 };
 const oldLoad=window.loadFinanceData||loadFinanceData;
-window.loadFinanceData=async function(){await oldLoad();};
+window.loadFinanceData=async function(){await oldLoad();await window.initSalehPlatforms();};
 window.initSalehPlatforms=async function(){
  if(!currentUser?.id)return;
  try{
-  const names=['Bybit Saleh','Bybit Mahmoud'];
+  const names=['Bybit Saleh','Bybit Mahmoud','Binance'];
   for(const n of names)if(!(state.financeAccounts||[]).some(a=>String(a.account_name).toLowerCase()===n.toLowerCase()))await pfEnsurePlatform(n);
  }catch(e){console.warn('Saleh platforms not ready:',e);}
 };
