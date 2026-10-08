@@ -1135,6 +1135,31 @@ body{
 .finance-platform-top-card{border-radius:16px}
 @media(max-width:900px){.platform-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.platform-total-strip{grid-template-columns:1fr 1fr}.platform-total:last-child{grid-column:1/-1}}
 @media(max-width:560px){.platform-finance-section{padding:12px;border-radius:17px}.platform-finance-head{align-items:stretch;flex-direction:column}.platform-finance-head .actions{display:grid;grid-template-columns:1fr}.platform-total-strip{grid-template-columns:1fr}.platform-total:last-child{grid-column:auto}.platform-grid{grid-template-columns:1fr}.platform-card{min-height:175px;padding:16px}.platform-balance{font-size:26px}}
+</style><style id="saleh-finance-redesign-css">
+#salehFinanceRedesign{--sf-bg:#f5f7fb;--sf-card:#fff;--sf-text:#172033;--sf-muted:#718096;--sf-border:#e5e9f1;--sf-gold:#b58a3a;direction:rtl;background:var(--sf-bg);border-radius:24px;padding:22px;min-height:300px;color:var(--sf-text)}
+#salehFinanceRedesign .finance-page-head{background:linear-gradient(135deg,#172033,#293a58)!important;color:#fff!important;border:0!important;border-radius:22px!important;padding:25px!important;margin:0 0 14px!important;box-shadow:0 14px 35px rgba(23,32,51,.16)!important}
+#salehFinanceRedesign .finance-page-head h1{color:#fff!important;font-size:28px;margin:5px 0}#salehFinanceRedesign .finance-page-head p,#salehFinanceRedesign .finance-kicker{color:rgba(255,255,255,.72)!important}
+#salehFinanceRedesign .page-actions{display:flex;flex-wrap:wrap;gap:7px}#salehFinanceRedesign .page-actions button{border-radius:11px!important}
+#salehFinanceRedesign .finance-hero{border-radius:20px!important;background:linear-gradient(135deg,#fff,#f8f3e8)!important;border:1px solid #eadfc8!important;box-shadow:0 8px 24px rgba(23,32,51,.06)!important;padding:22px!important}
+#salehFinanceRedesign .finance-hero strong{font-size:34px}#salehFinanceRedesign .finance-stat-grid{grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+#salehFinanceRedesign .stat{border:1px solid var(--sf-border)!important;border-radius:18px!important;background:#fff!important;box-shadow:0 5px 18px rgba(23,32,51,.05)!important;padding:17px!important}
+#salehFinanceRedesign .stat h2{font-size:21px}#salehFinanceRedesign .stat-icon{border-radius:13px!important}
+#salehFinanceRedesign .finance-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 22px}
+#salehFinanceRedesign .finance-kpi{background:#fff;border:1px solid var(--sf-border);border-radius:16px;padding:15px}
+#salehFinanceRedesign .finance-kpi b{font-size:18px}
+#salehFinanceRedesign .finance-account-section,#salehFinanceRedesign .card,#salehFinanceRedesign .platform-finance-section{border-radius:20px!important}
+#salehFinanceRedesign .finance-account-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+#salehFinanceRedesign .finance-account-card{border:1px solid var(--sf-border)!important;border-radius:17px!important;background:#fff!important;box-shadow:none!important;padding:16px!important}
+#salehFinanceRedesign .finance-account-card>strong{font-size:22px}
+#salehFinanceRedesign .card{border:1px solid var(--sf-border)!important;box-shadow:0 5px 18px rgba(23,32,51,.045)!important}
+#salehFinanceRedesign .card-head{padding:17px 20px}.saleh-finance-redesign .table-wrap{border-radius:14px;overflow:auto}
+#salehFinanceRedesign table th{background:#f8f9fc;font-size:11px}#salehFinanceRedesign table td{font-size:12px}
+#content:has(#salehFinanceRedesign) .finance-loans-table,#content:has(#salehFinanceRedesign) .finance-people-accounts{background:#fff;border:1px solid #e5e9f1;border-radius:20px;box-shadow:0 5px 18px rgba(23,32,51,.045);overflow:hidden}
+#content:has(#salehFinanceRedesign) .finance-loans-table .card-head,#content:has(#salehFinanceRedesign) .finance-people-accounts .card-head{padding:18px 20px;background:#fbfcfe}
+#content:has(#salehFinanceRedesign) .finance-people-list{padding:10px 14px 16px}
+@media(max-width:1100px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid{grid-template-columns:repeat(2,1fr)}#salehFinanceRedesign .finance-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){#salehFinanceRedesign{padding:12px;border-radius:16px}#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid,#salehFinanceRedesign .finance-kpis{grid-template-columns:1fr 1fr}#salehFinanceRedesign .finance-page-head{padding:18px!important}#salehFinanceRedesign .finance-page-head h1{font-size:22px}}
+@media(max-width:430px){#salehFinanceRedesign .finance-account-grid,#salehFinanceRedesign .finance-stat-grid,#salehFinanceRedesign .finance-kpis{grid-template-columns:1fr}}
 </style></head>
 
 <body>
@@ -11112,6 +11137,10 @@ function renderPersonalFinance(){
    '<div id="salehDigitalPlatforms" style="margin-top:16px">'+(typeof renderSalehPlatforms==='function'?renderSalehPlatforms():'')+'</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
    '<div class="grid cols finance-main-grid" style="margin-top:16px"><div class="card"><div class="card-head"><div><h3>مؤشرات هذا الشهر</h3><span class="muted">الدخل والمصروف وصافي الحركة</span></div></div><div class="card-body"><div class="finance-mini-metrics"><div><span>المقبوضات</span><b>'+money(income)+' '+esc(cur)+'</b></div><div><span>المصروفات</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div><span>الصافي</span><b>'+money(profit)+' '+esc(cur)+'</b></div></div></div></div><div class="card"><div class="card-head"><div><h3>قاعدة النظام</h3><span class="muted">ممنوع تكرار تسجيل العملية</span></div></div><div class="card-body"><div class="muted" style="line-height:2">دفع العميل من السيستم الأساسي يدخل تلقائيًا في الحساب المختار. التحويل بين حساباتك لا يُحسب دخلًا. المصروف يقلل الرصيد. السلفة والرد عليها يتحركان من الحسابات تلقائيًا.</div></div></div></div>';
+  const salehFinanceHost=document.getElementById('content');
+  if(salehFinanceHost && state.page==='personalFinance'){
+    salehFinanceHost.innerHTML='<div id="salehFinanceRedesign" class="saleh-finance-redesign">'+salehFinanceHost.innerHTML+'</div>';
+  }
   setTimeout(renderPersonalFinanceLoans,0);
  }catch(e){console.error('SALEH FINANCE RENDER ERROR',e);document.getElementById('content').innerHTML='<div class="card"><div class="card-body"><h3>لوحة تحكم صالح</h3><p class="muted">تعذر تحميل لوحة التحكم حاليًا. تأكد من تشغيل جداول لوحة صالح في Supabase ثم اضغط تحديث.</p></div></div>';}
 }
