@@ -12299,11 +12299,22 @@ window.saveSalehPlatformDeduction=async function(editId){
 window.deleteSalehPlatformDeduction=async function(id){if(!confirm('حذف خصم المنصة؟'))return;try{await pfDeleteBySource('platform_deduction',id);await pfReload();showToast('تم حذف الخصم.')}catch(e){showToast(e.message,true)}};
 window.openSalehPlatformDeposit=function(platformId){openSalehPlatformTransfer('',platformId||'');};
 window.openSalehPlatformAccount=async function(editName){
- const body='<div class="form-grid"><div class="field finance-required"><label>اسم المنصة / الحساب</label><input id="pfPlatformName" value="'+pfEsc(editName||'')+'" placeholder="Bybit Saleh"></div><div class="field full"><label>نوع الحساب</label><input value="منصة دولار / USDT" disabled></div></div>';
- openModal(editName?'تعديل اسم المنصة':'إضافة منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformAccount()">حفظ</button>');
+ const existing=editName?pfPlatformAccounts().find(x=>String(x.account_name).toLowerCase()===String(editName).toLowerCase()):null;
+ const opening=existing?pfPlatformBalance(existing.id):0;
+ const body='<div class="form-grid"><div class="field finance-required"><label>اسم المنصة / الحساب</label><input id="pfPlatformName" value="'+pfEsc(existing?.account_name||editName||'')+'" placeholder="Bybit Saleh"></div><div class="field finance-required"><label>الرصيد الافتتاحي</label><div style="display:flex;gap:8px;align-items:center"><input id="pfPlatformOpening" type="number" min="0" step="0.000001" value="'+opening+'" placeholder="مثال: 250.50" style="flex:1"><span class="platform-tag">USD / USDT</span></div><small class="muted">هذا الرصيد بالدولار/USDT فقط، وليس بالجنيه المصري.</small></div><div class="field full"><label>نوع الحساب</label><input value="منصة دولار / USDT" disabled></div></div>';
+ openModal(existing?'تعديل منصة ورصيدها الافتتاحي':'إضافة منصة ورصيد افتتاحي',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformAccount()">حفظ</button>');
 };
 window.saveSalehPlatformAccount=async function(){
- try{const name=document.getElementById('pfPlatformName')?.value.trim();if(!name)throw new Error('اكتب اسم المنصة.');await pfEnsurePlatform(name);closeModal();await pfReload();showToast('تم حفظ المنصة.')}catch(e){showToast(e.message,true)}
+ try{
+  const name=document.getElementById('pfPlatformName')?.value.trim();
+  const opening=Number(document.getElementById('pfPlatformOpening')?.value||0);
+  if(!name)throw new Error('اكتب اسم المنصة.');
+  if(!Number.isFinite(opening)||opening<0)throw new Error('اكتب الرصيد الافتتاحي بالدولار بشكل صحيح.');
+  let a=await pfEnsurePlatform(name);
+  const up=await db.from('personal_finance_accounts').update({opening_balance:opening,updated_at:new Date().toISOString()}).eq('id',a.id).eq('user_id',currentUser.id);
+  if(up.error)throw up.error;
+  await pfReload();closeModal();showToast('تم حفظ المنصة والرصيد الافتتاحي بالدولار/USDT.');
+ }catch(e){showToast(e.message||'تعذر حفظ المنصة.',true)}
 };
 window.renderSalehPlatforms=function(){
  const A=pfPlatformAccounts(),transfers=pfTransferGroups(),ded=pfDeductionRows(),usdTotal=A.reduce((s,a)=>s+pfPlatformBalance(a.id),0);
