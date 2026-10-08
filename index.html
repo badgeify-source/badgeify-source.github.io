@@ -11104,7 +11104,7 @@ function renderPersonalFinance(){
   }).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
   document.getElementById('content').innerHTML=
-   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeopleList()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="ghost-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="openSalehExpenseCategories()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
+   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="salehFinancePeopleButton()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="ghost-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
    '<div class="finance-hero"><div><span>السيولة الحالية</span><strong>'+money(total)+' <small>'+esc(cur)+'</small></strong><p>إجمالي كل حساباتك الحالية</p></div><div class="finance-hero-side"><span>صافي الشهر</span><b>'+money(profit)+' '+esc(cur)+'</b><small>مقبوضات '+money(income)+' • مصروفات '+money(expense)+'</small></div></div>'+
    '<div class="grid stats finance-stat-grid">'+cards.map(x=>'<div class="stat '+x[3]+'"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div>'+
    '<div class="finance-kpis"><div class="finance-kpi"><span>مقبوضات الشهر</span><b>'+money(income)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>مصروفات الشهر</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي الربح / الحركة</span><b>'+money(profit)+' '+esc(cur)+'</b></div><div class="finance-kpi"><span>عدد الحركات</span><b>'+T.length+'</b></div></div>'+
@@ -12314,6 +12314,31 @@ setTimeout(function(){
     try{ renderPersonalFinance(); }catch(e){ console.error('SALEH FINAL RENDER',e); }
   }
 },0);
+
+// إصلاح نهائي لأزرار الأشخاص وبنود المصاريف — وظائف مستقلة لا تعتمد على ترتيب السكربتات
+window.salehFinancePeopleButton=function(){
+  try{
+    const P=Array.isArray(state.loanPeople)?state.loanPeople:[];
+    const rows=P.map(p=>{
+      const st=(typeof personLoanStats==='function')?personLoanStats(p.id):{net:0};
+      const net=Number(st.net||0);
+      return '<div class="finance-person-row" style="margin-bottom:8px">'+
+        '<div class="finance-person-main"><b>'+esc(p.person_name||'بدون اسم')+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div>'+
+        '<div class="finance-person-balance '+(net>0?'positive':net<0?'negative':'zero')+'"><span>'+(net>0?'ليَّ عنده':net<0?'عليَّ له':'متساوي')+'</span><b>'+money(Math.abs(net))+' جنيه</b></div>'+
+        '<div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="openSalehPersonAccount(\\''+esc(p.id)+'\\')">فتح الحساب</button><button type="button" class="mini-btn" onclick="openSalehPeople(\\''+esc(p.id)+'\\')">تعديل</button>'+(p.phone?'<button type="button" class="mini-btn wa" onclick="salehPersonWhatsApp(\\''+esc(p.id)+'\\')">واتساب</button>':'')+'</div></div>';
+    }).join('') || '<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>';
+    openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="openSalehPeople()">إضافة شخص جديد</button></div><div class="finance-people-list">'+rows+'</div>','<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+  }catch(e){console.error(e);showToast('تعذر فتح قائمة الأشخاص: '+(e.message||e),true);}
+};
+window.salehFinanceExpenseCategoriesButton=function(){
+  try{
+    const defaults=['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات'];
+    let cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
+    if(!cats.length){cats=defaults.slice();localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));}
+    const rows=cats.map((x,i)=>'<div style="display:flex;gap:8px;align-items:center;margin:7px 0"><input value="'+esc(x)+'" disabled style="flex:1"><button type="button" class="mini-btn" onclick="removeSalehExpenseCategory('+i+')">حذف</button></div>').join('');
+    openModal('بنود المصاريف','<div class="field"><label>إضافة بند جديد</label><input id="newExpenseCategory" placeholder="مثال: صيانة السيارة"></div><div style="margin-top:14px">'+rows+'</div>','<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button><button type="button" class="gold-btn" onclick="addSalehExpenseCategory()">إضافة بند</button>');
+  }catch(e){console.error(e);showToast('تعذر فتح بنود المصاريف: '+(e.message||e),true);}
+};
 
 </script>
 <script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script></body>
