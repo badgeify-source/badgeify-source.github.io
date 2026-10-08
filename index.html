@@ -1294,7 +1294,9 @@ data-t="main">
 
 <nav class="nav">
 
-<button data-page="dashboard" class="active">
+<button type="button" data-page="personalFinance" onclick="state.page='personalFinance';render();"><i class="fa-solid fa-wallet"></i><span>لوحة تحكم صالح</span></button>
+
+<button data-page="dashboard">
 <i class="fa-solid fa-chart-pie"></i>
 <span data-t="dashboard">لوحة التحكم</span>
 </button>
@@ -1350,8 +1352,6 @@ data-t="main">
 </button>
 
 <div class="nav-title">لوحة تحكم صالح</div>
-<button type="button" data-page="personalFinance" onclick="state.page='personalFinance';render();"><i class="fa-solid fa-wallet"></i><span>لوحة تحكم صالح</span></button>
-
 
 </nav>
 
@@ -1503,7 +1503,7 @@ let state={
     localStorage.getItem("badgeify_theme")
     ||"dark",
 
-    page:"dashboard",
+    page:"personalFinance",
 
     subscriptionFilterStatus:"all",
 
@@ -11272,7 +11272,7 @@ function renderPersonalFinanceLoans(){
 }
 async function openSalehLoan(){
  const A=state.financeAccounts||[],P=state.loanPeople||[];
- const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><h4>تسجيل سلفة</h4><p>حدد هل الفلوس مستلفها أنت أم مسلفها لشخص آخر. النظام سيحرك الرصيد تلقائيًا بالطريقة الصحيحة.</p></div></div><div class="form-grid"><div class="finance-section-title">نوع السلفة</div><div class="field full"><label>نوع العملية</label><select id="loanDirection" onchange="updateSalehLoanDirectionUI()"><option value="lent">فلوس مسلفها — ليا فلوس عند الشخص</option><option value="borrowed">فلوس مستلفها — عليَّ فلوس للشخص</option></select></div><div class="field"><label>الشخص</label><select id="loanPerson"><option value="">اختر شخصًا</option>'+P.map(p=>'<option value="'+p.id+'">'+esc(p.person_name)+'</option>').join('')+'</select></div><div class="field"><label>اسم شخص جديد (اختياري)</label><input id="loanNewPerson"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="loanPhone" type="tel" placeholder="01xxxxxxxxx"></div><div class="field"><label>المبلغ</label><input id="loanAmount" type="number" min="0" step="0.01"></div><div class="field"><label id="loanAccountLabel">من حساب</label><select id="loanAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ السلفة</label><input id="loanDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>موعد السداد</label><input id="loanDue" type="date" value="'+isoDate(new Date(Date.now()+7*86400000))+'"></div><div class="field full"><label>الغرض</label><input id="loanPurpose"></div><div class="field full"><label>ملاحظات</label><textarea id="loanNotes"></textarea></div></div>';
+ const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><h4>تسجيل سلفة</h4><p>حدد هل الفلوس مستلفها أنت أم مسلفها لشخص آخر. النظام سيحرك الرصيد تلقائيًا بالطريقة الصحيحة.</p></div></div><div class="form-grid"><div class="finance-section-title">نوع السلفة</div><div class="field full"><label>نوع العملية</label><select id="loanDirection" onchange="updateSalehLoanDirectionUI()"><option value="lent">فلوس مسلفها — ليا فلوس عند الشخص</option><option value="borrowed">فلوس مستلفها — عليَّ فلوس للشخص</option></select></div><div class="field"><label>الشخص</label><select id="loanPerson"><option value="">اختر شخصًا</option>'+P.map(p=>'<option value="'+p.id+'">'+esc(p.person_name)+'</option>').join('')+'</select></div><div class="field"><label>اسم شخص جديد (اختياري)</label><input id="loanNewPerson"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="loanPhone" type="tel" placeholder="01xxxxxxxxx"></div><div class="field"><label>المبلغ</label><input id="loanAmount" type="number" min="0" step="0.01"></div><div class="field"><label id="loanAccountLabel">من حساب</label><select id="loanAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ السلفة</label><input id="loanDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>موعد السداد <span class="muted">(اختياري)</span></label><input id="loanDue" type="date"></div><div class="field full"><label>الغرض</label><input id="loanPurpose"></div><div class="field full"><label>ملاحظات</label><textarea id="loanNotes"></textarea></div></div>';
  openModal('تسجيل سلفة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehLoan()">حفظ السلفة</button>');
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
  updateSalehLoanDirectionUI();
@@ -12351,7 +12351,9 @@ window.openSalehPeopleList=function(){const P=state.loanPeople||[];const rows=P.
     return '<div class="finance-person-row"><div class="finance-person-main"><b>'+esc(p.person_name)+'</b><small>'+esc(p.phone||'لا يوجد رقم واتساب')+'</small></div><div class="finance-person-balance '+(net>0?'positive':net<0?'negative':'zero')+'"><span>'+ (net>0?'ليَّ عنده':net<0?'عليَّ له':'متساوي') +'</span><b>'+money(Math.abs(net))+' جنيه</b></div><div class="finance-person-row-actions"><button class="mini-btn" onclick="openSalehPersonAccount(\''+esc(p.id)+'\')">فتح الحساب</button>'+(p.phone?'<button class="mini-btn wa" onclick="salehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> واتساب</button>':'')+'</div></div>';
   }).join('')||'<div class="empty">أضف الأشخاص ثم سجل حركاتهم، وكل شخص سيظهر له حساب مستقل هنا.</div>';
   section.innerHTML='<div class="card-head"><div><h3>حسابات الأشخاص</h3><span class="muted">كل شخص له حساب مستقل، والرصيد يتحسب تلقائيًا من كل الحركات.</span></div><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص</button></div><div class="card-body"><div class="finance-people-list">'+rows+'</div></div>';
-  host.insertBefore(section,host.firstChild);
+  const loanTables=host.querySelectorAll('.finance-loans-table');
+  if(loanTables.length) loanTables[loanTables.length-1].after(section);
+  else host.appendChild(section);
  };
 })();
 
