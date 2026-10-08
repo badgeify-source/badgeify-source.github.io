@@ -1,0 +1,43 @@
+name: Inject PERSONAL FINANCE upgrade
+
+on:
+  push:
+    paths:
+      - "personal-finance-upgrade.js"
+      - "supabase_personal_finance_upgrade_20261008.sql"
+      - ".github/workflows/inject-personal-finance-upgrade.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject finance upgrade script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("index.html")
+          s = p.read_text(encoding="utf-8")
+          tag = '<script src="./personal-finance-upgrade.js?v=20261008"></script>'
+          if tag not in s:
+              marker = "</body>"
+              if marker not in s:
+                  raise SystemExit("index.html has no closing body tag")
+              s = s.replace(marker, tag + "\n" + marker, 1)
+              p.write_text(s, encoding="utf-8")
+          t = Path("TEST_SAFE_UPGRADE.txt")
+          if t.exists():
+              t.unlink()
+          PY
+      - name: Commit injected upgrade
+        run: |
+          git config user.name "BADGEIFY Upgrade Bot"
+          git config user.email "actions@github.com"
+          git add index.html
+          git rm -f TEST_SAFE_UPGRADE.txt 2>/dev/null || true
+          git diff --cached --quiet && exit 0
+          git commit -m "Enable PERSONAL FINANCE upgrades"
+          git push
