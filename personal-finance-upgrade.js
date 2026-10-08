@@ -167,7 +167,7 @@ U.openSalehPlatformCardDeposit = function(){
   U.openModal("إيداع من الكارت إلى المنصة",body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformCardDeposit()">تسجيل الإيداع</button>');
 };
 U.saveSalehPlatformCardDeposit = async function(){
-  const a=pfAccount0(document.getElementById("pfCardDepPlatform")?.value),card=pfAccount0("__no__");
+  const a=pfAccount0(document.getElementById("pfCardDepPlatform")?.value);
   const cardId=document.getElementById("pfCardDepCard")?.value||null,amt=Number(document.getElementById("pfCardDepAmount")?.value||0),date=document.getElementById("pfCardDepDate")?.value||today0(),ref=document.getElementById("pfCardDepRef")?.value.trim(),notes=document.getElementById("pfCardDepNotes")?.value.trim();
   if(!a || !/bybit|binance|crypto/i.test(String(a.account_name||"")) || amt<=0) return U.showToast("اختر منصة وأدخل مبلغًا صحيحًا.",true);
   const card=(U.state?.visaCards||[]).find(c=>String(c.id)===String(cardId));
@@ -279,4 +279,4 @@ if(typeof baseRefresh==="function"){
 }
 loadCats().catch(()=>{});
 })();
-/* deployment trigger 2026-10-08 */
+/* deployment trigger 2026-10-08 fixed-card-deposit */
