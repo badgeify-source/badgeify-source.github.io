@@ -10891,6 +10891,23 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
             .single();
 
         if(inserted.error){
+            // لو حصل رفض بسبب ربط customer_id / trader_id من نوع مختلف،
+            // نعيد المحاولة بدون حقول الربط الاختيارية. الحركة المالية نفسها
+            // تظل مرتبطة بالدفعة عن طريق source_type + source_id + payment_id.
+            const fallbackPayload={...payload};
+            delete fallbackPayload.customer_id;
+            delete fallbackPayload.trader_id;
+
+            const fallback=await db
+                .from('personal_finance_transactions')
+                .insert(fallbackPayload)
+                .select('id')
+                .single();
+
+            if(!fallback.error){
+                return {ok:true,id:fallback.data?.id,fallback:true};
+            }
+
             // في حالة أن الحركة أضيفت بالفعل من محاولة سابقة، لا نعتبرها فشلًا.
             const check=await db
                 .from('personal_finance_transactions')
@@ -10904,7 +10921,9 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
                 return {ok:true,duplicate:true};
             }
 
-            throw inserted.error;
+            const firstError=inserted.error?.message||String(inserted.error);
+            const fallbackError=fallback.error?.message||String(fallback.error);
+            throw new Error(firstError+" | إعادة المحاولة: "+fallbackError);
         }
 
         return {ok:true,id:inserted.data?.id};
