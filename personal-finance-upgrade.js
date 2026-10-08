@@ -279,3 +279,4 @@ if(typeof baseRefresh==="function"){
 }
 loadCats().catch(()=>{});
 })();
+/* deployment trigger 2026-10-08 */
