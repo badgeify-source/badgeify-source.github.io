@@ -11431,63 +11431,131 @@ async function saveSalehFinanceTransfer(){
    REFRESH / RENDER
 ========================================= */
 
-let salehRefreshPromise=null;
-
 async function refresh(){
-    if(salehRefreshPromise) return salehRefreshPromise;
 
-    salehRefreshPromise=(async function(){
-        try{ render(); }catch(error){ console.error("Initial render failed:",error); }
+    let loadError=null;
 
-        let loadError=null;
-        try{ await loadData(); }catch(error){ loadError=error; console.warn("Main data load failed:",error); }
-        try{ await loadFinanceData(); }catch(error){ loadError=loadError||error; console.warn("Finance data load failed:",error); }
-        try{ await loadLoanData(); }catch(error){ loadError=loadError||error; console.warn("Loan data load failed:",error); }
+    try{
+        await loadData();
+    }catch(error){
+        loadError=error;
+        console.warn("Main data load failed:",error);
+    }
 
-        try{ render(); }catch(error){
-            console.error("Render failed:",error);
-            const host=document.getElementById("content");
-            if(host) host.innerHTML='<div class="card" style="margin:20px"><div class="card-body"><h3>لوحة التحكم</h3><p class="muted">تم فتح النظام، لكن تعذر عرض البيانات بالكامل.</p></div></div>';
+    try{
+        await loadFinanceData();
+    }catch(error){
+        loadError=loadError||error;
+        console.warn("Finance data load failed:",error);
+    }
+
+    try{
+        await loadLoanData();
+    }catch(error){
+        loadError=loadError||error;
+        console.warn("Loan data load failed:",error);
+    }
+
+    /* مهم: اعرض الواجهة حتى لو جدول من جداول البيانات فيه مشكلة */
+    try{
+        render();
+    }catch(error){
+        console.error("Render failed:",error);
+        const host=document.getElementById("content");
+        if(host) host.innerHTML='<div class="card"><div class="card-body"><h3>لوحة التحكم</h3><p class="muted">تم فتح الموقع، لكن يوجد خطأ مؤقت في تحميل بعض البيانات.</p><button class="gold-btn" onclick="location.reload()">إعادة تحميل</button></div></div>';
+    }
+
+    try{
+        updateNotificationUI();
+    }catch(e){ console.warn("Notification UI:",e); }
+
+    setTimeout(function(){
+        if(typeof showAutomaticDueNotifications==="function"){
+            showAutomaticDueNotifications().catch(function(error){
+                console.warn("BADGEIFY notification check:",error);
+            });
         }
-        try{ updateNotificationUI(); }catch(e){ console.warn("Notification UI:",e); }
-        if(loadError) console.warn("Some data could not be loaded:",loadError);
-        return true;
-    })().finally(function(){ salehRefreshPromise=null; });
+    },300);
 
-    return salehRefreshPromise;
+    if(loadError){
+        console.warn("Some data could not be loaded:",loadError);
+    }
 }
 
-function render(){
-    try{ applyTheme(); }catch(error){ console.error("Theme failed:",error); }
 
-    document.querySelectorAll(".nav button").forEach(function(button){
-        button.classList.toggle("active",button.dataset.page===state.page);
+function render(){
+
+    applyTheme();
+
+    document
+    .querySelectorAll(".nav button")
+    .forEach(function(button){
+
+        button.classList.toggle(
+            "active",
+            button.dataset.page
+            ===state.page
+        );
+
     });
 
-    const title=document.getElementById("pageTitle");
-    if(title) title.textContent=t(state.page);
+
+    document.getElementById(
+        "pageTitle"
+    ).textContent=
+    t(state.page);
+
 
     const pages={
+
         dashboard:renderDashboard,
+
         customers:renderCustomers,
+
         visaCards:renderVisaCards,
+
         traders:renderTraders,
+
         services:renderServices,
-        subscriptions:renderSubscriptions,
-        payments:renderPayments,
-        invoices:renderInvoices,
-        followups:renderFollowups,
-        settings:renderSettings,
-        activity:renderActivity,
-        personalFinance:renderPersonalFinance
+
+        subscriptions:
+        renderSubscriptions,
+
+        payments:
+        renderPayments,
+
+        invoices:
+        renderInvoices,
+
+        followups:
+        renderFollowups,
+
+        settings:
+        renderSettings,
+
+        activity:
+        renderActivity,
+
+        personalFinance:
+        renderPersonalFinance
+
     };
 
-    try{ (pages[state.page]||renderDashboard)(); }
-    catch(error){
+
+    try{
+        (
+            pages[state.page]
+            ||
+            renderDashboard
+        )();
+    }catch(error){
         console.error("Render error:",error);
         const host=document.getElementById("content");
-        if(host) host.innerHTML='<div class="card" style="margin:20px"><div class="card-body"><h3>تعذر عرض الصفحة</h3><p class="muted">حدث خطأ أثناء عرض الصفحة.</p></div></div>';
+        if(host){
+            host.innerHTML='<div class="card" style="margin:20px"><div class="card-body"><h3>تعذر عرض الصفحة</h3><p class="muted">حصل خطأ في عرض البيانات. جرّب تحديث الصفحة.</p><button class="gold-btn" onclick="refresh()">إعادة تحميل البيانات</button></div></div>';
+        }
     }
+
 }
 
 
