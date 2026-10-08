@@ -1234,6 +1234,12 @@ body{
 #salehFinanceRedesign .saleh-expense-management-card{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:15px;padding:17px 20px;border:1px solid rgba(215,173,88,.18);border-radius:18px;background:linear-gradient(120deg,#171f2c,#101923)}
 #salehFinanceRedesign .saleh-empty-icon{font-size:26px;color:#d7ad58;margin-bottom:7px}.saleh-people-ledger.empty{text-align:center;padding:28px;color:#7f8da1}.saleh-people-ledger.empty>b{display:block;color:#dce4ed;margin-bottom:5px}.saleh-people-ledger.empty>span{display:block;font-size:10px;margin-bottom:13px}
 @media(max-width:720px){#salehFinanceRedesign .saleh-people-section-head,#salehFinanceRedesign .saleh-expense-management-card{flex-direction:column;align-items:stretch}.saleh-people-ledger{grid-template-columns:1fr!important}.saleh-person-main-button{grid-template-columns:auto 1fr auto!important}.saleh-person-net{grid-column:2/-1;text-align:right!important}.saleh-person-arrow{grid-column:3;grid-row:1}.saleh-person-quick{flex-wrap:wrap}.saleh-person-quick .mini-btn{min-width:30%}}
+</style><style id="saleh-platform-currency-css">
+.platform-currency-balances{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.platform-currency-box{padding:12px;border:1px solid rgba(128,128,128,.2);border-radius:12px;background:rgba(128,128,128,.06);display:flex;flex-direction:column;gap:3px}
+.platform-currency-box span{font-size:12px;font-weight:800;opacity:.7}.platform-currency-box b{font-size:20px}.platform-currency-box small{opacity:.65}
+.platform-total b{display:block}
+@media(max-width:600px){.platform-currency-balances{grid-template-columns:1fr 1fr}.platform-currency-box b{font-size:17px}}
 </style></head>
 
 <body>
@@ -12258,17 +12264,22 @@ applyTheme();
     return changed;
   }
 
-  function balance(a){
+  function currencyOf(x){
+    const n=note(x?.notes);
+    return String(n.currency||'USD').toUpperCase()==='USDT'?'USDT':'USD';
+  }
+  function balance(a,currency){
     if(!a)return 0;
-    if(typeof financeBalance==='function')return num(financeBalance(a.id));
-    return num(a.opening_balance)+txs().filter(x=>String(x.account_id)===String(a.id)).reduce((s,x)=>s+num(x.amount),0);
+    const cur=String(currency||'USD').toUpperCase();
+    return num(a.opening_balance)*(cur==='USD'?1:0)+txs().filter(x=>String(x.account_id)===String(a.id)&&currencyOf(x)===cur).reduce((s,x)=>s+num(x.amount),0);
   }
-
-  function transfersFor(a){
-    return txs().filter(x=>x.source_type==='transfer'&&String(x.account_id)===String(a.id)&&num(x.amount)>0);
+  function transfersFor(a,currency){
+    const cur=String(currency||'USD').toUpperCase();
+    return txs().filter(x=>x.source_type==='transfer'&&String(x.account_id)===String(a.id)&&num(x.amount)>0&&currencyOf(x)===cur);
   }
-  function deductionsFor(a){
-    return txs().filter(x=>x.source_type==='platform_deduction'&&String(x.account_id)===String(a.id));
+  function deductionsFor(a,currency){
+    const cur=String(currency||'USD').toUpperCase();
+    return txs().filter(x=>x.source_type==='platform_deduction'&&String(x.account_id)===String(a.id)&&currencyOf(x)===cur);
   }
 
   window.salehCryptoPlatforms=platformAccounts;
@@ -12280,7 +12291,7 @@ applyTheme();
     const A=accounts().filter(a=>!isPlatform(a));
     const platform=platformById(platformId)||platformAccounts()[0];
     if(!platform)return showToast('حسابات المنصات لم تجهز بعد.',true);
-    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-circle-plus"></i></div><div><h4>إيداع في المنصة</h4><p>سيتم خصم المبلغ من حسابك وإضافته للمنصة بالدولار/USDT.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDepPlatform">'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(platform.id)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>من الحساب</label><select id="scDepFrom">'+A.map(a=>'<option value="'+a.id+'">'+escv(a.account_name)+' — '+moneyv(balance(a))+' EGP</option>').join('')+'</select></div><div class="field finance-required"><label>المبلغ بالجنيه</label><input id="scDepAmount" type="number" min="0" step="0.01"></div><div class="field finance-required"><label>سعر الدولار</label><input id="scDepRate" type="number" min="0.000001" step="0.000001"></div><div class="field"><label>التاريخ</label><input id="scDepDate" type="date" value="'+date()+'"></div><div class="field full"><label>ملاحظات</label><input id="scDepNotes" placeholder="مثال: إيداع رصيد للمنصة"></div></div></div>';
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-circle-plus"></i></div><div><h4>إيداع في المنصة</h4><p>سيتم خصم المبلغ من حسابك وإضافته للمنصة بالدولار/USDT.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDepPlatform">'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(platform.id)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>من الحساب</label><select id="scDepFrom">'+A.map(a=>'<option value="'+a.id+'">'+escv(a.account_name)+' — '+moneyv(balance(a))+' EGP</option>').join('')+'</select></div><div class="field finance-required"><label>العملة المطابقة</label><select id="scDepCurrency"><option value="USD">USD — دولار</option><option value="USDT">USDT — تيثر</option></select></div><div class="field finance-required"><label>المبلغ بالجنيه</label><input id="scDepAmount" type="number" min="0" step="0.01"></div><div class="field finance-required"><label>سعر الدولار / USDT</label><input id="scDepRate" type="number" min="0.000001" step="0.000001"></div><div class="field"><label>التاريخ</label><input id="scDepDate" type="date" value="'+date()+'"></div><div class="field full"><label>ملاحظات</label><input id="scDepNotes" placeholder="مثال: إيداع رصيد للمنصة"></div></div></div>';
     openModal('إيداع منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeposit()">حفظ الإيداع</button>');
   };
 
@@ -12288,13 +12299,14 @@ applyTheme();
     try{
       const from=platformById(document.getElementById('scDepFrom')?.value);
       const to=platformById(document.getElementById('scDepPlatform')?.value);
+      const currency=String(document.getElementById('scDepCurrency')?.value||'USD').toUpperCase();
       const egp=num(document.getElementById('scDepAmount')?.value),rate=num(document.getElementById('scDepRate')?.value);
       const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim();
       if(!from||isPlatform(from)||!to||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختر الحساب والمنصة وأدخل المبلغ وسعر الدولار بشكل صحيح.');
-      const usd=egp/rate,sourceId=id(),payload=JSON.stringify({kind:'platform_deposit',rate,notes});
+      const usd=egp/rate,sourceId=id(),payload=JSON.stringify({kind:'platform_deposit',rate,notes,currency});
       const rows=[
-        {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:payload},
-        {user_id:currentUser.id,account_id:to.id,amount:usd,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:payload}
+        {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — '+currency,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency})},
+        {user_id:currentUser.id,account_id:to.id,amount:usd,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع '+currency+' من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:payload}
       ];
       const q=await db.from('personal_finance_transactions').insert(rows);
       if(q.error)throw q.error;
@@ -12305,13 +12317,13 @@ applyTheme();
   window.openSalehPlatformDeduction=async function(editId,platformId){
     const old=editId?txs().find(x=>x.source_type==='platform_deduction'&&String(x.source_id)===String(editId)):null;
     const selected=platformId||old?.account_id||'';
-    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?'تعديل خصم':'خصم اشتراك من المنصة')+'</h4><p>الخصم يقلل رصيد المنصة مباشرة.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDedPlatform"><option value="">اختر المنصة</option>'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(selected)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>المبلغ USD / USDT</label><input id="scDedAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(num(old.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="scDedDate" type="date" value="'+date(old?.transaction_date)+'"></div><div class="field"><label>العميل / الاشتراك</label><input id="scDedReason" value="'+escv(old?.description||'')+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field"><label>رقم المرجع</label><input id="scDedRef" value="'+escv(note(old?.notes).reference||'')+'"></div><div class="field full"><label>ملاحظات</label><textarea id="scDedNotes">'+escv(note(old?.notes).notes||'')+'</textarea></div></div></div>';
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?'تعديل خصم':'خصم اشتراك من المنصة')+'</h4><p>الخصم يقلل رصيد المنصة مباشرة.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDedPlatform"><option value="">اختر المنصة</option>'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(selected)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>العملة</label><select id="scDedCurrency"><option value="USD" '+((!old||currencyOf(old)==='USD')?'selected':'')+'>USD — دولار</option><option value="USDT" '+(old&&currencyOf(old)==='USDT'?'selected':'')+'>USDT — تيثر</option></select></div><div class="field finance-required"><label>المبلغ</label><input id="scDedAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(num(old.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="scDedDate" type="date" value="'+date(old?.transaction_date)+'"></div><div class="field"><label>العميل / الاشتراك</label><input id="scDedReason" value="'+escv(old?.description||'')+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field"><label>رقم المرجع</label><input id="scDedRef" value="'+escv(note(old?.notes).reference||'')+'"></div><div class="field full"><label>ملاحظات</label><textarea id="scDedNotes">'+escv(note(old?.notes).notes||'')+'</textarea></div></div></div>';
     openModal(old?'تعديل خصم منصة':'خصم اشتراك من المنصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeduction('+(old?escv(editId):'')+')">حفظ الخصم</button>');
   };
 
   window.saveSalehPlatformDeduction=async function(editId){
     try{
-      const a=platformById(document.getElementById('scDedPlatform')?.value),amt=num(document.getElementById('scDedAmount')?.value),d=document.getElementById('scDedDate')?.value||date();
+      const a=platformById(document.getElementById('scDedPlatform')?.value),currency=String(document.getElementById('scDedCurrency')?.value||'USD').toUpperCase(),amt=num(document.getElementById('scDedAmount')?.value),d=document.getElementById('scDedDate')?.value||date();
       const reason=document.getElementById('scDedReason')?.value.trim(),reference=document.getElementById('scDedRef')?.value.trim(),notes=document.getElementById('scDedNotes')?.value.trim();
       if(!a||!isPlatform(a)||amt<=0)throw new Error('اختر منصة وأدخل مبلغ الخصم بشكل صحيح.');
       if(editId){
@@ -12319,7 +12331,7 @@ applyTheme();
         if(del.error)throw del.error;
       }
       const sourceId=editId||id();
-      const q=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes})});
+      const q=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes,currency})});
       if(q.error)throw q.error;
       closeModal();await loadFinanceData();renderPersonalFinance();showToast(editId?'تم تعديل الخصم.':'تم تسجيل الخصم وتحديث رصيد المنصة.');
     }catch(e){showToast(e.message||'تعذر تسجيل الخصم.',true);}
@@ -12329,13 +12341,18 @@ applyTheme();
     const A=platformAccounts();
     const html=NAMES.map(name=>{
       const a=A.find(x=>String(x.account_name).toLowerCase()===name.toLowerCase());
-      if(!a)return '<div class="platform-card platform-card-empty"><div class="platform-top"><div><div class="platform-name">'+escv(name)+'</div><div class="platform-currency">سيتم تجهيز الحساب تلقائيًا</div></div><span class="platform-tag">USD</span></div><div class="platform-balance">0 <small>USD</small></div></div>';
-      
-      const bal=balance(a),deps=transfersFor(a).reduce((s,x)=>s+Math.abs(num(x.amount)),0),deds=deductionsFor(a).reduce((s,x)=>s+Math.abs(num(x.amount)),0),count=deductionsFor(a).length;
-      return '<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+escv(a.account_name)+'</div><div class="platform-currency">حساب مستقل للدولار / USDT</div></div><span class="platform-tag">USD</span></div><div class="platform-balance">'+moneyv(bal)+' <small>USD</small></div><div class="platform-mini-stats"><div><span>إجمالي الإيداعات</span><b>'+moneyv(deps)+' USD</b></div><div><span>خصومات الاشتراكات</span><b>'+moneyv(deds)+' USD</b></div><div><span>عدد الخصومات</span><b>'+count+'</b></div></div><div class="platform-actions platform-actions-visible"><button type="button" class="mini-btn" onclick="openSalehPlatformDeposit(\''+escv(a.id)+'\')"><i class="fa-solid fa-plus"></i> إيداع</button><button type="button" class="mini-btn pay" onclick="openSalehPlatformDeduction(\'\',\''+escv(a.id)+'\')"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>';
+      if(!a)return '<div class="platform-card platform-card-empty"><div class="platform-top"><div><div class="platform-name">'+escv(name)+'</div><div class="platform-currency">حساب المنصة — USD / USDT</div></div><span class="platform-tag">USD / USDT</span></div><div class="platform-balance">0 <small>USD</small></div><div class="platform-balance">0 <small>USDT</small></div></div>';
+      const usd=balance(a,'USD'),usdt=balance(a,'USDT');
+      const usdDeps=transfersFor(a,'USD').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
+      const usdtDeps=transfersFor(a,'USDT').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
+      const usdDeds=deductionsFor(a,'USD').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
+      const usdtDeds=deductionsFor(a,'USDT').reduce((s,x)=>s+Math.abs(num(x.amount)),0);
+      const count=deductionsFor(a,'USD').length+deductionsFor(a,'USDT').length;
+      return '<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+escv(a.account_name)+'</div><div class="platform-currency">الرصيد مطابق لكل عملة بشكل مستقل</div></div><span class="platform-tag">USD / USDT</span></div><div class="platform-currency-balances"><div class="platform-currency-box"><span>USD</span><b>'+moneyv(usd)+'</b><small>دولار</small></div><div class="platform-currency-box"><span>USDT</span><b>'+moneyv(usdt)+'</b><small>تيثر</small></div></div><div class="platform-mini-stats"><div><span>إيداعات USD</span><b>'+moneyv(usdDeps)+' USD</b></div><div><span>خصومات USD</span><b>'+moneyv(usdDeds)+' USD</b></div><div><span>إيداعات USDT</span><b>'+moneyv(usdtDeps)+' USDT</b></div><div><span>خصومات USDT</span><b>'+moneyv(usdtDeds)+' USDT</b></div><div><span>عدد الخصومات</span><b>'+count+'</b></div></div><div class="platform-actions platform-actions-visible"><button type="button" class="mini-btn" onclick="openSalehPlatformDeposit(\''+escv(a.id)+'\')"><i class="fa-solid fa-plus"></i> إيداع</button><button type="button" class="mini-btn pay" onclick="openSalehPlatformDeduction(\'\',\''+escv(a.id)+'\')"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>';
     }).join('');
-    const total=A.reduce((s,a)=>s+balance(a),0);
-    return '<div class="platform-finance-section"><div class="platform-finance-head"><div><span class="saleh-section-eyebrow">CRYPTO PLATFORMS</span><h3>منصات العملات</h3><p>Bybit Saleh و Bybit Mahmoud و Binance — لكل منصة رصيد وحركات مستقلة.</p></div><div class="platform-total"><span>إجمالي أرصدة المنصات</span><b>'+moneyv(total)+' USD</b></div></div><div class="platform-grid">'+html+'</div></div>';
+    const totalUsd=A.reduce((s,a)=>s+balance(a,'USD'),0);
+    const totalUsdt=A.reduce((s,a)=>s+balance(a,'USDT'),0);
+    return '<div class="platform-finance-section"><div class="platform-finance-head"><div><span class="saleh-section-eyebrow">CRYPTO PLATFORMS</span><h3>منصات العملات</h3><p>Bybit Saleh و Bybit Mahmoud و Binance — الرصيد بالدولار وUSDT منفصل لكل منصة.</p></div><div class="platform-total"><span>إجمالي الأرصدة</span><b>'+moneyv(totalUsd)+' USD</b><b>'+moneyv(totalUsdt)+' USDT</b></div></div><div class="platform-grid">'+html+'</div></div>';
   };
 
   const oldRefresh=window.refresh;
