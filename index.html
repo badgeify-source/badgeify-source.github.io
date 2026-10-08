@@ -12523,6 +12523,135 @@ document.addEventListener('click',function(e){
  else if(t==='إضافة شخص'){e.preventDefault();e.stopImmediatePropagation();window.salehOpenPersonDirect();}
  else if(t==='بنود المصاريف' || t==='إدارة البنود'){e.preventDefault();e.stopImmediatePropagation();window.salehExpenseCategoriesDirect();}
 },true);
-})();</script>
+})();
+/* SALEH PEOPLE V3 — managed people ledger */
+(function(){
+  const normName=v=>String(v||"").trim().replace(/\s+/g," ").toLowerCase();
+  const normPhone=v=>String(v||"").replace(/[٠-٩]/g,d=>String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g,"");
+  const personTotals=id=>{
+    let lent=0,borrowed=0;
+    (state.loans||[]).filter(l=>String(l.person_id)===String(id)&&l.status!=="cancelled").forEach(l=>{
+      const rem=loanRemaining(l);
+      if(loanDirection(l)==="lent") lent+=rem; else borrowed+=rem;
+    });
+    return {lent,borrowed,net:lent-borrowed};
+  };
+  const personAccountName=id=>(state.financeAccounts||[]).find(a=>String(a.id)===String(id))?.account_name||"-";
+
+  window.renderSalehPeople=function(){
+    const host=document.querySelector(".saleh-people-section-body");
+    if(!host)return;
+    const people=[...(state.loanPeople||[])].sort((a,b)=>String(a.person_name||"").localeCompare(String(b.person_name||""),"ar"));
+    if(!people.length){
+      host.innerHTML='<div class="empty" style="padding:22px">لا يوجد أشخاص حتى الآن. اضغط «إضافة شخص» لإضافة أول شخص.</div>';
+      return;
+    }
+    host.innerHTML='<div class="finance-person-grid">'+people.map(p=>{
+      const t=personTotals(p.id),label=t.net>0?"له عندك":t.net<0?"عليه لك":"متساوي";
+      return '<div class="card" style="cursor:pointer" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')"><div class="card-body">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h3 style="margin:0 0 5px">'+esc(p.person_name)+'</h3><div class="muted">'+esc(p.phone||"لا يوجد رقم")+'</div></div><button class="mini-btn" onclick="event.stopPropagation();openSalehPersonStatement(\''+esc(p.id)+'\')">فتح</button></div>'+
+        '<div class="finance-person-kpis" style="margin-top:14px"><div><span>له عندك</span><b>'+money(t.lent)+' '+esc(cur0())+'</b></div><div><span>عليه لك</span><b>'+money(t.borrowed)+' '+esc(cur0())+'</b></div><div><span>'+label+'</span><b>'+money(Math.abs(t.net))+' '+esc(cur0())+'</b></div></div>'+
+      '</div></div>';
+    }).join("")+'</div>';
+  };
+
+  window.openSalehPeople=function(){
+    const people=[...(state.loanPeople||[])].sort((a,b)=>String(a.person_name||"").localeCompare(String(b.person_name||""),"ar"));
+    const rows=people.map(p=>{
+      const t=personTotals(p.id);
+      return '<div class="list-item" style="gap:10px;align-items:center"><div style="flex:1;cursor:pointer" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')"><b>'+esc(p.person_name)+'</b><small class="muted" style="display:block">'+esc(p.phone||"لا يوجد رقم")+' • صافي '+money(Math.abs(t.net))+' '+esc(cur0())+' '+(t.net>0?"له عندك":t.net<0?"عليه لك":"متساوي")+'</small></div><button class="mini-btn" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')">التفاصيل</button><button class="mini-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">إزالة</button></div>';
+    }).join("")||'<div class="muted">لا توجد أشخاص مضافة.</div>';
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-users"></i></div><div><h4>الأشخاص</h4><p>كل شخص له حساب مستقل. الاسم ورقم الموبايل معًا يمنعان تكرار نفس الشخص.</p></div></div>'+
+      '<div class="form-grid"><div class="field finance-required"><label>اسم الشخص</label><input id="pfPersonName" placeholder="مثال: أحمد محمد"></div><div class="field finance-required"><label>رقم الموبايل</label><input id="pfPersonPhone" type="tel" placeholder="01xxxxxxxxx"></div><div class="field full"><label>ملاحظات</label><textarea id="pfPersonNotes" placeholder="اختياري"></textarea></div></div>'+
+      '<div class="actions" style="margin:14px 0"><button class="gold-btn" onclick="saveSalehPerson()">إضافة الشخص</button></div>'+
+      '<div class="finance-section-title">قائمة الأشخاص</div><div class="list">'+rows+'</div></div>';
+    openModal("إدارة الأشخاص",body,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+  };
+
+  window.saveSalehPerson=async function(){
+    const name=(document.getElementById("pfPersonName")?.value||"").trim();
+    const phone=(document.getElementById("pfPersonPhone")?.value||"").trim();
+    const notes=(document.getElementById("pfPersonNotes")?.value||"").trim();
+    const nn=normName(name),np=normPhone(phone);
+    if(!nn||!np)return showToast("اكتب اسم الشخص ورقم الموبايل.",true);
+    if(np.length<10)return showToast("رقم الموبايل غير صحيح.",true);
+    const q=await db.from("personal_finance_loan_people").select("id,person_name,phone").eq("user_id",currentUser?.id);
+    if(q.error)return showToast(q.error.message,true);
+    const duplicate=(q.data||[]).find(p=>normName(p.person_name)===nn&&normPhone(p.phone)===np);
+    if(duplicate)return showToast("الشخص موجود بالفعل بنفس الاسم ورقم الموبايل.",true);
+    const r=await db.from("personal_finance_loan_people").insert({user_id:currentUser?.id,person_name:name,phone:phone,notes:notes||null}).select("*").single();
+    if(r.error)return showToast(r.error.message,true);
+    state.loanPeople=[...(state.loanPeople||[]),r.data];
+    closeModal();renderPersonalFinance();showToast("تمت إضافة الشخص بنجاح.");
+  };
+
+  window.deleteSalehPerson=async function(id){
+    const p=loanPerson(id); if(!p)return;
+    const loans=(state.loans||[]).filter(l=>String(l.person_id)===String(id)&&l.status!=="cancelled");
+    if(loans.length)return showToast("لا يمكن إزالة الشخص لأن له حركات مالية محفوظة. استخدم الأرشفة لاحقًا للحفاظ على كشف الحساب.",true);
+    if(!confirm("إزالة «"+p.person_name+"»؟"))return;
+    const r=await db.from("personal_finance_loan_people").delete().eq("id",id).eq("user_id",currentUser?.id);
+    if(r.error)return showToast(r.error.message,true);
+    state.loanPeople=(state.loanPeople||[]).filter(x=>String(x.id)!==String(id));
+    openSalehPeople();renderPersonalFinance();showToast("تمت إزالة الشخص.");
+  };
+
+  window.openSalehLoanForPerson=function(personId,direction){
+    openSalehLoan();
+    setTimeout(()=>{
+      const ps=document.getElementById("loanPerson");
+      const ds=document.getElementById("loanDirection");
+      if(ps){ps.value=String(personId);ps.dispatchEvent(new Event("change"));}
+      if(ds){ds.value=direction==="borrowed"?"borrowed":"lent";updateSalehLoanDirectionUI();}
+      const np=document.getElementById("loanNewPerson"),ph=document.getElementById("loanPhone");
+      if(np)np.value="";
+      if(ph)ph.value="";
+    },50);
+  };
+
+  window.openSalehPersonStatement=function(personId){
+    const p=loanPerson(personId); if(!p)return;
+    const loans=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=="cancelled").sort((a,b)=>String(b.loan_date||"").localeCompare(String(a.loan_date||"")));
+    const t=personTotals(personId),c=cur0();
+    const rows=loans.map(l=>{
+      const paid=loanPaid(l.id),rem=loanRemaining(l),dir=loanDirection(l);
+      const a=personAccountName(l.wallet_account_id);
+      return '<tr><td>'+esc(l.loan_date||"-")+'</td><td><b>'+esc(dir==="lent"?"أعطيته فلوس":"أخذت منه فلوس")+'</b><br><small class="muted">'+esc(dir==="lent"?"خرجت من":"دخلت إلى")+' '+esc(a)+'</small></td><td>'+money(Number(l.amount||0))+' '+esc(c)+'</td><td>'+money(paid)+' '+esc(c)+'</td><td>'+money(rem)+' '+esc(c)+'</td><td>'+(rem>0?'<button class="mini-btn" onclick="openLoanRepayment('+l.id+')">'+esc(dir==="lent"?"أخذت منه":"سددت له")+'</button>': '<span class="badge paid">مسدد</span>')+'</td></tr>';
+    }).join("")||'<tr><td colspan="6"><div class="empty">لا توجد حركات مالية لهذا الشخص.</div></td></tr>';
+    const body='<div class="finance-modal-shell">'+
+      '<div class="finance-person-summary"><div><b style="font-size:20px">'+esc(p.person_name)+'</b><small>'+esc(p.phone||"لا يوجد رقم")+'</small></div><div class="finance-person-net"><span>'+esc(t.net>0?"له عندك":t.net<0?"عليه لك":"متساوي")+'</span><strong>'+money(Math.abs(t.net))+' '+esc(c)+'</strong></div></div>'+
+      '<div class="finance-person-kpis"><div><span>إجمالي أعطيته</span><b>'+money(t.lent)+' '+esc(c)+'</b></div><div><span>إجمالي أخذته منه</span><b>'+money(t.borrowed)+' '+esc(c)+'</b></div><div><span>الصافي</span><b>'+money(Math.abs(t.net))+' '+esc(c)+'</b></div></div>'+
+      '<div class="actions" style="margin:14px 0;display:flex;flex-wrap:wrap;gap:8px"><button class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')"><i class="fa-solid fa-arrow-up-right-from-square"></i> أعطيته فلوس</button><button class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')"><i class="fa-solid fa-arrow-down-left"></i> أخذت منه فلوس</button><button class="ghost-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">إزالة الشخص</button></div>'+
+      '<div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة والحساب</th><th>الأصل</th><th>المسدد/المحصّل</th><th>المتبقي</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    openModal("حساب "+p.person_name,body,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+  };
+
+  const oldRender=window.renderPersonalFinance;
+  if(typeof oldRender==="function"){
+    window.renderPersonalFinance=function(){
+      oldRender.apply(this,arguments);
+      setTimeout(()=>window.renderSalehPeople(),0);
+    };
+  }
+
+  const oldSaveLoan=window.saveSalehLoan;
+  if(typeof oldSaveLoan==="function"){
+    window.saveSalehLoan=async function(){
+      const select=document.getElementById("loanPerson")?.value||"";
+      const newName=(document.getElementById("loanNewPerson")?.value||"").trim();
+      const phone=(document.getElementById("loanPhone")?.value||"").trim();
+      if(!select&&newName){
+        const q=await db.from("personal_finance_loan_people").select("id,person_name,phone").eq("user_id",currentUser?.id);
+        if(q.error)return showToast(q.error.message,true);
+        const dup=(q.data||[]).find(p=>normName(p.person_name)===normName(newName)&&normPhone(p.phone)===normPhone(phone));
+        if(dup)return showToast("الشخص موجود بالفعل بنفس الاسم ورقم الموبايل. اختره من القائمة بدل إنشاء شخص جديد.",true);
+        if(!phone)return showToast("رقم الموبايل مطلوب عند إنشاء شخص جديد.",true);
+      }
+      return oldSaveLoan.apply(this,arguments);
+    };
+  }
+})();
+
+</script>
 </body>
 </html>
