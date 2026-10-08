@@ -9,10 +9,10 @@ const U = window;
 const esc0 = v => typeof U.esc === "function" ? U.esc(v==null?"":String(v)) : String(v==null?"":v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
 const money0 = v => typeof U.money === "function" ? U.money(Number(v||0)) : Number(v||0).toFixed(2);
 const today0 = () => typeof U.isoDate === "function" ? U.isoDate(new Date()) : new Date().toISOString().slice(0,10);
-const cur0 = () => (U.state?.settings?.currency || "EGP");
-const pfAccount0 = id => (U.state?.financeAccounts||[]).find(a=>String(a.id)===String(id));
-const pfLoans0 = personId => (U.state?.loans||[]).filter(l=>l.status!=="cancelled" && String(l.person_id)===String(personId));
-const pfPaid0 = loanId => (U.state?.loanPayments||[]).filter(p=>String(p.loan_id)===String(loanId)).reduce((s,p)=>s+Number(p.amount||0),0);
+const cur0 = () => (state?.settings?.currency || "EGP");
+const pfAccount0 = id => (state?.financeAccounts||[]).find(a=>String(a.id)===String(id));
+const pfLoans0 = personId => (state?.loans||[]).filter(l=>l.status!=="cancelled" && String(l.person_id)===String(personId));
+const pfPaid0 = loanId => (state?.loanPayments||[]).filter(p=>String(p.loan_id)===String(loanId)).reduce((s,p)=>s+Number(p.amount||0),0);
 const pfRemaining0 = loan => Math.max(0,Number(loan?.amount||0)-pfPaid0(loan?.id));
 const pfDir0 = loan => String(loan?.loan_direction||"lent")==="borrowed" ? "borrowed" : "lent";
 const uuid0 = () => (window.crypto?.randomUUID ? crypto.randomUUID() : "pf_"+Date.now()+"_"+Math.random().toString(36).slice(2));
@@ -27,9 +27,9 @@ function catCache(){
 }
 function setCatCache(a){localStorage.setItem(CAT_KEY,JSON.stringify([...new Set(a.map(x=>String(x||"").trim()).filter(Boolean))]));}
 async function loadCats(){
-  if(!U.currentUser?.id) return;
+  if(!currentUser?.id) return;
   try{
-    const r=await U.db.from("app_settings").select("setting_value").eq("setting_key",CAT_KEY).maybeSingle();
+    const r=await db.from("app_settings").select("setting_value").eq("setting_key",CAT_KEY).maybeSingle();
     if(r.error) throw r.error;
     if(r.data?.setting_value){
       const parsed=typeof r.data.setting_value==="string" ? JSON.parse(r.data.setting_value) : r.data.setting_value;
@@ -40,8 +40,8 @@ async function loadCats(){
 async function saveCats(a){
   a=[...new Set(a.map(x=>String(x||"").trim()).filter(Boolean))];
   setCatCache(a);
-  if(!U.currentUser?.id) return;
-  const r=await U.db.from("app_settings").upsert({
+  if(!currentUser?.id) return;
+  const r=await db.from("app_settings").upsert({
     setting_key:CAT_KEY,
     setting_value:JSON.stringify(a),
     updated_at:new Date().toISOString()
@@ -97,7 +97,7 @@ if(typeof baseOpenLoan==="function"){
 
 /* ---------- Full person statement + WhatsApp ---------- */
 U.salehPersonWhatsApp = function(personId){
-  const p=(U.state?.loanPeople||[]).find(x=>String(x.id)===String(personId));
+  const p=(state?.loanPeople||[]).find(x=>String(x.id)===String(personId));
   if(!p?.phone) return U.showToast("أضف رقم واتساب للشخص أولاً.",true);
   const loans=pfLoans0(personId).sort((a,b)=>String(a.loan_date||"").localeCompare(String(b.loan_date||"")));
   let lent=0,borrowed=0;
@@ -120,7 +120,7 @@ U.salehPersonWhatsApp = function(personId){
   window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank");
 };
 U.openSalehPersonStatement = function(personId){
-  const p=(U.state?.loanPeople||[]).find(x=>String(x.id)===String(personId));
+  const p=(state?.loanPeople||[]).find(x=>String(x.id)===String(personId));
   if(!p) return;
   const loans=pfLoans0(personId),c=cur0();
   let lent=0,borrowed=0;
@@ -139,7 +139,7 @@ U.openSalehPersonStatement = function(personId){
 
 /* ---------- Opening balances for every account, including platforms ---------- */
 U.openSalehOpeningBalance = function(){
-  const A=U.state?.financeAccounts||[];
+  const A=state?.financeAccounts||[];
   const rows=A.map(a=>'<div class="field"><label>'+esc0(a.account_name)+(String(a.account_name).match(/Bybit|Binance|USDT|USD/i)?" — USD / USDT":"")+'</label><input id="pfOpen_'+esc0(a.id)+'" type="number" step="0.000001" value="'+Number(a.opening_balance||0)+'"></div>').join("");
   U.openModal("الأرصدة الافتتاحية",
     '<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-vault"></i></div><div><h4>الرصيد الافتتاحي</h4><p>يمكن ضبط الرصيد الافتتاحي لأي حساب، بما فيه Bybit Saleh وBybit Mahmoud وBinance، مع الحفاظ على كل الحركات السابقة.</p></div></div><div class="form-grid">'+rows+'</div></div>',
@@ -147,12 +147,12 @@ U.openSalehOpeningBalance = function(){
 };
 U.saveSalehOpeningBalanceAll = async function(){
   try{
-    for(const a of (U.state?.financeAccounts||[])){
+    for(const a of (state?.financeAccounts||[])){
       const el=document.getElementById("pfOpen_"+a.id);
       if(!el) continue;
       const value=Number(el.value||0);
       if(!Number.isFinite(value)) throw new Error("رصيد غير صحيح في "+a.account_name);
-      const r=await U.db.from("personal_finance_accounts").update({opening_balance:value,updated_at:new Date().toISOString()}).eq("id",a.id).eq("user_id",U.currentUser.id);
+      const r=await db.from("personal_finance_accounts").update({opening_balance:value,updated_at:new Date().toISOString()}).eq("id",a.id).eq("user_id",currentUser.id);
       if(r.error) throw r.error;
     }
     U.closeModal(); await U.refresh(); U.showToast("تم حفظ الأرصدة الافتتاحية لكل الحسابات.");
@@ -161,8 +161,8 @@ U.saveSalehOpeningBalanceAll = async function(){
 
 /* ---------- Platform deposit directly from a saved card ---------- */
 U.openSalehPlatformCardDeposit = function(){
-  const platforms=(U.state?.financeAccounts||[]).filter(a=>/bybit|binance|crypto/i.test(String(a.account_name||"")));
-  const cards=U.state?.visaCards||[];
+  const platforms=(state?.financeAccounts||[]).filter(a=>/bybit|binance|crypto/i.test(String(a.account_name||"")));
+  const cards=state?.visaCards||[];
   const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-credit-card"></i></div><div><h4>إيداع للمنصة من الكارت مباشرة</h4><p>يسجل الإيداع كحركة مصدرها الكارت ووجهتها المنصة، بدون خصم وهمي من الكاش.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="pfCardDepPlatform"><option value="">اختر المنصة</option>'+platforms.map(a=>'<option value="'+a.id+'">'+esc0(a.account_name)+'</option>').join("")+'</select></div><div class="field"><label>الكارت</label><select id="pfCardDepCard"><option value="">اختر الكارت</option>'+cards.map(c=>'<option value="'+c.id+'">'+esc0(c.card_name||c.name||"كارت")+" — "+esc0(c.last4?"•••• "+c.last4:"")+'</option>').join("")+'</select></div><div class="field finance-required"><label>المبلغ USD / USDT</label><input id="pfCardDepAmount" type="number" min="0" step="0.000001"></div><div class="field"><label>التاريخ</label><input id="pfCardDepDate" type="date" value="'+today0()+'"></div><div class="field"><label>رقم العملية / المرجع</label><input id="pfCardDepRef"></div><div class="field full"><label>ملاحظات</label><textarea id="pfCardDepNotes"></textarea></div></div></div>';
   U.openModal("إيداع من الكارت إلى المنصة",body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformCardDeposit()">تسجيل الإيداع</button>');
 };
@@ -170,10 +170,10 @@ U.saveSalehPlatformCardDeposit = async function(){
   const a=pfAccount0(document.getElementById("pfCardDepPlatform")?.value);
   const cardId=document.getElementById("pfCardDepCard")?.value||null,amt=Number(document.getElementById("pfCardDepAmount")?.value||0),date=document.getElementById("pfCardDepDate")?.value||today0(),ref=document.getElementById("pfCardDepRef")?.value.trim(),notes=document.getElementById("pfCardDepNotes")?.value.trim();
   if(!a || !/bybit|binance|crypto/i.test(String(a.account_name||"")) || amt<=0) return U.showToast("اختر منصة وأدخل مبلغًا صحيحًا.",true);
-  const card=(U.state?.visaCards||[]).find(c=>String(c.id)===String(cardId));
+  const card=(state?.visaCards||[]).find(c=>String(c.id)===String(cardId));
   const detail=JSON.stringify({card_id:cardId,card_name:card?.card_name||"",reference:ref,notes});
-  const r=await U.db.from("personal_finance_transactions").insert({
-    user_id:U.currentUser.id,account_id:a.id,amount:Math.abs(amt),transaction_type:"transfer",
+  const r=await db.from("personal_finance_transactions").insert({
+    user_id:currentUser.id,account_id:a.id,amount:Math.abs(amt),transaction_type:"transfer",
     category:"إيداع منصة من كارت",description:"إيداع إلى "+a.account_name+" من "+(card?.card_name||"كارت"),
     source_type:"platform_card_deposit",source_id:uuid0(),transaction_date:date,notes:detail
   });
@@ -183,21 +183,21 @@ U.saveSalehPlatformCardDeposit = async function(){
 
 /* ---------- Subscription deduction from platform ---------- */
 U.openSalehPlatformDeduction = function(editId){
-  const rows=(U.state?.financeTransactions||[]).filter(x=>x.source_type==="platform_deduction");
+  const rows=(state?.financeTransactions||[]).filter(x=>x.source_type==="platform_deduction");
   const old=editId?rows.find(x=>String(x.source_id)===String(editId)):null;
   let oldNote={};try{oldNote=JSON.parse(old?.notes||"{}")}catch(_){}
-  const platforms=(U.state?.financeAccounts||[]).filter(a=>/bybit|binance|crypto/i.test(String(a.account_name||"")));
-  const subs=U.state?.subscriptions||[];
-  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?"تعديل خصم منصة":"خصم الاشتراك من المنصة")+'</h4><p>اختر الاشتراك لتسجيل سبب الخصم، ثم حدد المبلغ الفعلي بالدولار / USDT.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="pfDeductionAccount"><option value="">اختر المنصة</option>'+platforms.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(old?.account_id)?"selected":"")+'>'+esc0(a.account_name)+'</option>').join("")+'</select></div><div class="field"><label>الاشتراك</label><select id="pfDeductionSub"><option value="">بدون ربط</option>'+subs.map(s=>{const c=(U.state?.customers||[]).find(x=>String(x.id)===String(s.customer_id));const sv=(U.state?.services||[]).find(x=>String(x.id)===String(s.app_service_id));return '<option value="'+s.id+'">'+esc0(c?.client_name||"عميل")+' — '+esc0(sv?.service_name||s.page_name||"اشتراك")+'</option>';}).join("")+'</select></div><div class="field finance-required"><label>المبلغ USD / USDT</label><input id="pfDeductionAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(Number(old.amount||0)):"")+'"></div><div class="field"><label>التاريخ</label><input id="pfDeductionDate" type="date" value="'+(old?.transaction_date||today0())+'"></div><div class="field"><label>رقم العملية / المرجع</label><input id="pfDeductionRef" value="'+esc0(oldNote.reference||"")+'"></div><div class="field full"><label>العميل / البيان</label><input id="pfDeductionCustomer" value="'+esc0(oldNote.customer||old?.description||"")+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field full"><label>ملاحظات</label><textarea id="pfDeductionNotes">'+esc0(oldNote.notes||"")+'</textarea></div></div></div>';
+  const platforms=(state?.financeAccounts||[]).filter(a=>/bybit|binance|crypto/i.test(String(a.account_name||"")));
+  const subs=state?.subscriptions||[];
+  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?"تعديل خصم منصة":"خصم الاشتراك من المنصة")+'</h4><p>اختر الاشتراك لتسجيل سبب الخصم، ثم حدد المبلغ الفعلي بالدولار / USDT.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="pfDeductionAccount"><option value="">اختر المنصة</option>'+platforms.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(old?.account_id)?"selected":"")+'>'+esc0(a.account_name)+'</option>').join("")+'</select></div><div class="field"><label>الاشتراك</label><select id="pfDeductionSub"><option value="">بدون ربط</option>'+subs.map(s=>{const c=(state?.customers||[]).find(x=>String(x.id)===String(s.customer_id));const sv=(state?.services||[]).find(x=>String(x.id)===String(s.app_service_id));return '<option value="'+s.id+'">'+esc0(c?.client_name||"عميل")+' — '+esc0(sv?.service_name||s.page_name||"اشتراك")+'</option>';}).join("")+'</select></div><div class="field finance-required"><label>المبلغ USD / USDT</label><input id="pfDeductionAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(Number(old.amount||0)):"")+'"></div><div class="field"><label>التاريخ</label><input id="pfDeductionDate" type="date" value="'+(old?.transaction_date||today0())+'"></div><div class="field"><label>رقم العملية / المرجع</label><input id="pfDeductionRef" value="'+esc0(oldNote.reference||"")+'"></div><div class="field full"><label>العميل / البيان</label><input id="pfDeductionCustomer" value="'+esc0(oldNote.customer||old?.description||"")+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field full"><label>ملاحظات</label><textarea id="pfDeductionNotes">'+esc0(oldNote.notes||"")+'</textarea></div></div></div>';
   U.openModal(old?"تعديل خصم منصة":"خصم الاشتراك من المنصة",body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeduction(\''+(editId||"")+'\')">حفظ الخصم</button>');
 };
 U.saveSalehPlatformDeduction = async function(editId){
   try{
     const a=pfAccount0(document.getElementById("pfDeductionAccount")?.value),subId=document.getElementById("pfDeductionSub")?.value||null,amt=Number(document.getElementById("pfDeductionAmount")?.value||0),date=document.getElementById("pfDeductionDate")?.value||today0(),ref=document.getElementById("pfDeductionRef")?.value.trim(),customer=document.getElementById("pfDeductionCustomer")?.value.trim(),notes=document.getElementById("pfDeductionNotes")?.value.trim();
     if(!a||!/bybit|binance|crypto/i.test(String(a.account_name||""))||amt<=0) throw new Error("اختر منصة صحيحة وأدخل مبلغ الخصم.");
-    if(editId) await U.db.from("personal_finance_transactions").delete().eq("user_id",U.currentUser.id).eq("source_type","platform_deduction").eq("source_id",String(editId));
+    if(editId) await db.from("personal_finance_transactions").delete().eq("user_id",currentUser.id).eq("source_type","platform_deduction").eq("source_id",String(editId));
     const note=JSON.stringify({subscription_id:subId,customer,reference:ref,notes});
-    const r=await U.db.from("personal_finance_transactions").insert({user_id:U.currentUser.id,account_id:a.id,amount:-Math.abs(amt),transaction_type:"expense",category:"خصم اشتراك من المنصة",description:customer||"خصم من "+a.account_name,source_type:"platform_deduction",source_id:editId||uuid0(),transaction_date:date,notes:note});
+    const r=await db.from("personal_finance_transactions").insert({user_id:currentUser.id,account_id:a.id,amount:-Math.abs(amt),transaction_type:"expense",category:"خصم اشتراك من المنصة",description:customer||"خصم من "+a.account_name,source_type:"platform_deduction",source_id:editId||uuid0(),transaction_date:date,notes:note});
     if(r.error) throw r.error;
     U.closeModal();await U.refresh();U.showToast(editId?"تم تعديل خصم المنصة.":"تم تسجيل خصم الاشتراك من المنصة.");
   }catch(e){U.showToast(e.message||"تعذر تسجيل الخصم.",true);}
@@ -215,11 +215,11 @@ if(typeof basePlatforms==="function"){
 
 /* ---------- Advanced features restored: budgets + goals ---------- */
 async function getBudgets(){
-  const r=await U.db.from("personal_finance_budgets").select("*").eq("user_id",U.currentUser.id).order("category");
+  const r=await db.from("personal_finance_budgets").select("*").eq("user_id",currentUser.id).order("category");
   if(r.error) throw r.error; return r.data||[];
 }
 async function getGoals(){
-  const r=await U.db.from("personal_finance_goals").select("*").eq("user_id",U.currentUser.id).order("created_at",{ascending:false});
+  const r=await db.from("personal_finance_goals").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
   if(r.error) throw r.error; return r.data||[];
 }
 U.openSalehAdvancedFinance=function(){
@@ -237,19 +237,19 @@ U.saveSalehBudgetLine=async function(){
   const category=document.getElementById("advBudgetCat")?.value.trim(),amount=Number(document.getElementById("advBudgetAmount")?.value||0);
   if(!category||amount<0)return U.showToast("أدخل البند والمبلغ.",true);
   const month=(new Date()).toISOString().slice(0,7);
-  const r=await U.db.from("personal_finance_budgets").upsert({user_id:U.currentUser.id,month_key:month,category,budget_amount:amount,updated_at:new Date().toISOString()},{onConflict:"user_id,month_key,category"});
+  const r=await db.from("personal_finance_budgets").upsert({user_id:currentUser.id,month_key:month,category,budget_amount:amount,updated_at:new Date().toISOString()},{onConflict:"user_id,month_key,category"});
   if(r.error)return U.showToast(r.error.message,true);
   U.openSalehAdvancedFinance();
 };
-U.deleteSalehBudget=async function(id){if(!confirm("حذف الميزانية؟"))return;const r=await U.db.from("personal_finance_budgets").delete().eq("id",id).eq("user_id",U.currentUser.id);if(r.error)return U.showToast(r.error.message,true);U.openSalehAdvancedFinance();};
+U.deleteSalehBudget=async function(id){if(!confirm("حذف الميزانية؟"))return;const r=await db.from("personal_finance_budgets").delete().eq("id",id).eq("user_id",currentUser.id);if(r.error)return U.showToast(r.error.message,true);U.openSalehAdvancedFinance();};
 U.saveSalehGoal=async function(){
   const name=document.getElementById("advGoalName")?.value.trim(),target=Number(document.getElementById("advGoalTarget")?.value||0),current=Number(document.getElementById("advGoalCurrent")?.value||0),date=document.getElementById("advGoalDate")?.value||null;
   if(!name||target<=0)return U.showToast("أدخل اسم الهدف والمبلغ المستهدف.",true);
-  const r=await U.db.from("personal_finance_goals").insert({user_id:U.currentUser.id,goal_name:name,target_amount:target,current_amount:current,target_date:date});
+  const r=await db.from("personal_finance_goals").insert({user_id:currentUser.id,goal_name:name,target_amount:target,current_amount:current,target_date:date});
   if(r.error)return U.showToast(r.error.message,true);
   U.openSalehAdvancedFinance();
 };
-U.deleteSalehGoal=async function(id){if(!confirm("حذف الهدف؟"))return;const r=await U.db.from("personal_finance_goals").delete().eq("id",id).eq("user_id",U.currentUser.id);if(r.error)return U.showToast(r.error.message,true);U.openSalehAdvancedFinance();};
+U.deleteSalehGoal=async function(id){if(!confirm("حذف الهدف؟"))return;const r=await db.from("personal_finance_goals").delete().eq("id",id).eq("user_id",currentUser.id);if(r.error)return U.showToast(r.error.message,true);U.openSalehAdvancedFinance();};
 
 /* Add advanced button to finance page after the existing render. */
 const baseRender=U.renderPersonalFinance;
@@ -257,7 +257,7 @@ if(typeof baseRender==="function"){
   U.renderPersonalFinance=function(){
     baseRender();
     setTimeout(function(){
-      const host=document.getElementById("content"); if(!host || U.state?.page!=="personalFinance") return;
+      const host=document.getElementById("content"); if(!host || state?.page!=="personalFinance") return;
       if(document.getElementById("pfAdvancedToolsBtn")) return;
       const head=host.querySelector(".finance-page-head .page-actions");
       if(head){
@@ -273,7 +273,7 @@ if(typeof baseRefresh==="function"){
   U.refresh=async function(){
     const r=await baseRefresh.apply(this,arguments);
     await loadCats();
-    if(U.state?.page==="personalFinance" && typeof U.renderPersonalFinance==="function") U.renderPersonalFinance();
+    if(state?.page==="personalFinance" && typeof U.renderPersonalFinance==="function") U.renderPersonalFinance();
     return r;
   };
 }
