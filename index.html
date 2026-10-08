@@ -11229,7 +11229,6 @@ function renderPersonalFinance(){
   if(salehFinanceHost && state.page==='personalFinance'){
     salehFinanceHost.innerHTML='<div id="salehFinanceRedesign" class="saleh-finance-redesign">'+salehFinanceHost.innerHTML+'</div>';
   }
-  setTimeout(renderPersonalFinanceLoans,0);
  }catch(e){console.error('SALEH FINANCE RENDER ERROR',e);document.getElementById('content').innerHTML='<div class="card"><div class="card-body"><h3>لوحة تحكم صالح</h3><p class="muted">تعذر تحميل لوحة التحكم حاليًا. تأكد من تشغيل جداول لوحة صالح في Supabase ثم اضغط تحديث.</p></div></div>';}
 }
 
@@ -11319,31 +11318,6 @@ function openSalehOpeningBalance(){
   '</div>';
  openModal('الأرصدة الافتتاحية',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalances()"><i class="fa-solid fa-check"></i> حفظ الأرصدة</button></div>');
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
-}
-function renderPersonalFinanceLoans(){
- const host=document.getElementById('content');if(!host||state.page!=='personalFinance')return;
- const loans=(state.loans||[]).filter(x=>x.status!=='cancelled'),cur=(state.settings.currency||'EGP');
- const groups=[
-  {key:'borrowed',title:'فلوس مستلفها',sub:'فلوس عليَّ للناس',icon:'fa-hand-holding-dollar'},
-  {key:'lent',title:'فلوس مسلفها',sub:'فلوس ليا عند الناس',icon:'fa-hand-holding-hand'}
- ];
- groups.forEach(group=>{
-  const active=loans.filter(x=>loanDirection(x)===group.key);
-  const open=active.filter(x=>loanRemaining(x)>0);
-  const overdue=open.filter(x=>x.due_date&&String(x.due_date)<isoDate(new Date()));
-  const dueSoon=open.filter(x=>{if(!x.due_date)return false;const d=Math.ceil((new Date(x.due_date+'T00:00:00')-new Date(isoDate(new Date())+'T00:00:00'))/86400000);return d>=0&&d<=3;});
-  const total=active.reduce((s,x)=>s+Number(x.amount||0),0);
-  const repaid=(state.loanPayments||[]).filter(p=>active.some(l=>String(l.id)===String(p.loan_id))).reduce((s,x)=>s+Number(x.amount||0),0);
-  const remaining=Math.max(0,total-repaid);
-  const rows=active.slice().sort((a,b)=>String(b.loan_date||'').localeCompare(String(a.loan_date||''))).map(x=>{
-   const p=loanPerson(x.person_id),paid=loanPaid(x.id),rem=loanRemaining(x),st=loanStatusText(x);
-   const actionLabel=group.key==='borrowed'?'تسجيل سداد':'تسجيل تحصيل';
-   return '<tr><td><b>'+esc(p?.person_name||'شخص')+'</b><br><small class="muted">'+esc(x.purpose||'بدون غرض')+'</small></td><td>'+money(x.amount)+' '+esc(cur)+'</td><td>'+money(paid)+' '+esc(cur)+'</td><td class="money">'+money(rem)+' '+esc(cur)+'</td><td>'+esc(x.due_date||'بدون موعد')+'</td><td><span class="badge '+(st==='متأخر'?'overdue':st==='مسدد'?'paid':st==='مسدد جزئي'?'due':'upcoming')+'">'+st+'</span></td><td>'+(rem>0?'<button class="mini-btn pay" onclick="openLoanRepayment('+x.id+')">'+actionLabel+'</button>':'<span class="muted">مكتملة</span>')+'</td></tr>';
-  }).join('')||'<tr><td colspan="7"><div class="empty">لا توجد سجلات في هذا القسم حتى الآن</div></td></tr>';
-  const box=document.createElement('div');box.className='card finance-loans-table';box.style.marginTop='16px';
-  box.innerHTML='<div class="card-head"><div><h3>'+group.title+'</h3><span class="muted">'+group.sub+' — الإجمالي '+money(total)+' • '+(group.key==='borrowed'?'تم سداده':'تم تحصيله')+' '+money(repaid)+' • المتبقي '+money(remaining)+' '+esc(cur)+'</span></div><div class="actions"><span class="badge overdue">متأخر '+overdue.length+'</span><span class="badge due">قريب '+dueSoon.length+'</span></div></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>الشخص والغرض</th><th>أصل المبلغ</th><th>'+(group.key==='borrowed'?'تم سداده':'تم تحصيله')+'</th><th>المتبقي</th><th>موعد السداد</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  host.appendChild(box);
- });
 }
 async function openSalehLoan(){
  const A=state.financeAccounts||[],P=state.loanPeople||[];
@@ -12487,7 +12461,12 @@ window.salehSavePersonDirect=async function(){
 window.salehPeopleDirect=function(){
  try{
   var P=Array.isArray(state.loanPeople)?state.loanPeople:[];
-  var rows=P.map(function(p){return '<div class="finance-person-row" style="margin-bottom:8px"><div class="finance-person-main"><b>'+sx(p.person_name||'بدون اسم')+'</b><small>'+sx(p.phone||'لا يوجد رقم')+'</small></div><div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+sx(p.id)+'\')">تعديل</button></div></div>';}).join('');
+  var loans=Array.isArray(state.loans)?state.loans.filter(function(x){return x.status!=='cancelled';}):[], pays=Array.isArray(state.loanPayments)?state.loanPayments:[];
+  var rows=P.map(function(p){
+   var mine=loans.filter(function(l){return String(l.person_id)===String(p.id);}), lent=mine.filter(function(l){return loanDirection(l)==='lent';}), borrowed=mine.filter(function(l){return loanDirection(l)==='borrowed';});
+   var lentRem=lent.reduce(function(s,l){return s+loanRemaining(l);},0), borrowedRem=borrowed.reduce(function(s,l){return s+loanRemaining(l);},0), hasLoans=mine.length>0;
+   return '<div class="finance-person-row" style="margin-bottom:8px"><div class="finance-person-main"><b>'+sx(p.person_name||'بدون اسم')+'</b><small>'+sx(p.phone||'لا يوجد رقم')+(hasLoans?' — لي: '+money(lentRem)+' | عليَّ: '+money(borrowedRem):' — لا توجد سلف')+'</small></div><div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="openSalehPersonStatement(\''+sx(p.id)+'\')">كشف الحساب</button><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+sx(p.id)+'\')">تعديل</button></div></div>';
+  }).join('');
   openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="window.salehOpenPersonDirect()">إضافة شخص جديد</button></div>'+(rows||'<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>'),'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
  }catch(e){console.error(e);showToast('تعذر فتح الأشخاص: '+(e.message||e),true);}
 };
