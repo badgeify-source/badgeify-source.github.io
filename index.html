@@ -4060,7 +4060,11 @@ async function saveCustomer(id){
 
         await refresh();
 
-        showToast(t("saved"));
+        if(financeEdit && financeEdit.ok===false){
+            showToast("تم تعديل الدفعة، لكن تعذر تحديث حركة لوحة صالح.",true);
+        }else{
+            showToast(t("saved"));
+        }
 
     }catch(error){
 
@@ -6084,7 +6088,7 @@ async function confirmPayment(subscriptionId,periodKey){
         if(result.error)
             throw result.error;
 
-        await syncSalehPayment(
+        const financeSync=await syncSalehPayment(
             amount,
             result.data?.id,
             s.customer_id,
@@ -6094,7 +6098,6 @@ async function confirmPayment(subscriptionId,periodKey){
             notes,
             customer?.client_name
         );
-
 
         await logActivity(
             "PAYMENT",
@@ -6129,7 +6132,11 @@ async function confirmPayment(subscriptionId,periodKey){
             notes:notes
         });
 
-        showToast(t("successPayment"));
+        if(financeSync && financeSync.ok===false){
+            showToast("تم تأكيد الدفع، لكن تعذر إضافة المبلغ إلى لوحة صالح. راجع حركة الحساب.",true);
+        }else{
+            showToast(t("successPayment"));
+        }
 
     }catch(error){
 
@@ -6209,6 +6216,13 @@ async function savePaymentEdit(paymentId){
         .eq("id",paymentId);
 
         if(result.error) throw result.error;
+
+        const financeEdit=await syncSalehPaymentEdit(
+            paymentId,
+            amount,
+            paymentDate,
+            notes
+        );
 
         await logActivity("PAYMENT_EDIT","payment",paymentId,"Edited payment");
         closeModal();
@@ -10786,11 +10800,92 @@ function financeBalance(id){
  return Number(a.opening_balance||0)+movements.reduce((s,x)=>s+Number(x.amount||0),0);
 }
 async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date,notes,customerName){
- try{const map={cash:'cash',vodafone_cash:'vodafone_cash',instapay:'instapay'},type=map[method];if(!type)return;let a=financeAccount(type);
-  if(!a){const r=await db.from('personal_finance_accounts').insert({user_id:currentUser?.id,account_name:type==='cash'?'الكاش / الجيب':type==='vodafone_cash'?'Vodafone Cash':'InstaPay',account_type:type,opening_balance:0}).select('*').single();if(r.error)throw r.error;a=r.data;}
-  const e=await db.from('personal_finance_transactions').select('id').eq('source_type','subscription_payment').eq('source_id',String(paymentId)).maybeSingle();if(e.error)throw e.error;if(e.data)return;
-  const r=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:a.id,amount:Number(amount),transaction_type:'income',category:'مقبوضات العمل',description:'مبلغ مستلم من '+(customerName||'عميل'),source_type:'subscription_payment',source_id:String(paymentId),customer_id:customerId||null,trader_id:traderId||null,payment_id:paymentId,payment_method:method,transaction_date:date,notes:notes||null});if(r.error)throw r.error;
- }catch(e){console.warn('Saleh Finance payment sync:',e.message);}
+    const map={cash:'cash',vodafone_cash:'vodafone_cash',instapay:'instapay'};
+    const type=map[method];
+    if(!type) return {ok:true,skipped:true};
+
+    try{
+        let a=financeAccount(type);
+
+        if(!a){
+            const accountName=
+                type==='cash' ? 'الكاش / الجيب' :
+                type==='vodafone_cash' ? 'Vodafone Cash' :
+                'InstaPay';
+
+            const r=await db
+                .from('personal_finance_accounts')
+                .insert({
+                    user_id:currentUser?.id,
+                    account_name:accountName,
+                    account_type:type,
+                    opening_balance:0
+                })
+                .select('*')
+                .single();
+
+            if(r.error) throw r.error;
+            a=r.data;
+        }
+
+        const existing=await db
+            .from('personal_finance_transactions')
+            .select('id')
+            .eq('source_type','subscription_payment')
+            .eq('source_id',String(paymentId))
+            .maybeSingle();
+
+        if(existing.error) throw existing.error;
+
+        if(existing.data) return {ok:true,duplicate:true};
+
+        const r=await db
+            .from('personal_finance_transactions')
+            .insert({
+                user_id:currentUser?.id,
+                account_id:a.id,
+                amount:Number(amount),
+                transaction_type:'income',
+                category:'مقبوضات العمل',
+                description:'مبلغ مستلم من '+(customerName||'عميل'),
+                source_type:'subscription_payment',
+                source_id:String(paymentId),
+                customer_id:customerId||null,
+                trader_id:traderId||null,
+                payment_id:paymentId,
+                payment_method:method,
+                transaction_date:date,
+                notes:notes||null
+            });
+
+        if(r.error) throw r.error;
+
+        return {ok:true};
+    }catch(e){
+        console.error('Saleh Finance payment sync:',e);
+        return {ok:false,error:e};
+    }
+}
+
+async function syncSalehPaymentEdit(paymentId,amount,date,notes){
+    try{
+        const r=await db
+            .from('personal_finance_transactions')
+            .update({
+                amount:Number(amount),
+                transaction_date:date,
+                notes:notes||null,
+                updated_at:new Date().toISOString()
+            })
+            .eq('source_type','subscription_payment')
+            .eq('source_id',String(paymentId));
+
+        if(r.error) throw r.error;
+        return {ok:true};
+    }catch(e){
+        console.error('Saleh Finance payment edit sync:',e);
+        return {ok:false,error:e};
+    }
 }
 let salehDonationsVisible=false;
 
