@@ -2198,46 +2198,47 @@ async function loadTable(table){
 
 async function loadData(){
 
-    const result=
-    await Promise.all([
+    const tables=[
+        ["customers","customers"],
+        ["visa_cards","visaCards"],
+        ["traders","traders"],
+        ["app_services","services"],
+        ["subscriptions","subscriptions"],
+        ["subscription_services","subscriptionServices"],
+        ["subscription_payments","payments"],
+        ["invoices","invoices"],
+        ["invoice_items","invoiceItems"],
+        ["followups","followups"],
+        ["activity_logs","logs"],
+        ["app_settings","settingsRows"]
+    ];
 
-        loadTable("customers"),
-        loadTable("visa_cards"),
-        loadTable("traders"),
-        loadTable("app_services"),
-        loadTable("subscriptions"),
-        loadTable("subscription_services"),
-        loadTable("subscription_payments"),
-        loadTable("invoices"),
-        loadTable("invoice_items"),
-        loadTable("followups"),
-        loadTable("activity_logs"),
-        loadTable("app_settings")
+    const results=await Promise.all(
+        tables.map(async function(item){
+            try{
+                const data=await loadTable(item[0]);
+                return {key:item[1],data:data||[],error:null};
+            }catch(error){
+                console.warn("تعذر تحميل "+item[0]+":",error);
+                return {key:item[1],data:[],error:error};
+            }
+        })
+    );
 
-    ]);
-
-    state.customers=result[0];
-    state.visaCards=result[1];
-    state.traders=result[2];
-    state.services=result[3];
-    state.subscriptions=result[4];
-    state.subscriptionServices=result[5];
-    state.payments=result[6];
-    state.invoices=result[7];
-    state.invoiceItems=result[8];
-    state.followups=result[9];
-    state.logs=result[10];
-
-    state.settings={};
-
-    result[11].forEach(function(row){
-
-        state.settings[
-            row.setting_key
-        ]=row.setting_value;
-
+    results.forEach(function(item){
+        if(item.key==="settingsRows"){
+            state.settings={};
+            (item.data||[]).forEach(function(row){
+                if(row && row.setting_key!=null){
+                    state.settings[row.setting_key]=row.setting_value;
+                }
+            });
+        }else{
+            state[item.key]=item.data||[];
+        }
     });
 
+    return results;
 }
 
 
