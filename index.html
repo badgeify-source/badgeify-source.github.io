@@ -6080,8 +6080,6 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 
 <div class="footer">BADGEIFY — VERIFIED TRUST & SECURITY</div>
 </div>
-<script src="./personal-finance-upgrade.js?v=20261008"></script>
-<script src="./personal-finance-upgrade.js?v=20261008-2"></script>
 </body>
 </html>`);
 
@@ -11343,7 +11341,7 @@ function buildLoanAlerts(){
 }
 
 async function openSalehFinanceEntry(kind){
- const exp=kind==='expense',A=state.financeAccounts||[],rawCats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[],cats=[...new Set(rawCats.map(x=>String(x||'').trim()).filter(Boolean).filter(x=>x!=='شيء غير معلوم'))];
+ const exp=kind==='expense',A=state.financeAccounts||[],cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
  const title=exp?'إضافة مصروف شخصي':'إضافة مبلغ مستلم';
  const icon=exp?'fa-arrow-down':'fa-arrow-up';
  const subtitle=exp?'سجّل المصروف مع الجهة والتصنيف والتفاصيل.':'سجّل المبلغ المستلم ومصدره والحساب الذي دخل إليه.';
@@ -12272,25 +12270,8 @@ if(typeof oldRefresh==='function'){
 }
 })();
 
-window.salehExpenseCategories=function(){
- try{
-  const keys=['saleh_expense_categories','personal_finance_expense_categories','expense_categories'];
-  const all=[];
-  keys.forEach(k=>{
-   try{
-    const v=JSON.parse(localStorage.getItem(k)||'[]');
-    if(Array.isArray(v)) v.forEach(x=>{const s=String(x||'').trim();if(s)all.push(s);});
-   }catch(_){}
-  });
-  const unique=[...new Set(all)];
-  if(unique.length) localStorage.setItem('saleh_expense_categories',JSON.stringify(unique));
-  return unique;
- }catch(e){return[]}
-};
-window.openSalehExpenseCategories=function(){
- const cats=salehExpenseCategories();
- const rows=cats.map((x,i)=>'<div style="display:flex;gap:8px;align-items:center;margin:7px 0"><input value="'+esc(x)+'" disabled style="flex:1"><button class="mini-btn" onclick="removeSalehExpenseCategory('+i+')">حذف</button></div>').join('')||'<div class="muted">لا توجد بنود مضافة حاليًا. أضف أول بند وسيظهر مباشرة داخل خانة المصروف.</div>';
-openModal('بنود المصاريف','<div class="field"><label>إضافة بند جديد</label><input id="newExpenseCategory" placeholder="مثال: مواصلات"></div><div style="margin-top:14px">'+rows+'</div>','<button class="ghost-btn" onclick="closeModal()">إغلاق</button><button class="gold-btn" onclick="addSalehExpenseCategory()">إضافة</button>');};
+window.salehExpenseCategories=function(){try{return JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]')}catch(e){return[]}};
+window.openSalehExpenseCategories=function(){const cats=salehExpenseCategories();const rows=cats.map((x,i)=>'<div style="display:flex;gap:8px;align-items:center;margin:7px 0"><input value="'+esc(x)+'" disabled style="flex:1"><button class="mini-btn" onclick="removeSalehExpenseCategory('+i+')">حذف</button></div>').join('')||'<div class="muted">لا توجد بنود مضافة.</div>';openModal('بنود المصاريف','<div class="field"><label>إضافة بند جديد</label><input id="newExpenseCategory" placeholder="مثال: مواصلات"></div><div style="margin-top:14px">'+rows+'</div>','<button class="ghost-btn" onclick="closeModal()">إغلاق</button><button class="gold-btn" onclick="addSalehExpenseCategory()">إضافة</button>');};
 window.addSalehExpenseCategory=function(){const v=(document.getElementById('newExpenseCategory')?.value||'').trim();if(!v)return showToast('اكتب اسم البند.',true);const cats=salehExpenseCategories();if(cats.includes(v))return showToast('البند موجود بالفعل.',true);cats.push(v);localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));closeModal();showToast('تمت إضافة بند المصروف.');};
 window.removeSalehExpenseCategory=function(i){const cats=salehExpenseCategories();cats.splice(i,1);localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));openSalehExpenseCategories();};
 window.openSalehPeople=function(editId){const P=state.loanPeople||[],p=editId?P.find(x=>String(x.id)===String(editId)):null;const body='<div class="form-grid"><div class="field"><label>الاسم</label><input id="salehPersonName" value="'+esc(p?.person_name||'')+'" placeholder="اسم الشخص"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="salehPersonPhone" type="tel" value="'+esc(p?.phone||'')+'" placeholder="01xxxxxxxxx"></div><div class="field full"><label>ملاحظات</label><textarea id="salehPersonNotes">'+esc(p?.notes||'')+'</textarea></div></div>';openModal(p?'تعديل شخص':'إضافة شخص',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPerson('+(p?esc(p.id):'')+')">حفظ</button>');};
