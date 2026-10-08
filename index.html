@@ -12524,5 +12524,36 @@ window.salehFinanceExpenseCategoriesButton=function(){
  };
 })();
 </script>
-<script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script>\n<!-- SALEH FINANCE SAFE FEATURE INITIALIZATION -->\n<script id="saleh-finance-safe-init">(function(){'use strict';function ensureExpenseCategories(){try{const key='saleh_expense_categories';const raw=localStorage.getItem(key);const cats=raw?JSON.parse(raw):[];if(!Array.isArray(cats)||!cats.length)localStorage.setItem(key,JSON.stringify(['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم']));}catch(e){console.warn('Saleh finance safe init:',e);}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureExpenseCategories,{once:true});else ensureExpenseCategories();})();</script>\n\n<!-- SALEH FINANCE SAFE EXPENSE FIX -->\n<script id="saleh-finance-expense-safe-fix">(function(){'use strict';window.salehExpenseCategoriesSafe=function(){try{var x=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');return Array.isArray(x)?x.map(function(v){return String(v||'').trim()}).filter(Boolean):[]}catch(e){return[]}};})();</script>\n</body>
+<script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script>\n<!-- SALEH FINANCE SAFE FEATURE INITIALIZATION -->\n<script id="saleh-finance-safe-init">(function(){'use strict';function ensureExpenseCategories(){try{const key='saleh_expense_categories';const raw=localStorage.getItem(key);const cats=raw?JSON.parse(raw):[];if(!Array.isArray(cats)||!cats.length)localStorage.setItem(key,JSON.stringify(['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم']));}catch(e){console.warn('Saleh finance safe init:',e);}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureExpenseCategories,{once:true});else ensureExpenseCategories();})();</script>\n\n<!-- SALEH FINANCE SAFE EXPENSE FIX -->\n<script id="saleh-finance-expense-safe-fix">(function(){'use strict';window.salehExpenseCategoriesSafe=function(){try{var x=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');return Array.isArray(x)?x.map(function(v){return String(v||'').trim()}).filter(Boolean):[]}catch(e){return[]}};})();</script>\n
+<!-- SALEH FINANCE BUTTON BRIDGE -->
+<script id="saleh-finance-button-bridge">(function(){'use strict';
+function bind(){
+ var map={
+  openSalehFinanceEntry:window.openSalehFinanceEntry,
+  openSalehFinanceTransfer:window.openSalehFinanceTransfer,
+  openSalehLoan:window.openSalehLoan,
+  salehFinancePeopleButton:window.salehFinancePeopleButton,
+  toggleSalehDonations:window.toggleSalehDonations,
+  openSalehOpeningBalance:window.openSalehOpeningBalance,
+  salehFinanceExpenseCategoriesButton:window.salehFinanceExpenseCategoriesButton,
+  exportSalehFinanceCSV:window.exportSalehFinanceCSV,
+  openSalehPeople:window.openSalehPeople
+ };
+ document.addEventListener('click',function(e){
+  var b=e.target&&e.target.closest?e.target.closest('button[onclick]'):null;
+  if(!b)return;
+  var s=b.getAttribute('onclick')||'';
+  var m=s.match(/^\s*([A-Za-z_$][\w$]*)\s*\((.*)\)\s*;?\s*$/);
+  if(!m||!map[m[1]])return;
+  e.preventDefault();e.stopImmediatePropagation();
+  try{
+   var raw=m[2].trim(),args=[];
+   if(raw)args=raw.split(',').map(function(x){x=x.trim();if((x[0]==='\''&&x[x.length-1]==='\'')||(x[0]==='"'&&x[x.length-1]==='"'))return x.slice(1,-1);return x;});
+   map[m[1]].apply(window,args);
+  }catch(err){console.error('SALEH BUTTON',m[1],err);if(typeof showToast==='function')showToast('تعذر تشغيل الزر: '+(err.message||err),true);}
+ },true);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
+})();</script>
+</body>
 </html>
