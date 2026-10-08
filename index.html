@@ -9023,6 +9023,9 @@ td{font-size:12px}
 @media(max-width:520px){.finance-kpis{grid-template-columns:1fr}.finance-search{min-width:100%;flex-direction:column}.finance-toolbar .ghost-btn,.finance-toolbar .gold-btn{width:100%}}
 
 </style>
+<style id="saleh-platform-finance-css">
+.platform-finance-section{margin-top:18px}.platform-finance-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.platform-finance-head h3{margin:0}.platform-finance-head p{margin:3px 0 0;color:var(--muted);font-size:11px}.platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.platform-card{background:linear-gradient(145deg,rgba(17,27,42,.98),rgba(8,15,25,.98));border:1px solid rgba(99,179,255,.12);border-radius:16px;padding:16px}.platform-card .platform-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.platform-card .platform-name{font-weight:800}.platform-card .platform-currency{font-size:10px;color:var(--muted)}.platform-card .platform-balance{font-size:25px;font-weight:900;margin:12px 0 3px}.platform-card .platform-balance small{font-size:12px;color:var(--muted)}.platform-actions{display:flex;gap:7px;flex-wrap:wrap}.platform-ledger{margin-top:14px}.platform-ledger .table{min-width:900px}.platform-tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(99,179,255,.1);color:var(--gold2);font-size:9px;font-weight:800}.platform-empty{padding:20px;text-align:center;color:var(--muted)}.platform-note{font-size:10px;color:var(--muted);line-height:1.8;margin-top:8px}.platform-total-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}.platform-total{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--panel2)}.platform-total span{display:block;color:var(--muted);font-size:10px}.platform-total b{display:block;margin-top:3px;font-size:18px}@media(max-width:900px){.platform-grid{grid-template-columns:1fr 1fr}.platform-total-strip{grid-template-columns:1fr 1fr}}@media(max-width:520px){.platform-grid,.platform-total-strip{grid-template-columns:1fr}.platform-finance-head{flex-direction:column;align-items:flex-start}}
+</style>
 </head>
 <body>
 <button class="print" onclick="window.print()">طباعة / حفظ PDF</button>
@@ -12081,5 +12084,125 @@ applyTheme();
 })();
 </script>
 
+<script id="saleh-platform-finance-js">
+(function(){
+function pfEsc(v){return typeof esc==='function'?esc(v==null?'':String(v)):String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));}
+function pfCur(a){const n=String(a?.account_name||'').toLowerCase();return /bybit|binance|crypto|usdt|usd/.test(n)?'USD':'EGP';}
+function pfPlatform(a){return !!a && /bybit|binance|crypto/i.test(String(a.account_name||''));}
+function pfPlatformAccounts(){return (state.financeAccounts||[]).filter(pfPlatform);}
+function pfId(){return (crypto&&crypto.randomUUID)?crypto.randomUUID():('pf_'+Date.now()+'_'+Math.random().toString(36).slice(2));}
+function pfNum(v){return Number(v||0);}
+function pfMoney(v){return typeof money==='function'?money(Math.abs(pfNum(v))):Math.abs(pfNum(v)).toFixed(2);}
+function pfDate(v){return v||isoDate(new Date());}
+function pfParseNote(x){try{return JSON.parse(x||'{}')}catch(e){return {text:x||''}}}
+function pfAccount(id){return (state.financeAccounts||[]).find(a=>String(a.id)===String(id));}
+function pfTxs(){return state.financeTransactions||[];}
+function pfTransferGroups(){
+ const map=new Map();
+ pfTxs().filter(x=>x.source_type==='transfer'&&x.source_id).forEach(x=>{
+   const k=String(x.source_id);if(!map.has(k))map.set(k,[]);map.get(k).push(x);
+ });
+ return Array.from(map.entries()).map(([id,rows])=>{
+   const from=rows.find(x=>pfNum(x.amount)<0),to=rows.find(x=>pfNum(x.amount)>0);
+   const note=pfParseNote(from?.notes||to?.notes);
+   return {id,from,to,note,date:from?.transaction_date||to?.transaction_date||'',reference:note.reference||'',notes:note.notes||''};
+ });
+}
+function pfDeductionRows(){
+ return pfTxs().filter(x=>x.source_type==='platform_deduction').map(x=>({tx:x,account:pfAccount(x.account_id),note:pfParseNote(x.notes)}));
+}
+function pfPlatformBalance(id){return pfNum(financeBalance(id));}
+async function pfEnsurePlatform(name){
+ if(!currentUser?.id)throw new Error('لم يتم التعرف على المستخدم.');
+ let a=(state.financeAccounts||[]).find(x=>String(x.account_name).toLowerCase()===String(name).toLowerCase());
+ if(a)return a;
+ const ins=await db.from('personal_finance_accounts').insert({user_id:currentUser.id,account_name:name,account_type:'other',opening_balance:0}).select('*').single();
+ if(ins.error){
+   const q=await db.from('personal_finance_accounts').select('*').eq('user_id',currentUser.id).eq('account_name',name).maybeSingle();
+   if(q.error||!q.data)throw ins.error;a=q.data;
+ }else a=ins.data;
+ state.financeAccounts=[...(state.financeAccounts||[]).filter(x=>String(x.id)!==String(a.id)),a];
+ return a;
+}
+async function pfDeleteBySource(sourceType,sourceId){
+ const r=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type',sourceType).eq('source_id',String(sourceId));
+ if(r.error)throw r.error;
+}
+async function pfReload(){await loadFinanceData();renderPersonalFinance();}
+window.openSalehPlatformTransfer=async function(editId){
+ const A=state.financeAccounts||[], transfers=pfTransferGroups(), old=editId?transfers.find(x=>String(x.id)===String(editId)):null;
+ const egp=A.filter(a=>pfCur(a)==='EGP'), all=A;
+ const fromId=old?.from?.account_id||'',toId=old?.to?.account_id||'', fromAmount=old?Math.abs(pfNum(old.from?.amount)):0, rate=old?.note?.rate||'';
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-right-left"></i></div><div><h4>'+(old?'تعديل تحويل':'تحويل إلى منصة')+'</h4><p>سجل التحويل مرة واحدة، وسيتم تحديث رصيد الحساب المصدر والمنصة تلقائيًا.</p></div></div><div class="form-grid"><div class="field finance-required"><label>من الحساب</label><select id="pfTransferFrom">'+A.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(fromId)?'selected':'')+'>'+pfEsc(a.account_name)+' — '+pfCur(a)+'</option>').join('')+'</select></div><div class="field finance-required"><label>إلى الحساب</label><select id="pfTransferTo">'+A.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(toId)?'selected':'')+'>'+pfEsc(a.account_name)+' — '+pfCur(a)+'</option>').join('')+'</select></div><div class="field finance-required"><label>المبلغ من الحساب</label><input id="pfTransferAmount" type="number" min="0" step="0.01" value="'+fromAmount+'"></div><div class="field finance-required"><label>سعر الصرف مقابل USD</label><input id="pfTransferRate" type="number" min="0.000001" step="0.000001" value="'+(rate||'')+'" placeholder="مثال: 48.50"><small class="muted">لو التحويل EGP → USD اكتب سعر الدولار.</small></div><div class="field"><label>المبلغ الناتج USD</label><input id="pfTransferUsd" type="number" readonly value="'+(old?Math.abs(pfNum(old.to?.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="pfTransferDate" type="date" value="'+pfDate(old?.date)+'"></div><div class="field"><label>رقم العملية / المرجع</label><input id="pfTransferRef" value="'+pfEsc(old?.reference||'')+'" placeholder="اختياري"></div><div class="field full"><label>ملاحظات</label><textarea id="pfTransferNotes" placeholder="سبب التحويل أو أي تفاصيل...">'+pfEsc(old?.notes||'')+'</textarea></div></div></div>';
+ openModal(old?'تعديل التحويل':'تحويل بين الحسابات',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformTransfer('+(old?pfEsc(editId):'')+')">حفظ التحويل</button>');
+ const recalc=()=>{const f=pfAccount(document.getElementById('pfTransferFrom')?.value),t=pfAccount(document.getElementById('pfTransferTo')?.value),amt=pfNum(document.getElementById('pfTransferAmount')?.value),r=pfNum(document.getElementById('pfTransferRate')?.value);let out=amt;if(pfCur(f)==='EGP'&&pfCur(t)==='USD')out=r?amt/r:0;else if(pfCur(f)==='USD'&&pfCur(t)==='EGP')out=amt*r;document.getElementById('pfTransferUsd').value=out?out.toFixed(2):'';};
+ ['pfTransferFrom','pfTransferTo','pfTransferAmount','pfTransferRate'].forEach(id=>document.getElementById(id)?.addEventListener('input',recalc));recalc();
+};
+window.saveSalehPlatformTransfer=async function(editId){
+ try{
+  const from=pfAccount(document.getElementById('pfTransferFrom')?.value),to=pfAccount(document.getElementById('pfTransferTo')?.value),amt=pfNum(document.getElementById('pfTransferAmount')?.value),rate=pfNum(document.getElementById('pfTransferRate')?.value),date=document.getElementById('pfTransferDate')?.value||pfDate(),reference=document.getElementById('pfTransferRef')?.value.trim(),notes=document.getElementById('pfTransferNotes')?.value.trim();
+  if(!from||!to||String(from.id)===String(to.id)||amt<=0)throw new Error('اختر حسابين مختلفين وأدخل مبلغًا صحيحًا.');
+  const fc=pfCur(from),tc=pfCur(to);let out=amt;if(fc!==tc){if(rate<=0)throw new Error('أدخل سعر الصرف.');out=fc==='EGP'&&tc==='USD'?amt/rate:amt*rate;}
+  if(editId)await pfDeleteBySource('transfer',editId);
+  const id=editId||pfId(),note=JSON.stringify({kind:'transfer',rate,from_currency:fc,to_currency:tc,reference,notes});
+  const rows=[{user_id:currentUser.id,account_id:from.id,amount:-amt,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل إلى '+from&&to.account_name?('تحويل إلى '+to.account_name):'تحويل',source_type:'transfer',source_id:id,transaction_date:date,notes:note},{user_id:currentUser.id,account_id:to.id,amount:out,transaction_type:'transfer',category:'تحويل بين الحسابات',description:'تحويل من '+from.account_name,source_type:'transfer',source_id:id,transaction_date:date,notes:note}];
+  const ins=await db.from('personal_finance_transactions').insert(rows);if(ins.error)throw ins.error;
+  closeModal();await pfReload();showToast(editId?'تم تعديل التحويل بنجاح.':'تم تسجيل التحويل وتحديث الرصيدين.');
+ }catch(e){showToast(e.message||'تعذر حفظ التحويل.',true);}
+};
+window.deleteSalehPlatformTransfer=async function(id){if(!confirm('حذف التحويل بالكامل؟ سيتم عكس تأثيره على الرصيدين.'))return;try{await pfDeleteBySource('transfer',id);await pfReload();showToast('تم حذف التحويل.')}catch(e){showToast(e.message,true)}};
+window.openSalehPlatformDeduction=async function(editId){
+ const rows=pfDeductionRows(),old=editId?rows.find(x=>String(x.tx.source_id)===String(editId)):null,A=pfPlatformAccounts();
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-arrow-down"></i></div><div><h4>'+(old?'تعديل خصم منصة':'خصم من منصة')+'</h4><p>اختر المنصة وأدخل قيمة الخصم بالدولار/USDT. الرصيد ينخفض تلقائيًا.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="pfDeductionAccount"><option value="">اختر المنصة</option>'+A.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(old?.tx.account_id)?'selected':'')+'>'+pfEsc(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>المبلغ بالدولار / USDT</label><input id="pfDeductionAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(pfNum(old.tx.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="pfDeductionDate" type="date" value="'+pfDate(old?.tx.transaction_date)+'"></div><div class="field"><label>العميل / الاشتراك</label><input id="pfDeductionCustomer" value="'+pfEsc(old?.note?.customer||'')+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field"><label>رقم العملية / المرجع</label><input id="pfDeductionRef" value="'+pfEsc(old?.note?.reference||'')+'"></div><div class="field full"><label>ملاحظات</label><textarea id="pfDeductionNotes">'+pfEsc(old?.note?.notes||'')+'</textarea></div></div></div>';
+ openModal(old?'تعديل خصم منصة':'خصم من منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeduction('+(old?pfEsc(editId):'')+')">حفظ الخصم</button>');
+};
+window.saveSalehPlatformDeduction=async function(editId){
+ try{
+  const a=pfAccount(document.getElementById('pfDeductionAccount')?.value),amt=pfNum(document.getElementById('pfDeductionAmount')?.value),date=document.getElementById('pfDeductionDate')?.value||pfDate(),customer=document.getElementById('pfDeductionCustomer')?.value.trim(),reference=document.getElementById('pfDeductionRef')?.value.trim(),notes=document.getElementById('pfDeductionNotes')?.value.trim();
+  if(!a||!pfPlatform(a)||amt<=0)throw new Error('اختر منصة صحيحة وأدخل مبلغ الخصم.');
+  if(editId)await pfDeleteBySource('platform_deduction',editId);
+  const id=editId||pfId(),note=JSON.stringify({kind:'platform_deduction',customer,reference,notes});
+  const ins=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:customer||'خصم من '+a.account_name,source_type:'platform_deduction',source_id:id,transaction_date:date,notes:note});
+  if(ins.error)throw ins.error;closeModal();await pfReload();showToast(editId?'تم تعديل الخصم.':'تم تسجيل الخصم وتحديث رصيد المنصة.');
+ }catch(e){showToast(e.message||'تعذر حفظ الخصم.',true);}
+};
+window.deleteSalehPlatformDeduction=async function(id){if(!confirm('حذف خصم المنصة؟'))return;try{await pfDeleteBySource('platform_deduction',id);await pfReload();showToast('تم حذف الخصم.')}catch(e){showToast(e.message,true)}};
+window.openSalehPlatformAccount=async function(editName){
+ const body='<div class="form-grid"><div class="field finance-required"><label>اسم المنصة / الحساب</label><input id="pfPlatformName" value="'+pfEsc(editName||'')+'" placeholder="Bybit Saleh"></div><div class="field full"><label>نوع الحساب</label><input value="منصة دولار / USDT" disabled></div></div>';
+ openModal(editName?'تعديل اسم المنصة':'إضافة منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformAccount()">حفظ</button>');
+};
+window.saveSalehPlatformAccount=async function(){
+ try{const name=document.getElementById('pfPlatformName')?.value.trim();if(!name)throw new Error('اكتب اسم المنصة.');await pfEnsurePlatform(name);closeModal();await pfReload();showToast('تم حفظ المنصة.')}catch(e){showToast(e.message,true)}
+};
+window.renderSalehPlatforms=function(){
+ const A=pfPlatformAccounts(),transfers=pfTransferGroups(),ded=pfDeductionRows(),usdTotal=A.reduce((s,a)=>s+pfPlatformBalance(a.id),0);
+ const cards=A.map(a=>'<div class="platform-card"><div class="platform-top"><div><div class="platform-name">'+pfEsc(a.account_name)+'</div><div class="platform-currency">رصيد المنصة بالدولار / USDT</div></div><span class="platform-tag">USD</span></div><div class="platform-balance">'+pfMoney(pfPlatformBalance(a.id))+' <small>USD</small></div><div class="platform-actions"><button class="mini-btn" onclick="openSalehPlatformTransfer()"><i class="fa-solid fa-arrow-right-arrow-left"></i> إيداع / تحويل</button><button class="mini-btn pay" onclick="openSalehPlatformDeduction()"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div>').join('');
+ const rows=transfers.concat(ded.map(x=>({id:x.tx.source_id,date:x.tx.transaction_date,from:x.account?.account_name||'',to:'خصم اشتراك',note:x.note,kind:'deduction',tx:x.tx}))).sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(x=>{if(x.kind==='deduction')return '<tr><td>'+pfEsc(x.date)+'</td><td><span class="platform-tag">خصم اشتراك</span></td><td>'+pfEsc(x.from)+'</td><td>-'+pfMoney(x.tx.amount)+' USD</td><td>'+pfEsc(x.note.customer||x.tx.description||'-')+'</td><td><button class="mini-btn" onclick="openSalehPlatformDeduction(\''+pfEsc(x.id)+'\')">تعديل</button><button class="mini-btn" onclick="deleteSalehPlatformDeduction(\''+pfEsc(x.id)+'\')">حذف</button></td></tr>';return '<tr><td>'+pfEsc(x.date)+'</td><td><span class="platform-tag">تحويل</span></td><td>'+pfEsc(x.from?pfAccount(x.from.account_id)?.account_name:'-')+'</td><td>'+pfEsc(x.to?pfAccount(x.to.account_id)?.account_name:'-')+'</td><td>'+pfMoney(x.from?.amount)+' '+pfCur(pfAccount(x.from?.account_id))+' → '+pfMoney(x.to?.amount)+' '+pfCur(pfAccount(x.to?.account_id))+'<br><small class="muted">سعر الصرف: '+pfEsc(x.note.rate||'-')+'</small></td><td><button class="mini-btn" onclick="openSalehPlatformTransfer(\''+pfEsc(x.id)+'\')">تعديل</button><button class="mini-btn" onclick="deleteSalehPlatformTransfer(\''+pfEsc(x.id)+'\')">حذف</button></td></tr>';}).join('')||'<tr><td colspan="6"><div class="platform-empty">لا توجد حركات منصات حتى الآن.</div></td></tr>';
+ return '<div class="platform-finance-section"><div class="platform-finance-head"><div><h3>منصات العملات الرقمية</h3><p>Bybit Saleh و Bybit Mahmoud وأي منصة تضيفها لاحقًا — كل منصة برصيد مستقل.</p></div><div class="actions"><button class="ghost-btn" onclick="openSalehPlatformAccount()"><i class="fa-solid fa-plus"></i> إضافة منصة</button><button class="gold-btn" onclick="openSalehPlatformTransfer()"><i class="fa-solid fa-right-left"></i> تحويل / إيداع</button><button class="ghost-btn" onclick="openSalehPlatformDeduction()"><i class="fa-solid fa-minus"></i> خصم اشتراك</button></div></div><div class="platform-total-strip"><div class="platform-total"><span>إجمالي أرصدة المنصات</span><b>'+pfMoney(usdTotal)+' USD</b></div><div class="platform-total"><span>عدد المنصات</span><b>'+A.length+'</b></div><div class="platform-total"><span>قاعدة التسجيل</span><b>حركة واحدة لكل عملية</b></div></div><div class="platform-grid">'+(cards||'<div class="platform-empty">أضف Bybit Saleh و Bybit Mahmoud من زر إضافة منصة.</div>')+'</div><div class="card platform-ledger"><div class="card-head"><div><h3>كشف حركة المنصات</h3><span class="muted">من أين جاء الرصيد وإلى أين ذهب</span></div></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة</th><th>من</th><th>إلى</th><th>المبلغ / التفاصيل</th><th>إدارة</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div></div>';
+};
+const oldRender=window.renderPersonalFinance||renderPersonalFinance;
+window.renderPersonalFinance=function(){
+ oldRender();
+ setTimeout(function(){
+  const content=document.getElementById('content');if(!content)return;
+  if(document.getElementById('salehPlatformFinanceSection'))return;
+  const section=document.createElement('div');section.id='salehPlatformFinanceSection';section.innerHTML=window.renderSalehPlatforms();content.appendChild(section);
+ },0);
+};
+const oldLoad=window.loadFinanceData||loadFinanceData;
+window.loadFinanceData=async function(){await oldLoad();};
+window.initSalehPlatforms=async function(){
+ if(!currentUser?.id)return;
+ try{
+  const names=['Bybit Saleh','Bybit Mahmoud'];
+  for(const n of names)if(!(state.financeAccounts||[]).some(a=>String(a.account_name).toLowerCase()===n.toLowerCase()))await pfEnsurePlatform(n);
+ }catch(e){console.warn('Saleh platforms not ready:',e);}
+};
+const oldRefresh=window.refresh;
+if(typeof oldRefresh==='function'){
+ window.refresh=async function(){const r=await oldRefresh.apply(this,arguments);await window.initSalehPlatforms();return r;};
+}
+})();
+</script>
 </body>
 </html>
