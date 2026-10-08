@@ -12480,6 +12480,39 @@ window.salehFinanceExpenseCategoriesButton=function(){
   }catch(e){console.error(e);showToast('تعذر فتح بنود المصاريف: '+(e.message||e),true);}
 };
 
+
+// FINAL SALEH FINANCE HARDENING
+(function(){
+ window.salehOpenPeopleSafe=function(){
+  const P=state.loanPeople||[];
+  const rows=P.map(p=>'<div class="finance-person-row" style="margin-bottom:8px"><div class="finance-person-main"><b>'+esc(p.person_name||'بدون اسم')+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div><div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="openSalehPersonAccount(&quot;'+esc(p.id)+'&quot;)">فتح الحساب</button><button type="button" class="mini-btn" onclick="openSalehPeople(&quot;'+esc(p.id)+'&quot;)">تعديل</button></div></div>').join('');
+  openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="openSalehPeople()">+ إضافة شخص جديد</button></div>'+(rows||'<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>'),'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+ };
+ window.salehOpenExpenseCategoriesSafe=function(){
+  const defaults=['مواصلات','أكل وشرب','فواتير','مشتريات','صيانة','رسوم وتحويلات','اشتراكات','شيء غير معلوم'];
+  let cats=salehExpenseCategories();if(!cats.length){cats=defaults.slice();localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));}
+  const rows=cats.map((x,i)=>'<div style="display:flex;gap:8px;align-items:center;margin:7px 0"><input value="'+esc(x)+'" disabled style="flex:1"><button type="button" class="mini-btn" onclick="removeSalehExpenseCategory('+i+')">حذف</button></div>').join('');
+  openModal('بنود المصاريف','<div class="field"><label>اسم البند الجديد</label><input id="newExpenseCategory" placeholder="مثال: مواصلات"></div><div style="margin-top:14px">'+rows+'</div>','<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button><button type="button" class="gold-btn" onclick="addSalehExpenseCategory()">إضافة البند</button>');
+ };
+ window.salehOpenAddPersonSafe=function(){openSalehPeople();};
+ window.salehOpenAddExpenseSafe=function(){salehOpenExpenseCategoriesSafe();};
+
+ window.openSalehUsdDeposit=function(platformId){
+  const a=pfAccount(platformId);if(!a)return showToast('اختر منصة صحيحة.',true);
+  const body='<div class="form-grid"><div class="field full"><label>المنصة</label><input value="'+pfEsc(a.account_name)+' — USD / USDT" disabled></div><div class="field finance-required"><label>مبلغ الإيداع بالدولار</label><input id="usdDepositAmount" type="number" min="0" step="0.000001" placeholder="مثال: 100"></div><div class="field"><label>التاريخ</label><input id="usdDepositDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>رقم العملية / المرجع</label><input id="usdDepositRef" placeholder="اختياري"></div><div class="field full"><label>ملاحظات</label><textarea id="usdDepositNotes" placeholder="مثال: إيداع USDT أو تحويل من محفظة خارجية"></textarea></div></div>';
+  openModal('إيداع دولار في '+pfEsc(a.account_name),body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehUsdDeposit(&quot;'+pfEsc(platformId)+'&quot;)">حفظ الإيداع</button>');
+ };
+ window.saveSalehUsdDeposit=async function(platformId){
+  try{
+   const amount=Number(document.getElementById('usdDepositAmount')?.value||0),date=document.getElementById('usdDepositDate')?.value||isoDate(new Date()),ref=(document.getElementById('usdDepositRef')?.value||'').trim(),notes=(document.getElementById('usdDepositNotes')?.value||'').trim();
+   if(amount<=0)throw new Error('اكتب مبلغ الإيداع بالدولار.');
+   const a=pfAccount(platformId);if(!a)throw new Error('المنصة غير موجودة.');
+   const id=crypto.randomUUID();
+   const r=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:Math.abs(amount),transaction_type:'income',category:'إيداع منصة USD / USDT',description:'إيداع دولار في '+a.account_name,source_type:'platform_deposit',source_id:id,transaction_date:date,notes:JSON.stringify({kind:'platform_deposit',reference:ref,notes})});
+   if(r.error)throw r.error;closeModal();await pfReload();showToast('تم تسجيل الإيداع في '+a.account_name);
+  }catch(e){showToast(e.message||'تعذر حفظ الإيداع.',true);}
+ };
+})();
 </script>
 <script id="saleh-finance-export-addon">window.exportSalehFinanceCSV=function(){var rows=state.financeTransactions||[],A=state.financeAccounts||[];if(!rows.length){showToast("لا توجد حركات لتصديرها",true);return}var q=function(v){return String(v==null?"":v).replace(/"/g,'""')},out="\ufeffالتاريخ,النوع,الحساب,التصنيف,البيان,المبلغ,الملاحظات\r\n";rows.forEach(function(x){var a=A.find(function(z){return String(z.id)===String(x.account_id)});out+='"'+q(x.transaction_date)+'","' +q(x.transaction_type)+'","' +q(a?.account_name||"")+'","' +q(x.category||"")+'","' +q(x.description||"")+'","' +q(x.amount)+'","' +q(x.notes||"")+'"\r\n'});var u=URL.createObjectURL(new Blob([out],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=u;a.download="personal-finance-"+isoDate(new Date())+".csv";a.click();URL.revokeObjectURL(u)};</script></body>
 </html>
