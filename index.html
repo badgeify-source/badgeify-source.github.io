@@ -11443,7 +11443,7 @@ async function openSalehFinanceEntry(kind){
  const exp=kind==='expense',A=state.financeAccounts||[];
  let cats=[];
  try{
-  cats=typeof salehExpenseCategories==='function'?salehExpenseCategories():[];
+  cats=typeof window.salehExpenseCategoriesSafe==='function'?window.salehExpenseCategoriesSafe():(function(){try{var v=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');return Array.isArray(v)?v:[];}catch(_e){return [];}})();
   if(!Array.isArray(cats))cats=[];
  }catch(e){cats=[];}
  cats=cats.map(x=>String(x||'').trim()).filter(Boolean);
@@ -12549,7 +12549,7 @@ window.salehAddExpenseCategoryDirect=function(){
  if(!v){showToast('اكتب اسم البند.',true);return;}
  var cats=[];try{cats=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');}catch(e){}
  if(!Array.isArray(cats))cats=[]; if(cats.indexOf(v)>=0){showToast('البند موجود بالفعل.',true);return;}
- cats.push(v);localStorage.setItem('saleh_expense_categories',JSON.stringify(cats)); window.salehExpenseCategoriesDirect(); showToast('تمت إضافة بند المصروف.');
+ cats.push(v);try{localStorage.setItem('saleh_expense_categories',JSON.stringify(cats));}catch(e){showToast('تعذر حفظ البند على هذا الجهاز: '+(e.message||e),true);return;} window.salehExpenseCategoriesDirect(); showToast('تمت إضافة بند المصروف. افتح المصروف مرة أخرى لتحديث القائمة.');
 };
 window.salehDeleteExpenseCategoryDirect=function(i){
  var cats=[];try{cats=JSON.parse(localStorage.getItem('saleh_expense_categories')||'[]');}catch(e){}
