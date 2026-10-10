@@ -12562,16 +12562,7 @@ document.addEventListener('click',function(e){
   window.renderSalehPeople=function(){
     const host=document.querySelector('.saleh-people-section-body');
     if(!host)return;
-    const people=[...(state.loanPeople||[])].sort((a,b)=>String(a.person_name||'').localeCompare(String(b.person_name||''),'ar'));
-    if(!people.length){host.innerHTML='<div class="empty" style="padding:22px">لا يوجد أشخاص حتى الآن. اضغط «إضافة شخص» لإضافة أول شخص.</div>';return;}
-    host.innerHTML='<div class="finance-person-grid">'+people.map(p=>{
-      const t=totals(p.id),label=t.net>0?'لك عنده':t.net<0?'عليك له':'الحساب متساوي';
-      return '<div class="card"><div class="card-body">'+
-        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h3 style="margin:0 0 5px">'+esc(p.person_name||'بدون اسم')+'</h3><div class="muted">'+esc(p.phone||'لا يوجد رقم')+'</div></div><button type="button" class="mini-btn" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')">كشف الحساب</button></div>'+
-        '<div class="finance-person-kpis" style="margin-top:14px"><div><span>ليا عنده</span><b>'+money(t.lent)+' '+esc(cur())+'</b></div><div><span>عليا له</span><b>'+money(t.borrowed)+' '+esc(cur())+'</b></div><div><span>'+label+'</span><b>'+money(Math.abs(t.net))+' '+esc(cur())+'</b></div></div>'+
-        '<div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="mini-btn" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')">تفاصيل / واتساب</button><button type="button" class="mini-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف الشخص</button></div>'+
-      '</div></div>';
-    }).join('')+'</div>';
+    host.innerHTML='<div class="empty" style="padding:18px;text-align:center">قائمة الأشخاص أصبحت داخل زر «إضافة شخص» لتقليل الزحام. افتح القائمة لعرض كل الأشخاص وكشوف حساباتهم.</div>';
   };
   window.openSalehPeople=function(){
     const people=[...(state.loanPeople||[])].sort((a,b)=>String(a.person_name||'').localeCompare(String(b.person_name||''),'ar'));
