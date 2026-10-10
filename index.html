@@ -11339,10 +11339,13 @@ function openSalehOpeningBalance(){
  openModal('الأرصدة الافتتاحية',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalances()"><i class="fa-solid fa-check"></i> حفظ الأرصدة</button></div>');
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
-async function openSalehLoan(){
- const A=state.financeAccounts||[],P=state.loanPeople||[];
- const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><h4>تسجيل سلفة</h4><p>حدد هل الفلوس مستلفها أنت أم مسلفها لشخص آخر. النظام سيحرك الرصيد تلقائيًا بالطريقة الصحيحة.</p></div></div><div class="form-grid"><div class="finance-section-title">نوع السلفة</div><div class="field full"><label>نوع العملية</label><select id="loanDirection" onchange="updateSalehLoanDirectionUI()"><option value="lent">فلوس مسلفها — ليا فلوس عند الشخص</option><option value="borrowed">فلوس مستلفها — عليَّ فلوس للشخص</option></select></div><div class="field"><label>الشخص</label><select id="loanPerson"><option value="">اختر شخصًا</option>'+P.map(p=>'<option value="'+p.id+'">'+esc(p.person_name)+'</option>').join('')+'</select></div><div class="field"><label>اسم شخص جديد (اختياري)</label><input id="loanNewPerson"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="loanPhone" type="tel" placeholder="01xxxxxxxxx"></div><div class="field"><label>المبلغ</label><input id="loanAmount" type="number" min="0" step="0.01"></div><div class="field"><label id="loanAccountLabel">من حساب</label><select id="loanAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ السلفة</label><input id="loanDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>موعد السداد</label><input id="loanDue" type="date" value="'+isoDate(new Date(Date.now()+7*86400000))+'"></div><div class="field full"><label>الغرض</label><input id="loanPurpose"></div><div class="field full"><label>ملاحظات</label><textarea id="loanNotes"></textarea></div></div>';
- openModal('تسجيل سلفة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehLoan()">حفظ السلفة</button>');
+async function openSalehLoan(personId,direction){
+ const A=state.financeAccounts||[],P=state.loanPeople||[],fixedPerson=personId?loanPerson(personId):null,fixedDirection=direction==='borrowed'?'borrowed':'lent',fromPerson=!!fixedPerson;
+ const directionField=fromPerson?'<input type="hidden" id="loanDirection" value="'+fixedDirection+'">':'<div class="field full"><label>نوع العملية</label><select id="loanDirection" onchange="updateSalehLoanDirectionUI()"><option value="lent">فلوس مسلفها — ليا فلوس عند الشخص</option><option value="borrowed">فلوس مستلفها — عليَّ فلوس للشخص</option></select></div>';
+ const personFields=fromPerson?'<input type="hidden" id="loanPerson" value="'+esc(fixedPerson.id)+'"><input type="hidden" id="loanNewPerson" value="">':'<div class="field"><label>الشخص</label><select id="loanPerson"><option value="">اختر شخصًا</option>'+P.map(p=>'<option value="'+p.id+'">'+esc(p.person_name)+'</option>').join('')+'</select></div><div class="field"><label>اسم شخص جديد (اختياري)</label><input id="loanNewPerson"></div>';
+ const phoneField=fromPerson?'':'<div class="field"><label>رقم الموبايل / واتساب</label><input id="loanPhone" type="tel" placeholder="01xxxxxxxxx"></div>';
+ const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div><div><h4>'+(fromPerson?(fixedDirection==='lent'?'تسجيل فلوس أعطيتها للشخص':'تسجيل فلوس أخذتها من الشخص'):'تسجيل سلفة')+'</h4><p>سيتم تحديث رصيد الحساب تلقائيًا مع تسجيل الحركة في كناش الشخص.</p></div></div><div class="form-grid">'+directionField+personFields+phoneField+'<div class="field"><label>المبلغ</label><input id="loanAmount" type="number" min="0" step="0.01"></div><div class="field"><label id="loanAccountLabel">من حساب</label><select id="loanAccount"><option value="">اختر</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>تاريخ العملية</label><input id="loanDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field full"><label>الغرض</label><input id="loanPurpose"></div><div class="field full"><label>ملاحظات</label><textarea id="loanNotes"></textarea></div></div>';
+ openModal(fromPerson?(fixedDirection==='lent'?'أعطيته فلوس':'أخذت منه فلوس'):'تسجيل سلفة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehLoan()">حفظ العملية</button>');
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
  updateSalehLoanDirectionUI();
 }
@@ -11353,14 +11356,14 @@ function updateSalehLoanDirectionUI(){
 }
 async function saveSalehLoan(){
  const direction=document.getElementById('loanDirection').value;
- const select=document.getElementById('loanPerson').value,newName=document.getElementById('loanNewPerson').value.trim(),phone=document.getElementById('loanPhone')?.value.trim()||'',amount=Number(document.getElementById('loanAmount').value||0),account=document.getElementById('loanAccount').value,date=document.getElementById('loanDate').value,due=document.getElementById('loanDue').value,purpose=document.getElementById('loanPurpose').value.trim(),notes=document.getElementById('loanNotes').value||'';
+ const select=document.getElementById('loanPerson')?.value||'',newName=(document.getElementById('loanNewPerson')?.value||'').trim(),phone=document.getElementById('loanPhone')?.value.trim()||'',amount=Number(document.getElementById('loanAmount').value||0),account=document.getElementById('loanAccount').value,date=document.getElementById('loanDate').value,purpose=document.getElementById('loanPurpose').value.trim(),notes=document.getElementById('loanNotes').value||'';
  if(amount<=0||!account||(!select&&!newName)){showToast('أدخل نوع السلفة والشخص والمبلغ واختر الحساب',true);return;}
  let personId=select;
  if(!personId){
   const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser?.id,person_name:newName,phone:phone||null}).select('*').single();
   if(p.error){showToast(p.error.message,true);return;}personId=p.data.id;
  }
- const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,due_date:due||null,purpose:purpose||null,notes:notes||null}).select('*').single();
+ const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
  if(l.error){
   if(String(l.error.message||'').toLowerCase().includes('loan_direction'))showToast('قاعدة البيانات تحتاج إضافة حقل نوع السلفة. شغّل تحديث قاعدة البيانات المرفق باسم supabase_personal_finance_loans.sql.',true);
   else showToast(l.error.message,true);
@@ -12646,17 +12649,7 @@ document.addEventListener('click',function(e){
     const url='https://wa.me/'+phone+'?text='+encodeURIComponent(lines.join('\n'));
     window.open(url,'_blank','noopener');
   };
-  window.openSalehLoanForPerson=function(personId,direction){
-    openSalehLoan();
-    const setFields=()=>{
-      const ps=document.getElementById('loanPerson'),ds=document.getElementById('loanDirection');
-      if(ps){ps.value=String(personId);ps.dispatchEvent(new Event('change',{bubbles:true}));}
-      if(ds){ds.value=direction==='borrowed'?'borrowed':'lent';updateSalehLoanDirectionUI();}
-      const np=document.getElementById('loanNewPerson');if(np)np.value='';
-      const p=loanPerson(personId),ph=document.getElementById('loanPhone');if(ph)ph.value=p?.phone||'';
-    };
-    setFields();
-  };
+  window.openSalehLoanForPerson=function(personId,direction){openSalehLoan(personId,direction);};
   window.salehPeopleDirect=window.openSalehPeople;
   const oldRender=window.renderPersonalFinance;
   if(typeof oldRender==='function'){
