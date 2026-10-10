@@ -12299,7 +12299,7 @@ applyTheme();
     try{
       for(const item of [{currency:'USDT',amount:usdt}]){
         const sourceId='platform_opening_'+String(a.id)+'_'+item.currency;
-        const payload={user_id:currentUser?.id,account_id:a.id,amount:item.amount,transaction_type:'opening_balance',category:'الرصيد الافتتاحي للمنصة',description:'الرصيد الافتتاحي '+item.currency+' - '+a.account_name,source_type:'platform_opening_balance',source_id:sourceId,transaction_date:isoDate(new Date()),notes:JSON.stringify({currency:item.currency,kind:'platform_opening_balance'})};
+        const payload={user_id:currentUser?.id,account_id:a.id,amount:item.amount,transaction_type:'adjustment',category:'الرصيد الافتتاحي للمنصة',description:'الرصيد الافتتاحي '+item.currency+' - '+a.account_name,source_type:'platform_opening_balance',source_id:sourceId,transaction_date:isoDate(new Date()),notes:JSON.stringify({currency:item.currency,kind:'platform_opening_balance'})};
         const existing=await db.from('personal_finance_transactions').select('id').eq('account_id',a.id).eq('source_type','platform_opening_balance').eq('source_id',sourceId).maybeSingle();
         if(existing.error)throw existing.error;
         const q=existing.data
