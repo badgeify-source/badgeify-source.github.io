@@ -1240,7 +1240,22 @@ body{
 .platform-currency-box span{font-size:12px;font-weight:800;opacity:.7}.platform-currency-box b{font-size:20px}.platform-currency-box small{opacity:.65}
 .platform-total b{display:block}
 @media(max-width:600px){.platform-currency-balances{grid-template-columns:1fr 1fr}.platform-currency-box b{font-size:17px}}
-</style></head>
+</style><style id="saleh-professional-people-ui">
+.saleh-person-card{padding:14px;margin:9px 0;border:1px solid var(--border);border-radius:16px;background:linear-gradient(145deg,var(--panel2),var(--panel));box-shadow:0 6px 18px rgba(0,0,0,.12);transition:border-color .18s,transform .18s}
+.saleh-person-card:hover{transform:translateY(-1px);border-color:rgba(24,119,242,.45)}
+.saleh-person-card.owes-me{border-right:4px solid #25b878}.saleh-person-card.i-owe{border-right:4px solid #ef6262}.saleh-person-card.has-both{border-right:4px solid #e0a22f}.saleh-person-card.no-loans{border-right:4px solid var(--border)}
+.saleh-person-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.saleh-person-avatar{width:40px;height:40px;flex:0 0 40px;border-radius:13px;display:grid;place-items:center;background:rgba(24,119,242,.13);color:var(--gold2)}
+.saleh-person-name{display:flex;flex:1;min-width:110px;flex-direction:column;gap:2px}.saleh-person-name b{font-size:14px}.saleh-person-name small{font-size:11px;color:var(--muted)}
+.saleh-person-status{font-size:10px;padding:4px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--border);white-space:nowrap}
+.owes-me .saleh-person-status{color:#25b878;background:rgba(37,184,120,.09);border-color:rgba(37,184,120,.25)}.i-owe .saleh-person-status{color:#ef6262;background:rgba(239,98,98,.09);border-color:rgba(239,98,98,.25)}.has-both .saleh-person-status{color:#e0a22f;background:rgba(224,162,47,.09);border-color:rgba(224,162,47,.25)}
+.saleh-person-balances{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.saleh-person-balance{display:flex;flex-direction:column;gap:5px;padding:10px;border-radius:12px;border:1px solid var(--border);min-width:0}.saleh-person-balance small{font-size:10px;color:var(--muted)}.saleh-person-balance b{font-size:13px;overflow-wrap:anywhere}
+.owed-to-me{background:rgba(37,184,120,.07);border-color:rgba(37,184,120,.22)}.owed-to-me b{color:#25b878}.owed-by-me{background:rgba(239,98,98,.07);border-color:rgba(239,98,98,.22)}.owed-by-me b{color:#ef6262}
+.saleh-person-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.saleh-person-actions button{flex:1;min-width:72px}.saleh-person-actions .danger{border-color:rgba(239,98,98,.3);color:#ef6262}
+.saleh-opening-person-card{padding:14px;border:1px solid var(--border);border-radius:15px;background:var(--panel2)}.saleh-opening-person-card>b{display:block;color:var(--gold2);font-size:15px}
+.opening-lent-field{padding:10px;border-radius:12px;background:rgba(37,184,120,.07);border:1px solid rgba(37,184,120,.22)}.opening-borrowed-field{padding:10px;border-radius:12px;background:rgba(239,98,98,.07);border:1px solid rgba(239,98,98,.22)}
+@media(max-width:520px){.saleh-person-card{padding:11px}.saleh-person-balances{gap:7px}.saleh-person-balance{padding:8px}.saleh-person-balance b{font-size:12px}.saleh-person-status{margin-right:auto}.saleh-person-actions button{flex:1 1 28%}}
+</style>
+</head>
 
 <body>
 
@@ -12580,8 +12595,8 @@ document.addEventListener('click',function(e){
   window.openSalehPeople=function(){
     const people=[...(state.loanPeople||[])].sort((a,b)=>String(a.person_name||'').localeCompare(String(b.person_name||''),'ar'));
     const rows=people.map(p=>{
-      const t=totals(p.id);
-      return '<div class="list-item" style="gap:10px;align-items:center"><div style="flex:1;min-width:120px;cursor:pointer" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')"><b>'+esc(p.person_name||'بدون اسم')+'</b><small class="muted" style="display:block">'+esc(p.phone||'لا يوجد رقم')+' • ليا عنده '+money(t.lent)+' • عليا له '+money(t.borrowed)+' '+esc(cur())+'</small></div><button type="button" class="mini-btn" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')">كشف الحساب</button><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+esc(p.id)+'\')">تعديل</button><button type="button" class="mini-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف</button></div>';
+      const t=totals(p.id), hasLent=t.lent>0, hasBorrowed=t.borrowed>0;
+      return '<div class="saleh-person-card '+(hasLent&&hasBorrowed?'has-both':hasLent?'owes-me':hasBorrowed?'i-owe':'no-loans')+'"><div class="saleh-person-top"><div class="saleh-person-avatar"><i class="fa-solid fa-user"></i></div><div class="saleh-person-name"><b>'+esc(p.person_name||'بدون اسم')+'</b><small>'+esc(p.phone||'لا يوجد رقم')+'</small></div><span class="saleh-person-status">'+(hasLent&&hasBorrowed?'عليه وليه':hasLent?'لي عنده':hasBorrowed?'عليا له':'بدون سلف')+'</span></div><div class="saleh-person-balances"><div class="saleh-person-balance owed-to-me"><small><i class="fa-solid fa-arrow-down-left"></i> فلوس ليا عنده</small><b>'+money(t.lent)+' '+esc(cur())+'</b></div><div class="saleh-person-balance owed-by-me"><small><i class="fa-solid fa-arrow-up-right"></i> فلوس عليا له</small><b>'+money(t.borrowed)+' '+esc(cur())+'</b></div></div><div class="saleh-person-actions"><button type="button" class="mini-btn" onclick="openSalehPersonStatement(\''+esc(p.id)+'\')">كشف الحساب</button><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+esc(p.id)+'\')">تعديل</button><button type="button" class="mini-btn danger" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف</button></div></div>';
     }).join('')||'<div class="muted">لا توجد أشخاص مضافة.</div>';
     const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-users"></i></div><div><h4>الأشخاص وكناش الحسابات</h4><p>أضف الشخص مرة واحدة، ثم سجّل كل ما أعطيته له أو أخذته منه من زر «سلفة جديدة» أو من كشف حسابه.</p></div></div>'+
       '<div class="form-grid"><div class="field finance-required"><label>اسم الشخص</label><input id="pfPersonName" placeholder="مثال: أحمد محمد"></div><div class="field"><label>رقم الموبايل / واتساب</label><input id="pfPersonPhone" type="tel" placeholder="01xxxxxxxxx"></div><div class="field full"><label>ملاحظات</label><textarea id="pfPersonNotes" placeholder="اختياري"></textarea></div></div>'+
@@ -12718,53 +12733,39 @@ window.openSalehOpeningBalances=async function(){
   if(pr.error)throw pr.error;if(lr.error)throw lr.error;
   const people=pr.data||[],openings=lr.data||[],accounts=state.financeAccounts||[];
   if(!people.length){showToast('أضف الأشخاص أولًا ثم أدخل أرصدتهم الافتتاحية.',true);return;}
-  if(!accounts.length){showToast('لا توجد حسابات مالية. افتح قسم الحسابات وحدّث البيانات أولًا.',true);return;}
-  const html=people.map(p=>{
-   const lent=openings.find(x=>String(x.person_id)===String(p.id)&&x.loan_direction==='lent');
-   const borrowed=openings.find(x=>String(x.person_id)===String(p.id)&&x.loan_direction==='borrowed');
-   return '<div class="card" style="padding:12px;margin-bottom:10px" data-opening-person="'+escv(p.id)+'"><b>'+escv(p.person_name)+'</b><div class="form-grid" style="margin-top:8px"><div class="field"><label>فلوس ليا عنده (جنيه)</label><input type="number" min="0" step="0.01" class="opening-lent" value="'+(lent?Number(lent.amount):0)+'"></div><div class="field"><label>فلوس عليا له (جنيه)</label><input type="number" min="0" step="0.01" class="opening-borrowed" value="'+(borrowed?Number(borrowed.amount):0)+'"></div></div><small class="muted">اترك الخانة صفرًا لو مفيش رصيد في الاتجاه ده.</small></div>';
-  }).join('');
-  window.salehOpeningRows=openings;
-  window.salehOpeningAccountId=String(accounts[0].id);
-  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>تسجيل أرصدة بداية الحساب</h4><p>أدخل الرصيد الحالي لكل شخص مرة واحدة. هذه القيود لا تغيّر رصيد الخزنة أو المحافظ.</p></div></div><div class="field"><label>حساب مرجعي للسجل فقط (لن يتغير رصيده)</label><select id="salehOpeningAccount">'+accounts.map(a=>'<option value="'+escv(a.id)+'">'+escv(a.account_name)+'</option>').join('')+'</select></div><div style="max-height:52vh;overflow:auto;padding:2px">'+html+'</div></div>';
-  openModal('الأرصدة الافتتاحية',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehOpeningBalances()">حفظ الأرصدة</button>');
+  if(!accounts.length)throw new Error('لا توجد حسابات مالية. افتح قسم الحسابات وحدّث البيانات أولًا.');
+  window.salehOpeningRows=openings;window.salehOpeningPeople=people;
+  const options=people.map(p=>'<option value="'+escv(p.id)+'">'+escv(p.person_name)+'</option>').join('');
+  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>الأرصدة الافتتاحية للأشخاص</h4><p>اختار شخص واحد من القائمة، وعدّل رصيده القديم فقط. مش هيتم تغيير رصيد الخزنة أو المحافظ.</p></div></div><div class="field"><label>اختار الشخص</label><select id="salehOpeningPerson" onchange="renderSalehOpeningPerson()">'+options+'</select></div><div class="field"><label>حساب مرجعي للسجل فقط (لن يتغير رصيده)</label><select id="salehOpeningAccount">'+accounts.map(a=>'<option value="'+escv(a.id)+'">'+escv(a.account_name)+'</option>').join('')+'</select></div><div id="salehOpeningPersonFields" style="margin-top:12px"></div><div class="muted" style="font-size:12px;margin-top:8px">الأشخاص الآخرون وأرصدتهم لن تتغير إلا عند اختيارهم وتعديلهم بشكل منفصل.</div></div>';
+  openModal('الأرصدة الافتتاحية',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehOpeningBalances()">حفظ رصيد الشخص</button>');
+  renderSalehOpeningPerson();
  }catch(e){console.error('opening balances',e);showToast(e.message||'تعذر فتح الأرصدة الافتتاحية.',true);}
+};
+window.renderSalehOpeningPerson=function(){
+ const id=document.getElementById('salehOpeningPerson')?.value,host=document.getElementById('salehOpeningPersonFields');
+ if(!host||!id)return;
+ const p=(window.salehOpeningPeople||[]).find(x=>String(x.id)===String(id));
+ const lent=(window.salehOpeningRows||[]).find(x=>String(x.person_id)===String(id)&&x.loan_direction==='lent');
+ const borrowed=(window.salehOpeningRows||[]).find(x=>String(x.person_id)===String(id)&&x.loan_direction==='borrowed');
+ host.innerHTML='<div class="saleh-opening-person-card"><b><i class="fa-solid fa-user-check"></i> '+escv(p?.person_name||'الشخص المحدد')+'</b><div class="form-grid" style="margin-top:12px"><div class="field opening-lent-field"><label>فلوس ليا عنده (جنيه)</label><input type="number" id="salehOpeningLent" min="0" step="0.01" value="'+(lent?Number(lent.amount):0)+'"></div><div class="field opening-borrowed-field"><label>فلوس عليا له (جنيه)</label><input type="number" id="salehOpeningBorrowed" min="0" step="0.01" value="'+(borrowed?Number(borrowed.amount):0)+'"></div></div><small class="muted">اترك الاتجاه اللي مفيهوش رصيد بصفر. ده تسجيل للمديونية القديمة فقط، مش حركة إيداع أو سحب.</small></div>';
 };
 window.saveSalehOpeningBalances=async function(){
  try{
   if(!currentUser?.id)throw new Error('سجّل الدخول مرة أخرى.');
-  const account=document.getElementById('salehOpeningAccount')?.value;
-  if(!account)throw new Error('اختر الحساب المرجعي.');
-  const cards=[...document.querySelectorAll('[data-opening-person]')];
-  for(const card of cards){
-   const personId=card.getAttribute('data-opening-person');
-   const lent=Number(card.querySelector('.opening-lent')?.value||0);
-   const borrowed=Number(card.querySelector('.opening-borrowed')?.value||0);
-   if(!Number.isFinite(lent)||!Number.isFinite(borrowed)||lent<0||borrowed<0)throw new Error('تأكد أن الأرصدة أرقام موجبة أو صفر.');
-   for(const [direction,amount] of [['lent',lent],['borrowed',borrowed]]){
-    const existing=(window.salehOpeningRows||[]).find(x=>String(x.person_id)===String(personId)&&x.loan_direction===direction);
-    if(amount===0){
-     if(existing){
-      const del=await db.from('personal_finance_loans').delete().eq('id',existing.id).eq('user_id',currentUser.id);
-      if(del.error)throw del.error;
-     }
-     continue;
-    }
-    const payload={user_id:currentUser.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:'2000-01-01',purpose:tag,notes:'رصيد افتتاحي مستقل — لا يؤثر على أرصدة الحسابات المالية'};
-    if(existing){
-     const upd=await db.from('personal_finance_loans').update(payload).eq('id',existing.id).eq('user_id',currentUser.id);
-     if(upd.error)throw upd.error;
-    }else{
-     const ins=await db.from('personal_finance_loans').insert(payload);
-     if(ins.error)throw ins.error;
-    }
-   }
+  const personId=document.getElementById('salehOpeningPerson')?.value,account=document.getElementById('salehOpeningAccount')?.value;
+  if(!personId||!account)throw new Error('اختار الشخص والحساب المرجعي.');
+  const lent=Number(document.getElementById('salehOpeningLent')?.value||0),borrowed=Number(document.getElementById('salehOpeningBorrowed')?.value||0);
+  if(!Number.isFinite(lent)||!Number.isFinite(borrowed)||lent<0||borrowed<0)throw new Error('تأكد أن الأرصدة أرقام موجبة أو صفر.');
+  for(const [direction,amount] of [['lent',lent],['borrowed',borrowed]]){
+   const existing=(window.salehOpeningRows||[]).find(x=>String(x.person_id)===String(personId)&&x.loan_direction===direction);
+   if(amount===0){if(existing){const del=await db.from('personal_finance_loans').delete().eq('id',existing.id).eq('user_id',currentUser.id);if(del.error)throw del.error;}continue;}
+   const payload={user_id:currentUser.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:'2000-01-01',purpose:tag,notes:'رصيد افتتاحي مستقل — لا يؤثر على أرصدة الحسابات المالية'};
+   if(existing){const upd=await db.from('personal_finance_loans').update(payload).eq('id',existing.id).eq('user_id',currentUser.id);if(upd.error)throw upd.error;}
+   else{const ins=await db.from('personal_finance_loans').insert(payload);if(ins.error)throw ins.error;}
   }
-  closeModal();
-  if(typeof refresh==='function')await refresh();
-  if(typeof renderPersonalFinance==='function')renderPersonalFinance();
-  showToast('تم حفظ الأرصدة الافتتاحية دون تغيير أرصدة الخزنة.');
- }catch(e){console.error('save opening balances',e);showToast(e.message||'تعذر حفظ الأرصدة الافتتاحية.',true);}
+  closeModal();if(typeof refresh==='function')await refresh();if(typeof renderPersonalFinance==='function')renderPersonalFinance();
+  showToast('تم حفظ الرصيد الافتتاحي للشخص المحدد دون تغيير أرصدة المحافظ.');
+ }catch(e){console.error('save opening balances',e);showToast(e.message||'تعذر حفظ الرصيد الافتتاحي.',true);}
 };
 })();
 </script>
