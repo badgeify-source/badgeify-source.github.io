@@ -11369,8 +11369,12 @@ async function saveSalehLoan(){
  const walletAmount=direction==='borrowed'?Math.abs(amount):-Math.abs(amount);
  const category=direction==='borrowed'?'استلام سلفة':'إعطاء سلفة';
  const description=direction==='borrowed'?'مبلغ مستلف من ':'مبلغ مسلف لـ ';
- const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(newName||loanPerson(personId)?.person_name||'شخص'),source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:notes||null});
- if(tx.error){showToast('تم حفظ السلفة لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
+ const priorTx=await db.from('personal_finance_transactions').select('id').eq('user_id',currentUser?.id).eq('source_type','loan').eq('source_id',String(l.data.id)).limit(1);
+ if(priorTx.error){showToast('تم حفظ السلفة لكن تعذر التحقق من قيد الحساب: '+priorTx.error.message,true);return;}
+ if(!(priorTx.data||[]).length){
+  const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(newName||loanPerson(personId)?.person_name||'شخص'),source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:notes||null});
+  if(tx.error){showToast('تم حفظ السلفة لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
+ }
  closeModal();await refresh();showToast(direction==='borrowed'?'تم تسجيل فلوس مستلفها':'تم تسجيل فلوس مسلفها');
 }
 async function openLoanRepayment(loanId){
@@ -11390,8 +11394,12 @@ async function saveLoanRepayment(loanId){
  const walletAmount=borrowed?-Math.abs(amount):Math.abs(amount);
  const category=borrowed?'سداد سلفة':'تحصيل سلفة';
  const description=borrowed?'سداد إلى ':'تحصيل من ';
- const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(loanPerson(loan.person_id)?.person_name||'شخص'),source_type:'loan_payment',source_id:String(p.data.id),transaction_date:date,notes});
- if(tx.error){showToast('تم تسجيل العملية لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
+ const priorTx=await db.from('personal_finance_transactions').select('id').eq('user_id',currentUser?.id).eq('source_type','loan_payment').eq('source_id',String(p.data.id)).limit(1);
+ if(priorTx.error){showToast('تم تسجيل العملية لكن تعذر التحقق من قيد الحساب: '+priorTx.error.message,true);return;}
+ if(!(priorTx.data||[]).length){
+  const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(loanPerson(loan.person_id)?.person_name||'شخص'),source_type:'loan_payment',source_id:String(p.data.id),transaction_date:date,notes});
+  if(tx.error){showToast('تم تسجيل العملية لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
+ }
  const newRemaining=rem-amount;
  await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser?.id);
  closeModal();await refresh();showToast(newRemaining<=0?(borrowed?'تم سداد المبلغ بالكامل':'تم تحصيل المبلغ بالكامل'):(borrowed?'تم تسجيل السداد':'تم تسجيل التحصيل'));
