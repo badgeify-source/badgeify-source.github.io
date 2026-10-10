@@ -6138,73 +6138,7 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 <div class="footer">BADGEIFY — VERIFIED TRUST & SECURITY</div>
 </div>
 
-<!-- SALEH PEOPLE LEDGER FIXES 2026-10-10 -->
-<script id="saleh-people-ledger-fixes">
-(function(){
-'use strict';
-function sx2(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function rem2(l){return Math.max(0,Number(l.amount||0)-(state.loanPayments||[]).filter(function(p){return String(p.loan_id)===String(l.id);}).reduce(function(a,p){return a+Number(p.amount||0);},0));}
-window.salehDeletePersonDirect=async function(id){
- try{
-  var p=(state.loanPeople||[]).find(function(x){return String(x.id)===String(id);});
-  if(!p){showToast('الشخص غير موجود. حدّث الصفحة وحاول مرة أخرى.',true);return;}
-  var related=(state.loans||[]).filter(function(l){return String(l.person_id)===String(id)&&l.status!=='cancelled';});
-  if(related.length){showToast('لا يمكن حذف الشخص لأن له '+related.length+' حركة سلفة. سجّل السلف أو سوِّها أولًا حتى لا تضيع البيانات.',true);return;}
-  if(!confirm('هل أنت متأكد من حذف الشخص «'+p.person_name+'»؟ لا يمكن التراجع عن الحذف.'))return;
-  var r=await db.from('personal_finance_loan_people').delete().eq('id',id).eq('user_id',currentUser.id);
-  if(r.error)throw r.error;
-  state.loanPeople=(state.loanPeople||[]).filter(function(x){return String(x.id)!==String(id);});
-  if(typeof window.salehPeopleDirect==='function')window.salehPeopleDirect();
-  if(typeof renderPersonalFinance==='function')renderPersonalFinance();
-  showToast('تم حذف الشخص.');
- }catch(e){console.error(e);showToast('تعذر حذف الشخص: '+(e.message||e),true);}
-};
-var oldPeople=window.salehPeopleDirect;
-window.salehPeopleDirect=function(){
- try{
-  var P=Array.isArray(state.loanPeople)?state.loanPeople:[], loans=Array.isArray(state.loans)?state.loans.filter(function(x){return x.status!=='cancelled';}):[];
-  var rows=P.map(function(p){
-   var mine=loans.filter(function(l){return String(l.person_id)===String(p.id);});
-   var lent=mine.filter(function(l){return String(l.loan_direction||'lent')!=='borrowed';}).reduce(function(a,l){return a+rem2(l);},0);
-   var borrowed=mine.filter(function(l){return String(l.loan_direction||'lent')==='borrowed';}).reduce(function(a,l){return a+rem2(l);},0);
-   return '<div class="finance-person-row" style="margin-bottom:8px"><div class="finance-person-main"><b>'+sx2(p.person_name||'بدون اسم')+'</b><small>'+sx2(p.phone||'لا يوجد رقم')+' — لي: '+money(lent)+' | عليَّ: '+money(borrowed)+'</small></div><div class="finance-person-row-actions"><button type="button" class="mini-btn" onclick="window.openSalehPersonStatementDirect(\''+sx2(p.id)+'\')">كشف الحساب</button><button type="button" class="mini-btn" onclick="window.salehOpenPersonDirect(\''+sx2(p.id)+'\')">تعديل</button><button type="button" class="mini-btn" style="color:#ef6262" onclick="window.salehDeletePersonDirect(\''+sx2(p.id)+'\')">حذف</button></div></div>';
-  }).join('');
-  openModal('الأشخاص وحساباتهم','<div style="margin-bottom:12px"><button type="button" class="gold-btn" onclick="window.salehOpenPersonDirect()">إضافة شخص جديد</button></div>'+(rows||'<div class="empty">لا يوجد أشخاص مضافون حتى الآن.</div>'),'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
- }catch(e){console.error(e);showToast('تعذر فتح الأشخاص: '+(e.message||e),true);}
-};
-window.openSalehPersonStatementDirect=async function(id){
- try{
-  await loadLoanData();
-  var p=(state.loanPeople||[]).find(function(x){return String(x.id)===String(id);});
-  if(!p){showToast('الشخص غير موجود.',true);return;}
-  var loans=(state.loans||[]).filter(function(l){return l.status!=='cancelled'&&String(l.person_id)===String(id);});
-  var cur=(state.settings&&state.settings.currency)||'EGP';
-  var rows=loans.map(function(l){
-   var paid=(state.loanPayments||[]).filter(function(x){return String(x.loan_id)===String(l.id);}).reduce(function(a,x){return a+Number(x.amount||0);},0);
-   var rem=Math.max(0,Number(l.amount||0)-paid);
-   return '<tr><td>'+sx2(String(l.loan_direction||'lent')==='borrowed'?'فلوس مستلفها':'فلوس مسلفها')+'</td><td>'+sx2(typeof formatDate==='function'?formatDate(l.loan_date):l.loan_date||'-')+'</td><td>'+money(l.amount)+' '+sx2(cur)+'</td><td>'+money(paid)+' '+sx2(cur)+'</td><td>'+money(rem)+' '+sx2(cur)+'</td><td>'+sx2(l.purpose||'-')+'</td></tr>';
-  }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات سلف مسجلة لهذا الشخص حتى الآن.</div></td></tr>';
-  openModal('كشف حساب '+sx2(p.person_name),'<div class="finance-person-kpis" style="margin-bottom:14px"><div><span>إجمالي الحركات</span><b>'+loans.length+'</b></div><div><span>لي عنده</span><b>'+money(loans.filter(function(l){return String(l.loan_direction||'lent')!=='borrowed';}).reduce(function(a,l){return a+rem2(l);},0))+' '+sx2(cur)+'</b></div><div><span>عليّ له</span><b>'+money(loans.filter(function(l){return String(l.loan_direction||'lent')==='borrowed';}).reduce(function(a,l){return a+rem2(l);},0))+' '+sx2(cur)+'</b></div></div><div class="table-wrap"><table class="table"><thead><tr><th>النوع</th><th>التاريخ</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>الغرض</th></tr></thead><tbody>'+rows+'</tbody></table></div>','<button class="gold-btn" onclick="closeModal()">إغلاق</button>');
- }catch(e){console.error(e);showToast('تعذر تحميل كشف الحساب: '+(e.message||e),true);}
-};
-var oldRender=window.renderPersonalFinance;
-if(typeof oldRender==='function'){
- window.renderPersonalFinance=function(){
-  oldRender.apply(this,arguments);
-  try{
-   var host=document.getElementById('salehFinanceRedesign');if(!host)return;
-   var loans=(state.loans||[]).filter(function(l){return l.status!=='cancelled';});
-   var lent=loans.filter(function(l){return String(l.loan_direction||'lent')!=='borrowed';}).reduce(function(a,l){return a+rem2(l);},0);
-   var borrowed=loans.filter(function(l){return String(l.loan_direction||'lent')==='borrowed';}).reduce(function(a,l){return a+rem2(l);},0);
-   var box=document.getElementById('salehLoanTotalsCards');
-   if(!box){box=document.createElement('div');box.id='salehLoanTotalsCards';box.className='finance-loan-cards';box.style.marginTop='16px';var anchor=host.querySelector('.finance-loan-summary');if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(box,anchor.nextSibling);else host.insertBefore(box,host.firstChild);}
-   var cur=(state.settings&&state.settings.currency)||'EGP';
-   box.innerHTML='<div><span>إجمالي السلف اللي ليا</span><b>'+money(lent)+' '+sx2(cur)+'</b><small>المتبقي عند الأشخاص</small></div><div><span>إجمالي السلف اللي عليا</span><b>'+money(borrowed)+' '+sx2(cur)+'</b><small>المتبقي المستحق عليّ</small></div>';
-  }catch(e){console.warn('Loan summary render:',e);}
- };
-}
-})();
-</script>
+
 
 </body>
 </html>`);
