@@ -11276,6 +11276,11 @@ function toggleSalehDonations(){
  salehDonationsVisible=!salehDonationsVisible;
  renderPersonalFinance();
 }
+
+function toggleSalehAccounts(){
+ salehAccountsVisible=!salehAccountsVisible;
+ renderPersonalFinance();
+}
 async function openSalehDonation(){
  const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-heart"></i></div><div><h4>إضافة تبرع</h4><p>التبرع يخصم من الحساب المختار، لكنه لا يُحسب مصروفًا ولا يدخل في صافي الربح.</p></div></div><div class="form-grid"><div class="field finance-required"><label>مبلغ التبرع</label><input id="donationAmount" type="number" min="0" step="0.01" placeholder="0.00"></div><div class="field finance-required"><label>من الحساب</label><select id="donationAccount"><option value="">اختر الحساب</option>'+A.map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div><div class="field"><label>التاريخ</label><input id="donationDate" type="date" value="'+isoDate(new Date())+'"></div><div class="field"><label>الجهة / الشخص</label><input id="donationPerson" placeholder="اختياري"></div><div class="field full"><label>البيان</label><input id="donationDesc" placeholder="مثال: تبرع لمؤسسة خيرية"></div><div class="field full"><label>ملاحظات</label><textarea id="donationNotes"></textarea></div></div></div>';
@@ -11296,10 +11301,6 @@ async function openSalehReconcile(accountId){
  if(typeof window.isSalehPlatformAccount==='function' && window.isSalehPlatformAccount(account)){
    if(typeof window.openSalehPlatformOpeningBalance==='function') return window.openSalehPlatformOpeningBalance(accountId);
    return showToast('نظام مطابقة رصيد المنصة لم يجهز بعد.',true);
- }
- function toggleSalehAccounts(){
-  salehAccountsVisible=!salehAccountsVisible;
-  renderPersonalFinance();
  }
  // الحسابات النقدية العادية تظل بالجنيه كما هي.
  const cur=(state.settings&&state.settings.currency)||'EGP';
