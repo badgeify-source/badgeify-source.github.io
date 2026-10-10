@@ -11382,7 +11382,7 @@ async function saveSalehLoan(){
   const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser?.id,person_name:newName,phone:phone||null}).select('*').single();
   if(p.error){showToast(p.error.message,true);return;}personId=p.data.id;
  }
- const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
+ const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
  if(l.error){
   if(String(l.error.message||'').toLowerCase().includes('loan_direction'))showToast('قاعدة البيانات تحتاج إضافة حقل نوع السلفة. شغّل تحديث قاعدة البيانات المرفق باسم supabase_personal_finance_loans.sql.',true);
   else showToast(l.error.message,true);
@@ -12759,7 +12759,7 @@ window.saveSalehOpeningBalances=async function(){
   for(const [direction,amount] of [['lent',lent],['borrowed',borrowed]]){
    const existing=(window.salehOpeningRows||[]).find(x=>String(x.person_id)===String(personId)&&x.loan_direction===direction);
    if(amount===0){if(existing){const del=await db.from('personal_finance_loans').delete().eq('id',existing.id).eq('user_id',currentUser.id);if(del.error)throw del.error;}continue;}
-   const payload={user_id:currentUser.id,person_id:personId,loan_direction:direction,amount,wallet_account_id:account,loan_date:'2000-01-01',purpose:tag,notes:'رصيد افتتاحي مستقل — لا يؤثر على أرصدة الحسابات المالية'};
+   const payload={user_id:currentUser.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:'2000-01-01',purpose:tag,notes:'رصيد افتتاحي مستقل — لا يؤثر على أرصدة الحسابات المالية'};
    if(existing){const upd=await db.from('personal_finance_loans').update(payload).eq('id',existing.id).eq('user_id',currentUser.id);if(upd.error)throw upd.error;}
    else{const ins=await db.from('personal_finance_loans').insert(payload);if(ins.error)throw ins.error;}
   }
