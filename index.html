@@ -6253,6 +6253,17 @@ async function confirmPayment(subscriptionId,periodKey){
 
     try{
 
+        if(isPlatformPayment){
+            const platformNames={platform_bybit_saleh:'Bybit Saleh',platform_bybit_mahmoud:'Bybit Mahmoud',platform_binance:'Binance'};
+            const platformName=platformNames[paymentMethod];
+            const platformQuery=await db.from('personal_finance_accounts').select('*').eq('user_id',currentUser.id).eq('account_name',platformName).maybeSingle();
+            if(platformQuery.error)throw platformQuery.error;
+            if(!platformQuery.data)throw new Error('حساب المنصة '+platformName+' غير موجود في لوحة صالح.');
+            if(Number(amount)<=0)throw new Error('اكتب مبلغ الاشتراك بعملة USDT.');
+            const platformBalance=window.pfPlatformBalance?Number(window.pfPlatformBalance(platformQuery.data.id)||0):0;
+            if(platformBalance+0.0000001<Number(amount))throw new Error('رصيد '+platformName+' من USDT غير كافٍ.');
+        }
+
         const result=
         await db
         .from("subscription_payments")
