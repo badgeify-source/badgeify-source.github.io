@@ -6299,16 +6299,20 @@ async function confirmPayment(subscriptionId,periodKey){
             await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data?.id,paymentDate,notes,customer?.client_name,getService(s.app_service_id)?.service_name||"اشتراك");
         }
 
-        const financeSync=await syncSalehPayment(
-            amount,
-            result.data?.id,
-            s.customer_id,
-            customer?.trader_id||null,
-            paymentMethod,
-            paymentDate,
-            notes,
-            customer?.client_name
-        );
+        // مدفوعات المنصات تُسجّل كخصم USDT داخل حساب المنصة فقط.
+        // لا تُسجّلها مرة أخرى كمقبوضات بالجنيه في الكاش أو المحافظ.
+        const financeSync=isPlatformPayment
+            ? {ok:true,skipped:true,platform:true}
+            : await syncSalehPayment(
+                amount,
+                result.data?.id,
+                s.customer_id,
+                customer?.trader_id||null,
+                paymentMethod,
+                paymentDate,
+                notes,
+                customer?.client_name
+            );
 
         await logActivity(
             "PAYMENT",
@@ -6331,7 +6335,7 @@ async function confirmPayment(subscriptionId,periodKey){
             phone:customer?.phone||"",
             serviceName:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",
             amount:amount,
-            currency:s.currency||state.settings.currency||"EGP",
+            currency:isPlatformPayment?"USDT":(s.currency||state.settings.currency||"EGP"),
             paymentMethod:paymentMethod,
             methodDetails:methodDetails,
             dueDate:due,
