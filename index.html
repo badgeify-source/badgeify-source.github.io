@@ -11284,6 +11284,29 @@ window.saveSalehTransactionEdit=async function(){
  }catch(e){console.error('save finance transaction edit',e);showToast(e.message||'تعذر حفظ تعديل الحركة.',true);}
 };
 
+window.deleteSalehTransaction=async function(transactionId){
+ try{
+  if(!currentUser?.id)throw new Error('جلسة المستخدم غير متاحة، سجّل الدخول مرة أخرى.');
+  const row=(state.financeTransactions||[]).find(x=>String(x.id)===String(transactionId));
+  if(!row)throw new Error('الحركة غير موجودة. حدّث الصفحة وحاول مرة أخرى.');
+  const linked=String(row.transaction_type||'')==='transfer'&&row.source_id;
+  const detail=linked?'سيتم حذف طرفي التحويل المرتبطين معًا حتى يرجع الرصيد في الحسابين.':'سيتم حذف سجل الحركة المحدد وتحديث الرصيد.';
+  if(!confirm('هل تريد حذف الحركة «'+String(row.description||row.category||'حركة مالية')+'»؟\\n'+detail+'\\nلا يمكن التراجع عن الحذف.'))return;
+  let q;
+  if(linked){
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','transfer').eq('source_id',row.source_id);
+  }else if(row.source_type==='platform_deduction'&&row.source_id){
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','platform_deduction').eq('source_id',row.source_id);
+  }else{
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('id',row.id);
+  }
+  if(q.error)throw q.error;
+  if(typeof loadFinanceData==='function')await loadFinanceData();
+  if(typeof renderPersonalFinance==='function')renderPersonalFinance();
+  showToast('تم حذف الحركة وتحديث الأرصدة.');
+ }catch(e){console.error('delete finance transaction',e);showToast(e.message||'تعذر حذف الحركة.',true);}
+};
+
 function renderPersonalFinance(){
  try{
   const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=(state.settings&&state.settings.currency)||'EGP';
@@ -11338,7 +11361,7 @@ function renderPersonalFinance(){
     const isPlatformDeposit=x.source_type==='transfer'&&txMeta.kind==='platform_deposit_egp';
     const type=x.source_type==='donation'?'شيء غير معلوم':x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
     const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+esc(x.source_id)+'\')">تعديل الحركة</button>':'<button type="button" class="mini-btn" onclick="openSalehTransactionEdit(\''+esc(x.id)+'\')">تعديل الحركة</button>';
-    return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td><td>'+editAction+'</td></tr>';
+    const deleteAction='<button type="button" class="mini-btn" style="color:#ef6262;border-color:rgba(239,98,98,.35)" onclick="deleteSalehTransaction(\\''+esc(x.id)+'\\')">حذف الحركة</button>';\n    return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td><td><div class="actions">'+editAction+deleteAction+'</div></td></tr>';
   }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
   document.getElementById('content').innerHTML=
