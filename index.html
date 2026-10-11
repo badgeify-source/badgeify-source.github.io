@@ -12460,7 +12460,7 @@ applyTheme();
   window.isSalehPlatformAccount=function(a){return isPlatform(a);};
   window.salehCryptoPlatforms=platformAccounts;
   window.pfPlatformAccounts=platformAccounts;
-  window.pfPlatformBalance=a=>balance(platformById(a)||a);
+  window.pfPlatformBalance=a=>balance(platformById(a)||a,'USDT');
   window.pfAccount=platformById;
 
   window.openSalehPlatformOpeningBalance=function(platformId){
