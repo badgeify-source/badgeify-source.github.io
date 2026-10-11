@@ -5933,13 +5933,16 @@ function openPaymentModal(subscriptionId,periodKey){
 
             <div class="field">
                 <label>طريقة الدفع</label>
-                <select id="paymentMethod" onchange="togglePaymentMethodDetails()">
+                <select id="paymentMethod" onchange="togglePaymentMethodDetails(); togglePlatformPaymentCurrency()">
                     <option value="cash">كاش</option>
                     <option value="instapay">إنستا باي</option>
                     <option value="vodafone_cash">فودافون كاش</option>
                     <option value="bank">تحويل بنكي</option>
                     <option value="visa">فيزا</option>
                     <option value="other">أخرى</option>
+                    <option value="platform_bybit_saleh">Bybit صالح — خصم USDT</option>
+                    <option value="platform_bybit_mahmoud">Bybit محمود — خصم USDT</option>
+                    <option value="platform_binance">Binance — خصم USDT</option>
                 </select>
             </div>
 
@@ -6247,6 +6250,7 @@ async function confirmPayment(subscriptionId,periodKey){
     ).value;
 
     const paymentMethod=document.getElementById("paymentMethod")?.value||"cash";
+    const isPlatformPayment=String(paymentMethod).startsWith("platform_");
     const methodDetails=document.getElementById("paymentMethodDetails")?.value.trim()||"";
     const payerName=document.getElementById("payerName")?.value.trim()||customer?.client_name||"";
     const payerRelation=document.getElementById("payerRelation")?.value||"subscriber";
@@ -6274,12 +6278,7 @@ async function confirmPayment(subscriptionId,periodKey){
 
             amount:amount,
 
-            currency:
-            s.currency
-            ||
-            state.settings.currency
-            ||
-            "EGP",
+            currency: isPlatformPayment ? "USDT" : (s.currency || state.settings.currency || "EGP"),
 
             payment_date:
             paymentDate,
@@ -6295,6 +6294,10 @@ async function confirmPayment(subscriptionId,periodKey){
 
         if(result.error)
             throw result.error;
+
+        if(isPlatformPayment){
+            await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data?.id,paymentDate,notes,customer?.client_name,getService(s.app_service_id)?.service_name||"اشتراك");
+        }
 
         const financeSync=await syncSalehPayment(
             amount,
@@ -12540,6 +12543,38 @@ applyTheme();
       }
       closeModal();await loadFinanceData();renderPersonalFinance();showToast(editSourceId?'تم تعديل الحركة وتحديث الأرصدة.':'تم الإيداع وتحديث الرصيدين.');
     }catch(e){showToast(e.message||'تعذر حفظ الإيداع.',true);}
+  };
+
+  window.togglePlatformPaymentCurrency=function(){
+    const method=document.getElementById('paymentMethod')?.value||'';
+    const isPlatform=String(method).startsWith('platform_');
+    const input=document.getElementById('paymentAmount');
+    const label=input?.closest('.field')?.querySelector('label');
+    if(label)label.textContent=isPlatform?'المبلغ المدفوع من المنصة (USDT)':'المبلغ';
+    if(input){
+      if(isPlatform && input.dataset.platformMode!=='1'){input.value='';input.step='0.000001';input.placeholder='مثال: 3 أو 5 USDT';input.dataset.platformMode='1';}
+      else if(!isPlatform && input.dataset.platformMode==='1'){input.value='';input.step='0.01';input.placeholder='';input.dataset.platformMode='0';}
+    }
+  };
+  window.syncSalehPlatformSubscriptionDeduction=async function(method,amount,paymentId,paymentDate,notes,customerName,serviceName){
+    const map={platform_bybit_saleh:'Bybit Saleh',platform_bybit_mahmoud:'Bybit Mahmoud',platform_binance:'Binance'};
+    const name=map[String(method||'')],amt=Number(amount||0);
+    if(!name||!currentUser?.id||!paymentId||amt<=0)throw new Error('حدد منصة ومبلغ USDT صحيح.');
+    const q=await db.from('personal_finance_accounts').select('*').eq('user_id',currentUser.id).eq('account_name',name).maybeSingle();
+    if(q.error)throw q.error;
+    if(!q.data)throw new Error('حساب المنصة '+name+' غير موجود في لوحة صالح.');
+    if(balance(q.data,'USDT')+0.0000001<amt)throw new Error('رصيد '+name+' من USDT غير كافٍ.');
+    const exists=await db.from('personal_finance_transactions').select('id').eq('user_id',currentUser.id).eq('source_type','platform_deduction').eq('source_id',String(paymentId)).maybeSingle();
+    if(exists.error)throw exists.error;
+    if(exists.data)return {ok:true,duplicate:true};
+    const inserted=await db.from('personal_finance_transactions').insert({
+      user_id:currentUser.id,account_id:q.data.id,amount:-amt,transaction_type:'adjustment',
+      category:'خصم اشتراك منصة USDT',description:(customerName||'عميل')+' — '+(serviceName||'اشتراك')+' — خصم من '+name,
+      source_type:'platform_deduction',source_id:String(paymentId),payment_id:paymentId,
+      transaction_date:paymentDate||date(),notes:JSON.stringify({currency:'USDT',notes:notes||'',kind:'platform_subscription_payment'})
+    });
+    if(inserted.error)throw inserted.error;
+    return {ok:true};
   };
 
   window.openSalehPlatformDeduction=async function(editId,platformId){
