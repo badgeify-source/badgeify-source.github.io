@@ -11252,9 +11252,12 @@ function renderPersonalFinance(){
   const txRows=filtered.slice(0,50).map(x=>{
     const a=A.find(z=>String(z.id)===String(x.account_id));
     const p=Number(x.amount)>=0;
+    let txMeta={};try{txMeta=JSON.parse(x.notes||'{}')}catch(e){}
+    const isPlatformDeposit=x.source_type==='transfer'&&txMeta.kind==='platform_deposit_egp';
     const type=x.source_type==='donation'?'شيء غير معلوم':x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
-    return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td></tr>';
-  }).join('')||'<tr><td colspan="5"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
+    const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+escv(x.source_id)+'\')">تعديل الحركة</button>':'';
+    return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td><td>'+editAction+'</td></tr>';
+  }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
   document.getElementById('content').innerHTML=
    '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeople()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="gold-btn saleh-donations-top-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
@@ -11264,7 +11267,7 @@ function renderPersonalFinance(){
    '<div class="finance-kpis" style="margin-top:10px"><div class="finance-kpi profit"><span>إجمالي السلف اللي ليا</span><b>'+money(lentStats.remaining)+' '+esc(cur)+'</b><small>المتبقي عند الأشخاص اللي أنت مسلفهم</small></div><div class="finance-kpi expense"><span>إجمالي السلف اللي عليا</span><b>'+money(borrowedStats.remaining)+' '+esc(cur)+'</b><small>المتبقي اللي أنت مستلفه من الأشخاص</small></div></div>'+
    '<div class="finance-account-section"><div class="finance-section-header"><div><h3>حساباتك</h3><p>الرصيد الافتتاحي + كل الحركات المسجلة</p></div><button class="mini-btn" onclick="openSalehOpeningBalance()">تعديل الرصيد الافتتاحي</button></div><div class="finance-account-grid">'+(accountCards||'<div class="empty">لا توجد حسابات</div>')+'</div></div>'+
    '<div class="saleh-people-section"><div class="saleh-people-section-head"><div><span class="saleh-section-eyebrow">PEOPLE LEDGER</span><h3>حسابات الأشخاص والعملاء</h3><p>كل شخص مستقل — افتح اسمه وسجّل ما أخذته منه وما أعطيته له، مع المتبقي والمدفوعات.</p></div><button class="gold-btn" onclick="openSalehPeople()">إضافة شخص</button></div><div class="saleh-people-section-body"></div></div><div class="saleh-expense-management-card"><div><span class="saleh-section-eyebrow">EXPENSE CONTROL</span><h3>بنود المصاريف</h3><p>نظّم بنود المصروفات الخاصة بك بدل الاعتماد على «شيء غير معلوم».</p></div><button class="gold-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list-check"></i> إدارة البنود</button></div><div id="salehDigitalPlatforms" style="margin-top:16px">'+(typeof window.renderSalehPlatforms==='function'?window.renderSalehPlatforms():'<div class="card" style="padding:22px;text-align:center"><h3>منصات العملات</h3><p class="muted">Bybit Saleh • Bybit Mahmoud • Binance</p></div>')+'</div>'+
-   '<div class="card" style="margin-top:16px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
+   '<div class="card" style="margin-top:16px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th><th>إجراءات</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
    '<div class="grid cols finance-main-grid" style="margin-top:16px"><div class="card"><div class="card-head"><div><h3>مؤشرات هذا الشهر</h3><span class="muted">الدخل والمصروف وصافي الحركة</span></div></div><div class="card-body"><div class="finance-mini-metrics"><div><span>المقبوضات</span><b>'+money(income)+' '+esc(cur)+'</b></div><div><span>المصروفات</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div><span>الصافي</span><b>'+money(profit)+' '+esc(cur)+'</b></div></div></div></div><div class="card"><div class="card-head"><div><h3>قاعدة النظام</h3><span class="muted">ممنوع تكرار تسجيل العملية</span></div></div><div class="card-body"><div class="muted" style="line-height:2">دفع العميل من السيستم الأساسي يدخل تلقائيًا في الحساب المختار. التحويل بين حساباتك لا يُحسب دخلًا. المصروف يقلل الرصيد. السلفة والرد عليها يتحركان من الحسابات تلقائيًا.</div></div></div></div>'+'<div class="card saleh-donations-card" style="margin-top:16px"><div class="card-head"><div><h3><i class="fa-solid fa-heart"></i> التبرعات</h3><span class="muted">التبرعات تخصم من الحساب المختار، لكنها لا تدخل ضمن المصروفات وصافي الربح.</span></div><div class="actions"><div class="finance-donation-total"><span>إجمالي التبرعات</span><b>'+money(donationTotal)+' '+esc(cur)+'</b></div><button class="gold-btn" onclick="openSalehDonation()">إضافة تبرع</button><button class="ghost-btn" onclick="toggleSalehDonations()">إخفاء</button></div></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان / البند</th><th>الحساب الذي تم الدفع منه</th><th>المبلغ</th></tr></thead><tbody>'+donationRows+'</tbody></table></div></div></div>'+'</div></div>';
   const salehFinanceHost=document.getElementById('content');
   if(salehFinanceHost && state.page==='personalFinance'){
@@ -12362,12 +12365,21 @@ applyTheme();
     }catch(e){console.error('PLATFORM OPENING BALANCE',e);showToast(e.message||'تعذر حفظ الرصيد الافتتاحي للمنصة.',true);}
   };
 
-  window.openSalehPlatformDeposit=async function(platformId){
+  window.openSalehPlatformDeposit=async function(platformId,editSourceId){
     const A=accounts().filter(a=>!isPlatform(a));
-    const platform=platformById(platformId)||platformAccounts()[0];
+    const oldRows=editSourceId?txs().filter(x=>x.source_type==='transfer'&&String(x.source_id)===String(editSourceId)):[],
+      oldFrom=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit_egp'}catch(e){return false}}),
+      oldTo=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit'}catch(e){return false}});
+    const meta=(row)=>{try{return JSON.parse(row?.notes||'{}')}catch(e){return {}}};
+    const platform=platformById(platformId)||platformById(oldTo?.account_id)||platformAccounts()[0];
     if(!platform)return showToast('حسابات المنصات لم تجهز بعد.',true);
-    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-circle-plus"></i></div><div><h4>إيداع في المنصة</h4><p>سيتم خصم المبلغ من حسابك وإضافته للمنصة بعملة USDT.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDepPlatform">'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(platform.id)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>من الحساب</label><select id="scDepFrom">'+A.map(a=>'<option value="'+a.id+'">'+escv(a.account_name)+' — '+moneyv(typeof financeBalance==='function'?financeBalance(a.id):balance(a))+' EGP</option>').join('')+'</select></div><input id="scDepCurrency" type="hidden" value="USDT"><div class="field"><label>العملة</label><input value="USDT — تيثر" disabled></div><div class="field finance-required"><label>المبلغ بالجنيه</label><input id="scDepAmount" type="number" min="0" step="0.01" oninput="salehCalcPlatformDeposit()"></div><div class="field finance-required"><label>سعر USDT بالجنيه</label><input id="scDepRate" type="number" min="0.000001" step="0.000001" oninput="salehCalcPlatformDeposit()"></div><div class="field full" style="margin-top:-4px"><div id="scDepCalc" style="padding:12px 14px;border-radius:12px;background:rgba(180,145,55,.10);border:1px solid rgba(180,145,55,.25);font-weight:800">سيتم إضافة: 0.000000 <span id="scDepCalcCur">USD</span> إلى المنصة</div></div><div class="field"><label>التاريخ</label><input id="scDepDate" type="date" value="'+date()+'"></div><div class="field full"><label>ملاحظات</label><input id="scDepNotes" placeholder="مثال: إيداع رصيد للمنصة"></div></div></div>';
-    openModal('إيداع منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeposit()">حفظ الإيداع</button>');
+    const oldMeta=meta(oldFrom),oldToMeta=meta(oldTo);
+    const fromSelected=oldFrom?.account_id||A[0]?.id||'';
+    const amount=oldFrom?Math.abs(num(oldFrom.amount)):'';
+    const rate=oldMeta.rate||oldToMeta.rate||'';
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-circle-plus"></i></div><div><h4>'+(oldFrom?'تعديل حركة الإيداع':'إيداع في المنصة')+'</h4><p>تقدر تغيّر الحساب الذي دفعت منه أو تعدّل بيانات الإيداع، وسيتم تحديث نفس الحركة دون تكرارها.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDepPlatform">'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(platform.id)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>الحساب الذي دفعت منه</label><select id="scDepFrom">'+A.map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(fromSelected)?'selected':'')+'>'+escv(a.account_name)+' — '+moneyv(typeof financeBalance==='function'?financeBalance(a.id):balance(a))+' EGP</option>').join('')+'</select></div><input id="scDepCurrency" type="hidden" value="USDT"><div class="field"><label>العملة</label><input value="USDT — تيثر" disabled></div><div class="field finance-required"><label>المبلغ بالجنيه</label><input id="scDepAmount" type="number" min="0" step="0.01" value="'+amount+'" oninput="salehCalcPlatformDeposit()"></div><div class="field finance-required"><label>سعر USDT بالجنيه</label><input id="scDepRate" type="number" min="0.000001" step="0.000001" value="'+rate+'" oninput="salehCalcPlatformDeposit()"></div><div class="field full" style="margin-top:-4px"><div id="scDepCalc" style="padding:12px 14px;border-radius:12px;background:rgba(180,145,55,.10);border:1px solid rgba(180,145,55,.25);font-weight:800">سيتم إضافة: 0.000000 <span id="scDepCalcCur">USDT</span> إلى المنصة</div></div><div class="field"><label>التاريخ</label><input id="scDepDate" type="date" value="'+date(oldFrom?.transaction_date)+'"></div><div class="field full"><label>ملاحظات</label><input id="scDepNotes" value="'+escv(oldMeta.notes||oldToMeta.notes||'')+'" placeholder="مثال: إيداع رصيد للمنصة"></div></div></div>';
+    openModal(oldFrom?'تعديل حركة إيداع منصة':'إيداع منصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeposit(\''+(oldFrom?escv(editSourceId):'')+'\')">'+(oldFrom?'حفظ التعديل':'حفظ الإيداع')+'</button>');
+    salehCalcPlatformDeposit();
   };
 
   window.salehCalcPlatformDeposit=function(){
@@ -12379,25 +12391,38 @@ applyTheme();
     const ce=document.getElementById('scDepCalcCur');
     if(el)el.innerHTML='سيتم إضافة: <strong>'+moneyv(out)+'</strong> <span id="scDepCalcCur">'+cur+'</span> إلى المنصة';
   };
-  window.saveSalehPlatformDeposit=async function(){
+  window.saveSalehPlatformDeposit=async function(editSourceId){
     try{
       const from=platformById(document.getElementById('scDepFrom')?.value);
       const to=platformById(document.getElementById('scDepPlatform')?.value);
-      const currency='USDT';
       const egp=num(document.getElementById('scDepAmount')?.value),rate=num(document.getElementById('scDepRate')?.value);
-      const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim();
+      const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim(),currency='USDT';
       if(!from||isPlatform(from)||!to||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختر الحساب والمنصة وأدخل المبلغ وسعر الدولار بشكل صحيح.');
-       const available=typeof financeBalance==='function'?Number(financeBalance(from.id)||0):balance(from);
-       if(egp>available)throw new Error('رصيد '+from.account_name+' المتاح هو '+moneyv(available)+' جنيه فقط، لا يمكن خصم مبلغ أكبر من الرصيد.');
-      const usdtAmount=egp/rate,sourceId=id(),payload=JSON.stringify({kind:'platform_deposit',rate,notes,currency:'USDT'});
-      const rows=[
-        {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — '+currency,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency})},
-        {user_id:currentUser.id,account_id:to.id,amount:usdtAmount,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:payload}
-      ];
-      const q=await db.from('personal_finance_transactions').insert(rows);
-      if(q.error)throw q.error;
-      closeModal();await loadFinanceData();renderPersonalFinance();showToast('تم الإيداع وتحديث الرصيدين.');
-    }catch(e){showToast(e.message||'تعذر تسجيل الإيداع.',true);}
+      const oldRows=editSourceId?txs().filter(x=>x.source_type==='transfer'&&String(x.source_id)===String(editSourceId)):[],
+        oldFrom=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit_egp'}catch(e){return false}}),
+        oldTo=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit'}catch(e){return false}});
+      if(editSourceId&&(!oldFrom||!oldTo))throw new Error('لم أتمكن من العثور على طرفي حركة الإيداع؛ لم يتم حفظ أي تغيير.');
+      const available=typeof financeBalance==='function'?Number(financeBalance(from.id)||0):balance(from);
+      const creditBack=oldFrom&&String(oldFrom.account_id)===String(from.id)?Math.abs(num(oldFrom.amount)):0;
+      if(egp>available+creditBack)throw new Error('رصيد '+from.account_name+' المتاح لا يكفي لهذه الحركة.');
+      const usdtAmount=egp/rate,sourceId=editSourceId||id(),
+        egpNotes=JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency}),
+        usdtNotes=JSON.stringify({kind:'platform_deposit',rate,notes,currency});
+      if(editSourceId){
+        const q1=await db.from('personal_finance_transactions').update({account_id:from.id,amount:-egp,description:'إيداع إلى '+to.account_name+' — '+currency,transaction_date:d,notes:egpNotes,updated_at:new Date().toISOString()}).eq('id',oldFrom.id).eq('user_id',currentUser.id);
+        if(q1.error)throw q1.error;
+        const q2=await db.from('personal_finance_transactions').update({account_id:to.id,amount:usdtAmount,description:'إيداع USDT من '+from.account_name,transaction_date:d,notes:usdtNotes,updated_at:new Date().toISOString()}).eq('id',oldTo.id).eq('user_id',currentUser.id);
+        if(q2.error)throw q2.error;
+      }else{
+        const rows=[
+          {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — '+currency,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:egpNotes},
+          {user_id:currentUser.id,account_id:to.id,amount:usdtAmount,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:usdtNotes}
+        ];
+        const q=await db.from('personal_finance_transactions').insert(rows);
+        if(q.error)throw q.error;
+      }
+      closeModal();await loadFinanceData();renderPersonalFinance();showToast(editSourceId?'تم تعديل الحركة وتحديث الأرصدة.':'تم الإيداع وتحديث الرصيدين.');
+    }catch(e){showToast(e.message||'تعذر حفظ الإيداع.',true);}
   };
 
   window.openSalehPlatformDeduction=async function(editId,platformId){
