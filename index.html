@@ -11332,7 +11332,8 @@ function renderPersonalFinance(){
   const accountBal=type=>{const a=financeAccount(type);return a?bal(a.id):0;};
   const cash=accountBal('cash'),vod=accountBal('vodafone_cash'),insta=accountBal('instapay');
   // إجمالي الأموال بالجنيه يضم الحسابات المصرية فقط؛ أرصدة المنصات منفصلة بعملة USDT.
-  const fiatAccounts=A.filter(a=>!(typeof window.isSalehPlatformAccount==='function'&&window.isSalehPlatformAccount(a)));
+  const platformAccountNames=['Bybit Saleh','Bybit Mahmoud','Binance'];
+  const fiatAccounts=A.filter(a=>!platformAccountNames.includes(String(a.account_name||''))&&!(typeof window.isSalehPlatformAccount==='function'&&window.isSalehPlatformAccount(a)));
   const total=fiatAccounts.reduce((s,a)=>s+bal(a.id),0);
   const m=monthKey(new Date());
   const monthRows=T.filter(x=>String(x.transaction_date||'').slice(0,7)===m);
