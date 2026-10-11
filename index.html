@@ -11255,7 +11255,7 @@ function renderPersonalFinance(){
     let txMeta={};try{txMeta=JSON.parse(x.notes||'{}')}catch(e){}
     const isPlatformDeposit=x.source_type==='transfer'&&txMeta.kind==='platform_deposit_egp';
     const type=x.source_type==='donation'?'شيء غير معلوم':x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
-    const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+escv(x.source_id)+'\')">تعديل الحركة</button>':'';
+    const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+esc(x.source_id)+'\')">تعديل الحركة</button>':'';
     return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td><td>'+editAction+'</td></tr>';
   }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
