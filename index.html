@@ -12553,6 +12553,34 @@ applyTheme();
     }catch(e){showToast(e.message||'تعذر تسجيل الخصم.',true);}
   };
 
+  window.openSalehPlatformTransfer=function(){
+    const A=platformAccounts();
+    if(A.length<2)return showToast('لازم يكون عندك منصتان على الأقل لإجراء التحويل.',true);
+    const opts=A.map(a=>'<option value="'+escv(a.id)+'">'+escv(a.account_name)+' — '+moneyv(balance(a,'USDT'))+' USDT</option>').join('');
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-right-left"></i></div><div><h4>تحويل USDT بين المنصات</h4><p>التحويل هنا بالدولار الرقمي USDT فقط، ولا يغيّر أرصدة الجنيه أو المحافظ النقدية.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المبلغ (USDT)</label><input id="scTransferAmount" type="number" min="0.000001" step="0.000001" placeholder="0.000000"></div><div class="field finance-required"><label>من المنصة</label><select id="scTransferFrom">'+opts+'</select></div><div class="field finance-required"><label>إلى المنصة</label><select id="scTransferTo">'+opts+'</select></div><div class="field"><label>التاريخ</label><input id="scTransferDate" type="date" value="'+date()+'"></div><div class="field full"><label>البيان / ملاحظات</label><input id="scTransferNotes" placeholder="تحويل USDT بين الحسابات"></div></div></div>';
+    openModal('تحويل بين منصات العملات',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformTransfer()"><i class="fa-solid fa-right-left"></i> تنفيذ التحويل</button>');
+  };
+  window.saveSalehPlatformTransfer=async function(){
+    try{
+      if(!currentUser?.id)throw new Error('سجّل الدخول مرة أخرى.');
+      const amount=num(document.getElementById('scTransferAmount')?.value);
+      const from=platformById(document.getElementById('scTransferFrom')?.value);
+      const to=platformById(document.getElementById('scTransferTo')?.value);
+      const d=document.getElementById('scTransferDate')?.value||date();
+      const memo=document.getElementById('scTransferNotes')?.value.trim()||'تحويل USDT بين المنصات';
+      if(!from||!to||!isPlatform(from)||!isPlatform(to)||String(from.id)===String(to.id)||amount<=0)throw new Error('اختار منصتين مختلفتين وأدخل مبلغ USDT صحيح.');
+      if(balance(from,'USDT')+0.0000001<amount)throw new Error('رصيد '+from.account_name+' من USDT غير كافٍ.');
+      const sourceId=id();
+      const rows=[
+        {user_id:currentUser.id,account_id:from.id,amount:-amount,transaction_type:'transfer',category:'تحويل بين المنصات',description:'تحويل '+moneyv(amount)+' USDT إلى '+to.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:JSON.stringify({kind:'platform_transfer',currency:'USDT',memo,from_platform:from.account_name,to_platform:to.account_name})},
+        {user_id:currentUser.id,account_id:to.id,amount:amount,transaction_type:'transfer',category:'تحويل بين المنصات',description:'استلام '+moneyv(amount)+' USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:JSON.stringify({kind:'platform_transfer',currency:'USDT',memo,from_platform:from.account_name,to_platform:to.account_name})}
+      ];
+      const q=await db.from('personal_finance_transactions').insert(rows);
+      if(q.error)throw q.error;
+      closeModal();await loadFinanceData();renderPersonalFinance();showToast('تم تحويل USDT بين المنصتين دون التأثير على أرصدة الجنيه.');
+    }catch(e){console.error('platform transfer',e);showToast(e.message||'تعذر تنفيذ تحويل USDT.',true);}
+  };
+
   window.renderSalehPlatforms=function(){
     const A=platformAccounts();
     const html=NAMES.map(name=>{
