@@ -11202,6 +11202,59 @@ function salehPersonFinancialSummary(){const loans=(state.loans||[]).filter(x=>x
 function openSalehPersonStatement(personId){const p=loanPerson(personId);if(!p)return;const loans=(state.loans||[]).filter(x=>x.status!=='cancelled'&&String(x.person_id)===String(personId)),cur=(state.settings&&state.settings.currency)||'EGP',rows=loans.map(l=>{const paid=loanPaid(l.id),rem=loanRemaining(l);return '<tr><td>'+esc(loanDirectionLabel(l))+'</td><td>'+formatDate(l.loan_date)+'</td><td>'+money(l.amount)+' '+esc(cur)+'</td><td>'+money(paid)+' '+esc(cur)+'</td><td>'+money(rem)+' '+esc(cur)+'</td><td>'+esc(l.purpose||'-')+'</td></tr>';}).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات.</div></td></tr>';openModal('كشف حساب '+esc(p.person_name),'<div class="table-wrap"><table class="table"><thead><tr><th>النوع</th><th>التاريخ</th><th>المبلغ</th><th>المدفوع</th><th>المتبقي</th><th>الغرض</th></tr></thead><tbody>'+rows+'</tbody></table></div>','<button class="gold-btn" onclick="closeModal()">إغلاق</button>');}
 function openSalehBudget(){const key='saleh_monthly_budget_'+monthKey(new Date()),old=localStorage.getItem(key)||'';openModal('ميزانية الشهر','<div class="field"><label>ميزانية الشهر</label><input id="salehBudgetInput" type="number" min="0" step="0.01" value="'+esc(old)+'" placeholder="مثال: 10000"></div>','<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehBudget()">حفظ</button>');}
 function saveSalehBudget(){const v=Number(document.getElementById('salehBudgetInput')?.value||0);if(v<=0){showToast('أدخل ميزانية صحيحة.',true);return;}localStorage.setItem('saleh_monthly_budget_'+monthKey(new Date()),String(v));closeModal();renderPersonalFinance();showToast('تم حفظ ميزانية الشهر');}
+
+window.openSalehTransactionEdit=async function(transactionId){
+ try{
+  const row=(state.financeTransactions||[]).find(x=>String(x.id)===String(transactionId));
+  if(!row)throw new Error('الحركة غير موجودة في البيانات الحالية. حدّث الصفحة وحاول مرة أخرى.');
+  const accounts=state.financeAccounts||[];
+  const accountOptions=accounts.map(a=>'<option value="'+esc(a.id)+'" '+(String(a.id)===String(row.account_id)?'selected':'')+'>'+esc(a.account_name)+'</option>').join('');
+  const meta={id:row.id,source_type:row.source_type||'',source_id:row.source_id||'',transaction_type:row.transaction_type||'',amount:Number(row.amount||0)};
+  window.salehEditingTransaction=meta;
+  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-pen-to-square"></i></div><div><h4>تعديل الحركة المالية</h4><p>عدّل بيانات الحركة الحالية؛ لن يتم إنشاء حركة جديدة.</p></div></div><div class="form-grid">'+
+   '<div class="field finance-required"><label>المبلغ</label><input id="salehEditTxAmount" type="number" min="0" step="0.01" value="'+Math.abs(Number(row.amount||0))+'"></div>'+
+   '<div class="field finance-required"><label>الحساب</label><select id="salehEditTxAccount">'+accountOptions+'</select></div>'+
+   '<div class="field"><label>البند / التصنيف</label><input id="salehEditTxCategory" value="'+esc(row.category||'')+'"></div>'+
+   '<div class="field"><label>التاريخ</label><input id="salehEditTxDate" type="date" value="'+esc(String(row.transaction_date||'').slice(0,10))+'"></div>'+
+   '<div class="field full"><label>البيان</label><input id="salehEditTxDescription" value="'+esc(row.description||'')+'"></div>'+
+   '<div class="field full"><label>ملاحظات</label><textarea id="salehEditTxNotes">'+esc(row.notes||'')+'</textarea></div>'+
+   '</div><p class="muted" style="font-size:11px">نوع الحركة يظل كما هو. التحويلات المرتبطة بطرفين يتم تحديث مبلغها وتاريخها وبيانها للطرفين معًا.</p></div>';
+  openModal('تعديل الحركة المالية',body,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehTransactionEdit()">حفظ التعديل</button></div>');
+  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+ }catch(e){console.error('edit finance transaction',e);showToast(e.message||'تعذر فتح تعديل الحركة.',true);}
+};
+window.saveSalehTransactionEdit=async function(){
+ try{
+  const row=window.salehEditingTransaction;
+  if(!row||!currentUser?.id)throw new Error('تعذر تحديد الحركة أو انتهت الجلسة.');
+  const amount=Number(document.getElementById('salehEditTxAmount')?.value||0);
+  const account=document.getElementById('salehEditTxAccount')?.value;
+  const date=document.getElementById('salehEditTxDate')?.value;
+  const category=document.getElementById('salehEditTxCategory')?.value.trim()||'حركة مالية';
+  const description=document.getElementById('salehEditTxDescription')?.value.trim()||category;
+  const notes=document.getElementById('salehEditTxNotes')?.value||'';
+  if(!Number.isFinite(amount)||amount<=0||!account||!date)throw new Error('أدخل مبلغًا صحيحًا واختر الحساب والتاريخ.');
+  const base={transaction_date:date,category,description,notes};
+  if(row.transaction_type==='transfer'&&row.source_id){
+   const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',currentUser.id).eq('source_id',row.source_id);
+   if(q.error)throw q.error;
+   if((q.data||[]).length<2)throw new Error('لم يتم العثور على طرفي التحويل؛ لم يتم حفظ أي تغيير.');
+   const rows=q.data||[];
+   for(const part of rows){
+    const payload={...base,amount:Number(part.amount)<0?-Math.abs(amount):Math.abs(amount)};
+    if(String(part.id)===String(row.id))payload.account_id=account;
+    const upd=await db.from('personal_finance_transactions').update(payload).eq('id',part.id).eq('user_id',currentUser.id);
+    if(upd.error)throw upd.error;
+   }
+  }else{
+   const signedAmount=row.transaction_type==='expense'?-Math.abs(amount):Number(row.amount)<0?-Math.abs(amount):Math.abs(amount);
+   const upd=await db.from('personal_finance_transactions').update({...base,account_id:account,amount:signedAmount}).eq('id',row.id).eq('user_id',currentUser.id);
+   if(upd.error)throw upd.error;
+  }
+  closeModal();await refresh();showToast('تم تعديل الحركة المالية.');
+ }catch(e){console.error('save finance transaction edit',e);showToast(e.message||'تعذر حفظ تعديل الحركة.',true);}
+};
+
 function renderPersonalFinance(){
  try{
   const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=(state.settings&&state.settings.currency)||'EGP';
@@ -11255,7 +11308,7 @@ function renderPersonalFinance(){
     let txMeta={};try{txMeta=JSON.parse(x.notes||'{}')}catch(e){}
     const isPlatformDeposit=x.source_type==='transfer'&&txMeta.kind==='platform_deposit_egp';
     const type=x.source_type==='donation'?'شيء غير معلوم':x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
-    const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+esc(x.source_id)+'\')">تعديل الحركة</button>':'';
+    const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+esc(x.source_id)+'\')">تعديل الحركة</button>':'<button type="button" class="mini-btn" onclick="openSalehTransactionEdit(\''+esc(x.id)+'\')">تعديل الحركة</button>';
     return '<tr><td>'+formatDate(x.transaction_date)+'</td><td><b>'+esc(x.description||'-')+'</b><br><small class="muted">'+esc(x.category||'حركة مالية')+'</small></td><td>'+esc(a?.account_name||'-')+'</td><td><span class="badge '+(x.transaction_type==='expense'?'overdue':x.transaction_type==='income'?'paid':'upcoming')+'">'+type+'</span></td><td style="color:'+(p?'#35c98a':'#ef6262')+';font-weight:800">'+(p?'+':'-')+money(Math.abs(Number(x.amount)))+' '+esc(cur)+'</td><td>'+editAction+'</td></tr>';
   }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
