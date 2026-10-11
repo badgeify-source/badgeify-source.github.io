@@ -11331,7 +11331,9 @@ function renderPersonalFinance(){
   const bal=id=>financeBalance(id);
   const accountBal=type=>{const a=financeAccount(type);return a?bal(a.id):0;};
   const cash=accountBal('cash'),vod=accountBal('vodafone_cash'),insta=accountBal('instapay');
-  const total=A.reduce((s,a)=>s+bal(a.id),0);
+  // إجمالي الأموال بالجنيه يضم الحسابات المصرية فقط؛ أرصدة المنصات منفصلة بعملة USDT.
+  const fiatAccounts=A.filter(a=>!(typeof window.isSalehPlatformAccount==='function'&&window.isSalehPlatformAccount(a)));
+  const total=fiatAccounts.reduce((s,a)=>s+bal(a.id),0);
   const m=monthKey(new Date());
   const monthRows=T.filter(x=>String(x.transaction_date||'').slice(0,7)===m);
   const income=monthRows.filter(x=>x.transaction_type==='income'&&Number(x.amount)>0).reduce((s,x)=>s+Number(x.amount),0);
@@ -11355,7 +11357,7 @@ function renderPersonalFinance(){
    ['InstaPay',insta,'fa-building-columns','']
   ];
 
-  const accountCards=A.map(a=>'<div class="finance-account-card"><div class="finance-account-top"><div class="finance-account-icon"><i class="fa-solid '+(a.account_type==='cash'?'fa-money-bill-wave':a.account_type==='vodafone_cash'?'fa-mobile-screen-button':a.account_type==='instapay'?'fa-building-columns':'fa-wallet')+'"></i></div><div><b>'+esc(a.account_name)+'</b><small>الرصيد الافتتاحي: '+money(Number(a.opening_balance||0))+' '+esc(cur)+'</small></div></div><strong>'+money(bal(a.id))+' <small>'+esc(cur)+'</small></strong><button class="mini-btn" style="margin-top:8px" onclick="openSalehReconcile('+a.id+')">مطابقة الرصيد</button></div>').join('');
+  const accountCards=fiatAccounts.map(a=>'<div class="finance-account-card"><div class="finance-account-top"><div class="finance-account-icon"><i class="fa-solid '+(a.account_type==='cash'?'fa-money-bill-wave':a.account_type==='vodafone_cash'?'fa-mobile-screen-button':a.account_type==='instapay'?'fa-building-columns':'fa-wallet')+'"></i></div><div><b>'+esc(a.account_name)+'</b><small>الرصيد الافتتاحي: '+money(Number(a.opening_balance||0))+' '+esc(cur)+'</small></div></div><strong>'+money(bal(a.id))+' <small>'+esc(cur)+'</small></strong><button class="mini-btn" style="margin-top:8px" onclick="openSalehReconcile('+a.id+')">مطابقة الرصيد</button></div>').join('');
   const platformTopCards=(typeof pfPlatformAccounts==='function'?pfPlatformAccounts():[]).map(a=>'<div class="finance-account-card finance-platform-top-card"><div class="finance-account-top"><div class="finance-account-icon"><i class="fa-solid fa-coins"></i></div><div><b>'+esc(a.account_name)+'</b><small>حساب منصة مستقل</small></div></div><strong>'+money(Math.abs(Number(typeof window.pfPlatformBalance==='function'?window.pfPlatformBalance(a.id):0)))+' <small>USDT</small></strong><button type="button" class="mini-btn" style="margin-top:8px" onclick="openSalehPlatformOpeningBalance('+a.id+')">مطابقة الرصيد الافتتاحي</button><div class="finance-platform-card-actions"><button type="button" class="mini-btn platform-action-deposit" onclick="openSalehPlatformDeposit()"><i class="fa-solid fa-plus"></i> إيداع دولار</button><button type="button" class="mini-btn platform-action-transfer" onclick="openSalehPlatformTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button type="button" class="mini-btn pay platform-action-deduct" onclick="openSalehPlatformDeduction()"><i class="fa-solid fa-minus"></i> خصم دولار / اشتراك</button></div></div>').join('');
 
   const donations=T.filter(x=>x.source_type==='donation');
@@ -11377,8 +11379,9 @@ function renderPersonalFinance(){
     const p=Number(x.amount)>=0;
     let txMeta={};try{txMeta=JSON.parse(x.notes||'{}')}catch(e){}
     const isPlatformDeposit=x.source_type==='transfer'&&txMeta.kind==='platform_deposit_egp';
-    const isUsdtMovement=String(txMeta.currency||'').toUpperCase()==='USDT'||x.source_type==='platform_deduction'||['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(a?.account_name||''));
-    const movementCurrency=isUsdtMovement?'USDT':cur;
+    // طرف الدفع من الحساب المصري يظل بالجنيه، والطرف الداخل للمنصة يُعرض USDT.
+    const isUsdtMovement=!isPlatformDeposit&&(String(txMeta.currency||'').toUpperCase()==='USDT'||x.source_type==='platform_deduction'||['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(a?.account_name||'')));
+    const movementCurrency=isPlatformDeposit?'EGP':(isUsdtMovement?'USDT':cur);
     const type=x.source_type==='donation'?'شيء غير معلوم':x.transaction_type==='income'?'مقبوضات':x.transaction_type==='expense'?'مصروف':x.transaction_type==='transfer'?'تحويل':'تسوية';
     const editAction=isPlatformDeposit?'<button type="button" class="mini-btn pay" onclick="openSalehPlatformDeposit(\'\',\''+esc(x.source_id)+'\')">تعديل الحركة</button>':'<button type="button" class="mini-btn" onclick="openSalehTransactionEdit(\''+esc(x.id)+'\')">تعديل الحركة</button>';
     const deleteAction='<button type="button" class="mini-btn" style="color:#ef6262;border-color:rgba(239,98,98,.35)" onclick="deleteSalehTransaction(\''+esc(x.id)+'\')">حذف الحركة</button>';
@@ -12532,16 +12535,16 @@ applyTheme();
       const creditBack=oldFrom&&String(oldFrom.account_id)===String(from.id)?Math.abs(num(oldFrom.amount)):0;
       if(egp>available+creditBack)throw new Error('رصيد '+from.account_name+' المتاح لا يكفي لهذه الحركة.');
       const usdtAmount=egp/rate,sourceId=editSourceId||id(),
-        egpNotes=JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency}),
-        usdtNotes=JSON.stringify({kind:'platform_deposit',rate,notes,currency});
+        egpNotes=JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency:'EGP'}),
+        usdtNotes=JSON.stringify({kind:'platform_deposit',rate,notes,currency:'USDT'});
       if(editSourceId){
-        const q1=await db.from('personal_finance_transactions').update({account_id:from.id,amount:-egp,description:'إيداع إلى '+to.account_name+' — '+currency,transaction_date:d,notes:egpNotes,updated_at:new Date().toISOString()}).eq('id',oldFrom.id).eq('user_id',currentUser.id);
+        const q1=await db.from('personal_finance_transactions').update({account_id:from.id,amount:-egp,description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',transaction_date:d,notes:egpNotes,updated_at:new Date().toISOString()}).eq('id',oldFrom.id).eq('user_id',currentUser.id);
         if(q1.error)throw q1.error;
         const q2=await db.from('personal_finance_transactions').update({account_id:to.id,amount:usdtAmount,description:'إيداع USDT من '+from.account_name,transaction_date:d,notes:usdtNotes,updated_at:new Date().toISOString()}).eq('id',oldTo.id).eq('user_id',currentUser.id);
         if(q2.error)throw q2.error;
       }else{
         const rows=[
-          {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — '+currency,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:egpNotes},
+          {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',source_type:'transfer',source_id:sourceId,transaction_date:d,notes:egpNotes},
           {user_id:currentUser.id,account_id:to.id,amount:usdtAmount,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:usdtNotes}
         ];
         const q=await db.from('personal_finance_transactions').insert(rows);
