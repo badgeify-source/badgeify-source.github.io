@@ -564,6 +564,10 @@ tr:hover td{
     color:var(--blue);
     background:rgba(92,169,255,.1);
 }
+.status.inactive{
+    color:var(--muted);
+    background:rgba(140,150,165,.13);
+}
 
 /* CUSTOMER CARDS MOBILE */
 
@@ -1397,6 +1401,8 @@ function statusLabel(type){
 
         case "upcoming":
             return "قادم";
+        case "inactive":
+            return "غير نشط";
 
         default:
             return "-";
@@ -1421,6 +1427,8 @@ function statusIcon(type){
 
         case "upcoming":
             return "fa-clock";
+        case "inactive":
+            return "fa-circle-minus";
 
         default:
             return "fa-circle";
@@ -1553,11 +1561,15 @@ function renderPortal(){
         portalData.trader;
 
     const summary = portalData.summary || {};
-    const baseSubscriptions = portalData.baseSubscriptions || [];
-    const currentRows = (portalData.subscriptions || []).filter(s => s._periodType === "current");
+    const allBaseSubscriptions = portalData.baseSubscriptions || [];
+    const baseSubscriptions = allBaseSubscriptions.filter(s => String(s?.status || "").toLowerCase() !== "inactive");
+    const activeRows = (portalData.subscriptions || []).filter(s => String(s?.status || "").toLowerCase() !== "inactive");
+    const currentRows = activeRows.filter(s => s._periodType === "current");
     const currentMonthlyTotal = baseSubscriptions.reduce((sum,s) => sum + Number(s.monthly_fee || 0), 0);
     const currentPaid = currentRows.reduce((sum,s) => sum + (s.payment_status === "paid" ? Number(s.monthly_fee || 0) : 0), 0);
-    const overdueTotal = (portalData.subscriptions || []).filter(s => s.payment_status === "overdue")
+    const overdueTotal = activeRows.filter(s => s.payment_status === "overdue")
+        .reduce((sum,s) => sum + Number(s.monthly_fee || 0), 0);
+    const dueTodayTotal = activeRows.filter(s => s.payment_status === "due_today")
         .reduce((sum,s) => sum + Number(s.monthly_fee || 0), 0);
 
 
@@ -1611,7 +1623,7 @@ function renderPortal(){
 
     document.getElementById("dueTodayTotal")
         .textContent =
-        money(summary.due_today_total)
+        money(dueTodayTotal)
         + " "
         + "ج.م";
 
@@ -1781,6 +1793,7 @@ function traderPaidMonthSet(){
     }));
 }
 function traderPeriodStatus(subscription,dueDate,paid){
+    if(String(subscription?.status||"").toLowerCase()==="inactive") return "inactive";
     if(paid) return "paid";
     const today=new Date(); today.setHours(0,0,0,0);
     const due=new Date(dueDate); due.setHours(0,0,0,0);
@@ -1793,6 +1806,18 @@ function expandTraderSubscriptionPeriods(subscriptions){
     const now=new Date(), currentYear=now.getFullYear(), currentMonth=now.getMonth();
     const rows=[];
     (subscriptions||[]).forEach(function(subscription){
+        // Keep inactive subscriptions visible in the list, but never generate billing periods for them.
+        if(String(subscription?.status||"").toLowerCase()==="inactive"){
+            rows.push(Object.assign({},subscription,{
+                _periodKey:monthKeyForTraderPortal(currentYear,currentMonth),
+                _periodDueDate:"",
+                _periodLabel:"",
+                _periodType:"current",
+                due_date:"",
+                payment_status:"inactive"
+            }));
+            return;
+        }
         const created=subscription.created_at?new Date(subscription.created_at):null;
         let startYear=created&&!isNaN(created.getTime())?created.getFullYear():currentYear;
         let startMonth=created&&!isNaN(created.getTime())?created.getMonth():currentMonth-1;
