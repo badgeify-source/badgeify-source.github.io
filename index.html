@@ -12459,35 +12459,85 @@ applyTheme();
 <script id="badgeify-session-visible-diagnostic">
 (function () {
   const msg = document.getElementById("loginMsg");
-  if (!msg) return;
-  msg.textContent = "فحص حفظ تسجيل الدخول...";
-  window.setTimeout(async function () {
+  let startupCheckFinished = false;
+  let lastRestoredUserId = null;
+
+  function showApp(user) {
+    if (!user) return;
+    try { currentUser = user; } catch (_) {}
+    lastRestoredUserId = user.id || null;
+    document.getElementById("loginView")?.classList.add("hidden");
+    document.getElementById("appView")?.classList.remove("hidden");
+    if (!window.__badgeifyRefreshRunning && typeof refresh === "function") {
+      window.__badgeifyRefreshRunning = true;
+      Promise.resolve().then(() => refresh()).catch(error => {
+        console.error("BADGEIFY session UI recovery refresh failed:", error);
+      }).finally(() => { window.__badgeifyRefreshRunning = false; });
+    }
+  }
+
+  function showLogin() {
+    document.getElementById("loginView")?.classList.remove("hidden");
+    document.getElementById("appView")?.classList.add("hidden");
+  }
+
+  async function restoreSessionUI() {
     try {
       if (typeof db === "undefined" || !db || !db.auth) {
-        msg.textContent = "التشخيص: كود تسجيل الدخول الرئيسي لم يكتمل تشغيله. ابعتلي صورة الصفحة بعد التحديث.";
+        if (msg) msg.textContent = "التشخيص: كود تسجيل الدخول الرئيسي لم يكتمل تشغيله. ابعتلي صورة الصفحة بعد التحديث.";
         return;
       }
+      const result = await db.auth.getSession();
+      startupCheckFinished = true;
+      if (result.error) {
+        if (msg) msg.textContent = "التشخيص: Supabase رجّع خطأ أثناء استرجاع الجلسة. ابعتلي صورة الخطأ فقط.";
+        console.error("BADGEIFY session UI recovery:", result.error);
+        return;
+      }
+
+      const session = result.data?.session || null;
+      if (session?.user) {
+        showApp(session.user);
+        if (msg) msg.textContent = "تم استرجاع جلسة الدخول المحفوظة.";
+        console.info("BADGEIFY restored saved session and corrected the login screen.");
+        return;
+      }
+
       let savedCount = 0;
       try {
-        savedCount = Object.keys(window.localStorage || {}).filter(function (key) {
-          return key.indexOf("auth-token") !== -1;
-        }).length;
+        savedCount = Object.keys(window.localStorage || {}).filter(key => key.includes("auth-token")).length;
       } catch (_) {}
-      const result = await db.auth.getSession();
-      if (result.error) {
-        msg.textContent = "التشخيص: Supabase رجّع خطأ أثناء استرجاع الجلسة. ابعتلي صورة الخطأ فقط.";
-      } else if (result.data && result.data.session && result.data.session.user) {
-        msg.textContent = "التشخيص: الجلسة محفوظة، لكن واجهة الموقع رجعت لتسجيل الدخول. هنراجع تعارض عرض الشاشة.";
-      } else if (savedCount > 0) {
-        msg.textContent = "التشخيص: فيه مفتاح جلسة محفوظ في Chrome لكن Supabase لم يسترجع جلسة. عدد المفاتيح: " + savedCount + ".";
-      } else {
-        msg.textContent = "التشخيص: لا يوجد مفتاح جلسة محفوظ في Chrome بعد التحديث.";
+      if (msg) {
+        msg.textContent = savedCount
+          ? "التشخيص: فيه مفتاح جلسة محفوظ في Chrome لكن Supabase لم يسترجع جلسة. عدد المفاتيح: " + savedCount + "."
+          : "التشخيص: لا يوجد مفتاح جلسة محفوظ في Chrome بعد التحديث.";
       }
+      showLogin();
     } catch (error) {
-      msg.textContent = "التشخيص: حصل خطأ قبل اكتمال فحص الجلسة. ابعتلي صورة الرسالة دي.";
-      console.error("BADGEIFY visible session diagnostic failed", error);
+      startupCheckFinished = true;
+      if (msg) msg.textContent = "التشخيص: حصل خطأ أثناء استرجاع الجلسة. ابعتلي صورة الرسالة دي.";
+      console.error("BADGEIFY session UI recovery failed:", error);
     }
-  }, 1200);
+  }
+
+  // A late null INITIAL_SESSION event must not override a session restored by getSession().
+  try {
+    db.auth.onAuthStateChange(function (event, session) {
+      if (session?.user) {
+        showApp(session.user);
+      } else if (event === "SIGNED_OUT") {
+        lastRestoredUserId = null;
+        showLogin();
+      } else if (!startupCheckFinished) {
+        // Wait for the explicit startup getSession() check before showing login.
+      }
+    });
+  } catch (error) {
+    console.warn("BADGEIFY session UI recovery listener could not start:", error);
+  }
+
+  if (msg) msg.textContent = "جاري استرجاع جلسة الدخول...";
+  window.setTimeout(restoreSessionUI, 250);
 })();
 </script>
 
