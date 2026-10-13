@@ -11748,7 +11748,7 @@ async function saveSalehFinanceTransfer(){
    REFRESH / RENDER
 ========================================= */
 
-async function refresh(){
+async function refresh(retriedAfterJwt=false){
 
     let refreshStep="تحميل بيانات الموقع";
     try{
@@ -11772,8 +11772,24 @@ async function refresh(){
         },300);
 
     }catch(error){
+        const errorMessage=error?.message||String(error);
+        if(/JWT issued at future/i.test(errorMessage)&&!retriedAfterJwt){
+            try{
+                const refreshed=await db.auth.refreshSession();
+                if(refreshed.error)throw refreshed.error;
+                const session=refreshed.data?.session;
+                if(!session?.user?.id)throw new Error("تعذر تجديد جلسة الدخول.");
+                currentUser=session.user;
+                console.warn("BADGEIFY: refreshed session after JWT issued at future; retrying data load once.");
+                return await refresh(true);
+            }catch(sessionError){
+                console.error("BADGEIFY JWT recovery failed:",sessionError);
+                showToast("تعذر تجديد جلسة الدخول بعد خطأ توقيت JWT. تأكد من ضبط ساعة الجهاز تلقائيًا ثم سجّل الدخول من جديد.",true);
+                return;
+            }
+        }
         console.error("BADGEIFY refresh failed at:",refreshStep,error);
-        showToast("خطأ أثناء "+refreshStep+": "+(error?.message||String(error)),true);
+        showToast("خطأ أثناء "+refreshStep+": "+errorMessage,true);
     }
 
 }
