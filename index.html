@@ -12388,26 +12388,27 @@ refresh;
 
 // Keep the auth callback synchronous: Supabase warns against awaiting database work
 // inside onAuthStateChange because it can block subsequent auth events.
+let badgeifyAuthRestoreComplete = false;
+
+// Keep the auth callback synchronous; defer database loading until it returns.
 db.auth.onAuthStateChange(function(event, session) {
     const user = session?.user || null;
 
-    // A null startup event must not undo a login that is currently being completed.
-    if (!user && window.__badgeifyLoginInProgress) {
-        console.info("BADGEIFY auth: ignoring temporary null session during login");
+    // Do not let the initial empty event flash the login screen while storage restores.
+    if (!user && !badgeifyAuthRestoreComplete &&
+        (event === "INITIAL_SESSION" || event === "SIGNED_IN")) {
         return;
     }
+    if (!user && window.__badgeifyLoginInProgress) return;
 
     currentUser = user;
-
     if (user) {
         document.getElementById("loginView")?.classList.add("hidden");
         document.getElementById("appView")?.classList.remove("hidden");
-
-        // Run data loading after Supabase has finished its auth callback.
         setTimeout(function() {
-            if (currentUser?.id === user.id) {
+            if (currentUser?.id === user.id && typeof refresh === "function") {
                 refresh().catch(function(err) {
-                    console.error("BADGEIFY post-login refresh:", err);
+                    console.error("BADGEIFY post-auth refresh:", err);
                 });
             }
         }, 0);
@@ -12416,6 +12417,31 @@ db.auth.onAuthStateChange(function(event, session) {
         document.getElementById("appView")?.classList.add("hidden");
     }
 });
+
+// Explicitly restore the saved Supabase session on every page load.
+(async function restoreBadgeifySession() {
+    try {
+        const result = await db.auth.getSession();
+        if (result?.error) throw result.error;
+        const session = result?.data?.session || null;
+        currentUser = session?.user || null;
+        badgeifyAuthRestoreComplete = true;
+
+        if (currentUser) {
+            document.getElementById("loginView")?.classList.add("hidden");
+            document.getElementById("appView")?.classList.remove("hidden");
+            if (typeof refresh === "function") await refresh();
+        } else {
+            document.getElementById("loginView")?.classList.remove("hidden");
+            document.getElementById("appView")?.classList.add("hidden");
+        }
+    } catch (err) {
+        badgeifyAuthRestoreComplete = true;
+        console.error("BADGEIFY session restore failed:", err);
+        document.getElementById("loginView")?.classList.remove("hidden");
+        document.getElementById("appView")?.classList.add("hidden");
+    }
+})();
 
 
 /* =========================================
