@@ -12644,19 +12644,37 @@ applyTheme();
   };
 
   window.saveSalehPlatformDeduction=async function(editId){
+    let stage='قراءة بيانات الخصم';
     try{
-      const a=platformById(document.getElementById('scDedPlatform')?.value),currency='USDT',amt=num(document.getElementById('scDedAmount')?.value),d=document.getElementById('scDedDate')?.value||date();
-      const reason=document.getElementById('scDedReason')?.value.trim(),reference=document.getElementById('scDedRef')?.value.trim(),notes=document.getElementById('scDedNotes')?.value.trim();
-      if(!a||!isPlatform(a)||amt<=0)throw new Error('اختر منصة وأدخل مبلغ الخصم بشكل صحيح.');
+      const select=document.getElementById('scDedPlatform');
+      const a=platformById(select?.value);
+      const currency='USDT';
+      const amt=num(document.getElementById('scDedAmount')?.value);
+      const d=document.getElementById('scDedDate')?.value||date();
+      const reason=document.getElementById('scDedReason')?.value.trim();
+      const reference=document.getElementById('scDedRef')?.value.trim();
+      const notes=document.getElementById('scDedNotes')?.value.trim();
+      if(!currentUser?.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      if(!select?.value||!a||!a.id||!isPlatform(a))throw new Error('حساب المنصة المحدد غير موجود في البيانات المحمّلة. حدّث لوحة صالح ثم جرّب مرة أخرى.');
+      if(!Number.isFinite(amt)||amt<=0)throw new Error('أدخل مبلغ خصم صحيح بعملة USDT.');
+      stage='حفظ حركة الخصم في قاعدة البيانات';
       if(editId){
         const del=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','platform_deduction').eq('source_id',String(editId));
         if(del.error)throw del.error;
       }
       const sourceId=editId||id();
-      const q=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes,currency})});
+      const q=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes,currency,kind:'platform_subscription_deduction'})});
       if(q.error)throw q.error;
-      closeModal();await loadFinanceData();renderPersonalFinance();showToast(editId?'تم تعديل الخصم.':'تم تسجيل الخصم وتحديث رصيد المنصة.');
-    }catch(e){showToast(e.message||'تعذر تسجيل الخصم.',true);}
+      stage='إعادة تحميل أرصدة لوحة صالح';
+      await loadFinanceData();
+      stage='إعادة عرض قسم المنصات';
+      if(typeof renderPersonalFinance==='function')renderPersonalFinance();
+      closeModal();
+      showToast(editId?'تم تعديل الخصم.':'تم تسجيل الخصم وتحديث رصيد المنصة.');
+    }catch(e){
+      console.error('Saleh platform deduction failed at '+stage,e,e?.stack);
+      showToast('فشل خصم الاشتراك أثناء: '+stage+' — '+(e?.message||String(e)),true);
+    }
   };
 
   window.openSalehPlatformTransfer=function(fromPlatformId){
