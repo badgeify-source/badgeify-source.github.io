@@ -1553,10 +1553,16 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986";
 
-const db =
-window.supabase.createClient(
-SUPABASE_URL,
-SUPABASE_KEY
+const db = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY,
+    {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+        }
+    }
 );
 
 
@@ -12344,8 +12350,9 @@ document.getElementById("loginBtn").onclick=async function(){
     try{
         const {data,error}=await db.auth.signInWithPassword({email,password});
         if(error) throw error;
-        if(!data?.session) throw new Error("تم التحقق من البيانات لكن لم يتم إنشاء جلسة دخول.");
-        msg.textContent="";
+        if(!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. تأكد من البريد وكلمة المرور ثم حاول مرة أخرى.");
+        applyBadgeifySession(data.session, true);
+        msg.textContent="تم تسجيل الدخول بنجاح";
     }catch(error){
         msg.textContent=error?.message||"تعذر تسجيل الدخول. حاول مرة أخرى.";
     }finally{
@@ -12373,48 +12380,38 @@ refresh;
    AUTH
 ========================================= */
 
-db.auth.onAuthStateChange(
-async function(event,session){
+let badgeifyAuthRefreshQueued = false;
 
-    currentUser=
-    session?.user||null;
+function applyBadgeifySession(session, shouldRefresh){
+    currentUser = session?.user || null;
+    const loginView = document.getElementById("loginView");
+    const appView = document.getElementById("appView");
 
     if(currentUser){
+        loginView?.classList.add("hidden");
+        appView?.classList.remove("hidden");
 
-        document
-        .getElementById(
-            "loginView"
-        )
-        .classList
-        .add("hidden");
-
-        document
-        .getElementById(
-            "appView"
-        )
-        .classList
-        .remove("hidden");
-
-        await refresh();
-
+        if(shouldRefresh && !badgeifyAuthRefreshQueued){
+            badgeifyAuthRefreshQueued = true;
+            setTimeout(async function(){
+                try{
+                    await refresh();
+                }catch(error){
+                    console.error("BADGEIFY session refresh failed:", error);
+                }finally{
+                    badgeifyAuthRefreshQueued = false;
+                }
+            }, 0);
+        }
     }else{
-
-        document
-        .getElementById(
-            "loginView"
-        )
-        .classList
-        .remove("hidden");
-
-        document
-        .getElementById(
-            "appView"
-        )
-        .classList
-        .add("hidden");
-
+        loginView?.classList.remove("hidden");
+        appView?.classList.add("hidden");
     }
+}
 
+/* Keep the auth listener synchronous; load app data after the auth callback returns. */
+db.auth.onAuthStateChange(function(event, session){
+    applyBadgeifySession(session, !!session);
 });
 
 
