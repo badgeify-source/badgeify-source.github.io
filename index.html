@@ -11340,6 +11340,10 @@ function renderPersonalFinance(){
   const income=monthRows.filter(x=>x.transaction_type==='income'&&Number(x.amount)>0).reduce((s,x)=>s+Number(x.amount),0);
   const expense=monthRows.filter(x=>x.transaction_type==='expense'&&Number(x.amount)<0).reduce((s,x)=>s+Math.abs(Number(x.amount)),0);
   const profit=income-expense;
+  const rechargeRows=T.filter(x=>['pubg_recharge','mobile_recharge'].includes(String(x.source_type||'')));
+  const rechargeIncome=rechargeRows.filter(x=>x.transaction_type==='income').reduce((s,x)=>s+Math.max(0,Number(x.amount||0)),0);
+  const rechargeCost=rechargeRows.filter(x=>x.transaction_type==='expense').reduce((s,x)=>s+Math.abs(Math.min(0,Number(x.amount||0))),0);
+  const rechargeProfit=rechargeIncome-rechargeCost;
   const activeLoans=(state.loans||[]).filter(x=>x.status!=='cancelled');
   const borrowedLoans=activeLoans.filter(x=>loanDirection(x)==='borrowed');
   const lentLoans=activeLoans.filter(x=>loanDirection(x)==='lent');
@@ -11390,9 +11394,10 @@ function renderPersonalFinance(){
   }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
   document.getElementById('content').innerHTML=
-   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeople()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="gold-btn saleh-donations-top-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
+   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehRecharge(\'pubg\')"><i class="fa-solid fa-gamepad"></i> شحن ببجي</button><button class="ghost-btn" onclick="openSalehRecharge(\'mobile\')"><i class="fa-solid fa-mobile-screen-button"></i> شحن رصيد الموبايل</button><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeople()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="gold-btn saleh-donations-top-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
    '<div class="finance-hero"><div><span>السيولة الحالية</span><strong>'+money(total)+' <small>'+esc(cur)+'</small></strong><p>إجمالي كل حساباتك الحالية</p></div><div class="finance-hero-side"><span>صافي الشهر</span><b>'+money(profit)+' '+esc(cur)+'</b><small>مقبوضات '+money(income)+' • مصروفات '+money(expense)+'</small></div></div>'+
    '<div class="grid stats finance-stat-grid">'+cards.map(x=>'<div class="stat '+x[3]+'"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div>'+
+   '<div class="card" style="margin-top:16px"><div class="card-head"><div><h3><i class="fa-solid fa-gamepad"></i> شحن الألعاب ورصيد الموبايل</h3><span class="muted">إجماليات مسجلة من الحركات الحالية — بدون ملفات عملاء أو بطاقات طلبات.</span></div><div class="actions"><button class="ghost-btn" onclick="openSalehRecharge(\'pubg\')"><i class="fa-solid fa-gamepad"></i> شحن ببجي</button><button class="gold-btn" onclick="openSalehRecharge(\'mobile\')"><i class="fa-solid fa-mobile-screen-button"></i> شحن رصيد الموبايل</button></div></div><div class="card-body"><div class="finance-kpis"><div class="finance-kpi"><span>المبالغ المستلمة</span><b>'+money(rechargeIncome)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>تكلفة الشحن</span><b>'+money(rechargeCost)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي المكسب</span><b>'+money(rechargeProfit)+' '+esc(cur)+'</b></div></div></div></div>' +
    '<div class="finance-kpis"><div class="finance-kpi"><span>مقبوضات الشهر</span><b>'+money(income)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>مصروفات الشهر</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي الربح / الحركة</span><b>'+money(profit)+' '+esc(cur)+'</b></div><div class="finance-kpi"><span>عدد الحركات</span><b>'+T.length+'</b></div></div>'+
    '<div class="finance-kpis" style="margin-top:10px"><div class="finance-kpi profit"><span>إجمالي السلف اللي ليا</span><b>'+money(lentStats.remaining)+' '+esc(cur)+'</b><small>المتبقي عند الأشخاص اللي أنت مسلفهم</small></div><div class="finance-kpi expense"><span>إجمالي السلف اللي عليا</span><b>'+money(borrowedStats.remaining)+' '+esc(cur)+'</b><small>المتبقي اللي أنت مستلفه من الأشخاص</small></div></div>'+
    '<div class="finance-account-section"><div class="finance-section-header"><div><h3>حساباتك</h3><p>الرصيد الافتتاحي + كل الحركات المسجلة</p></div><button class="mini-btn" onclick="openSalehOpeningBalance()">تعديل الرصيد الافتتاحي</button></div><div class="finance-account-grid">'+(accountCards||'<div class="empty">لا توجد حسابات</div>')+'</div></div>'+
@@ -11636,7 +11641,32 @@ async function saveSalehFinanceEntry(kind){
  if(r.error){showToast(r.error.message,true);return;}
  closeModal();await refresh();showToast(kind==='expense'?'تم تسجيل المصروف':'تم تسجيل المبلغ المستلم');
 }
-async function openSalehFinanceTransfer(){
+async 
+async function openSalehRecharge(service){
+ const isPubg=service==='pubg',label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل',A=state.financeAccounts||[];
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid '+(isPubg?'fa-gamepad':'fa-mobile-screen-button')+'"></i></div><div><h4>'+label+'</h4><p>سجّل المبلغ المستلم أو تكلفة الشحن مباشرة في نفس حساباتك الحالية، بدون بيانات عملاء.</p></div></div><div class="form-grid">'+
+ '<div class="field finance-field finance-required"><label>نوع الحركة</label><select id="rechargeKind"><option value="income">فلوس مستلمة من الشحن</option><option value="expense">تكلفة الشحن اللي دفعتها</option></select></div>'+
+ '<div class="field finance-field finance-required"><label>المبلغ بالجنيه</label><input id="rechargeAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div>'+
+ '<div class="field finance-field finance-required"><label>الحساب</label><select id="rechargeAccount"><option value="">اختر الحساب</option>'+A.filter(a=>!['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(a.account_name||''))).map(a=>'<option value="'+a.id+'">'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+ '<div class="field finance-field"><label>التاريخ</label><input id="rechargeDate" type="date" value="'+isoDate(new Date())+'"></div>'+
+ '<div class="field finance-field full"><label>بيان مختصر (اختياري)</label><input id="rechargeDesc" placeholder="'+(isPubg?'مثال: شحن ببجي':'مثال: شحن رصيد موبايل')+'"></div>'+
+ '</div></div>';
+ openModal(label,body,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehRecharge(\''+service+'\')"><i class="fa-solid fa-check"></i> حفظ الحركة</button></div>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+}
+async function saveSalehRecharge(service){
+ const kind=document.getElementById('rechargeKind')?.value,amount=Number(document.getElementById('rechargeAmount')?.value||0),account=document.getElementById('rechargeAccount')?.value,date=document.getElementById('rechargeDate')?.value,desc=document.getElementById('rechargeDesc')?.value.trim();
+ const isPubg=service==='pubg',label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل',sourceType=isPubg?'pubg_recharge':'mobile_recharge';
+ if(!['income','expense'].includes(kind)||amount<=0||!account){showToast('اختار نوع الحركة والحساب واكتب مبلغ صحيح.',true);return;}
+ const accountObj=(state.financeAccounts||[]).find(a=>String(a.id)===String(account));
+ if(!accountObj||['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(accountObj.account_name||''))){showToast('اختار حسابًا نقديًا بالجنيه، وليس حساب منصة USDT.',true);return;}
+ const description=desc||(kind==='income'?'مبلغ مستلم من '+label:'تكلفة '+label);
+ const r=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:kind==='expense'?-Math.abs(amount):Math.abs(amount),transaction_type:kind,category:label,description,source_type:sourceType,source_id:crypto.randomUUID(),transaction_date:date,notes:'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'});
+ if(r.error){showToast(r.error.message,true);return;}
+ closeModal();await refresh();showToast(kind==='income'?'تم تسجيل المبلغ المستلم من '+label:'تم تسجيل تكلفة '+label);
+}
+
+function openSalehFinanceTransfer(){
  const A=state.financeAccounts||[];
  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-right-left"></i></div><div><h4>تحويل بين حساباتك</h4><p>انقل مبلغًا من محفظة أو حساب إلى حساب آخر بدون اعتباره دخلًا أو مصروفًا.</p></div></div><div class="form-grid">'+
  '<div class="finance-section-title">تفاصيل التحويل</div>'+
