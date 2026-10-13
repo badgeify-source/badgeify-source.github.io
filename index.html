@@ -13142,11 +13142,11 @@ window.saveSalehOpeningBalances=async function(){
         if (!window.supabase || typeof window.supabase.createClient !== "function") {
           throw new Error("تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة وجرب مرة أخرى.");
         }
-        const client = window.__badgeifyEmergencyClient || (window.__badgeifyEmergencyClient = window.supabase.createClient(
+        const client = (typeof db !== "undefined" && db?.auth) ? db : (window.__badgeifyEmergencyClient || (window.__badgeifyEmergencyClient = window.supabase.createClient(
           "https://rsvzachgbqsucqgrwguv.supabase.co",
           "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
           { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-        ));
+        )));
         const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. حاول مرة أخرى.");
