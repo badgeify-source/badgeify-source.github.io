@@ -6207,6 +6207,75 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 <!-- SALEH OPENING LOAN BALANCES -->
 
 
+
+<script id="badgeify-login-emergency-handler">
+(function () {
+  const btn = document.getElementById("loginBtn");
+  if (!btn) return;
+
+  // Capture the click before any older handler so the button always responds.
+  btn.addEventListener("click", async function (event) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+
+    const email = (document.getElementById("loginEmail")?.value || "").trim();
+    const password = document.getElementById("loginPassword")?.value || "";
+    const msg = document.getElementById("loginMsg");
+
+    const show = (text) => {
+      if (msg) msg.textContent = text;
+    };
+
+    if (!email || !password) {
+      show("اكتب البريد الإلكتروني وكلمة المرور.");
+      return;
+    }
+
+    btn.disabled = true;
+    show("جاري تسجيل الدخول...");
+
+    try {
+      let client;
+      try {
+        if (typeof db !== "undefined" && db?.auth) client = db;
+      } catch (_) {}
+
+      if (!client) {
+        client = window.supabase.createClient(
+          "https://rsvzachgbqsucqgrwguv.supabase.co",
+          "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
+          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+        );
+      }
+
+      const { data, error } = await client.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      if (!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. حاول مرة أخرى.");
+
+      show("تم تسجيل الدخول. جاري فتح اللوحة...");
+      document.getElementById("loginView")?.classList.add("hidden");
+      document.getElementById("appView")?.classList.remove("hidden");
+
+      try {
+        if (typeof currentUser !== "undefined") currentUser = data.session.user;
+      } catch (_) {}
+
+      if (typeof refresh === "function") {
+        await refresh();
+        show("");
+      } else {
+        show("تم الدخول، لكن حصل خطأ في تحميل كود اللوحة. حدّث الصفحة وأبلغني.");
+      }
+    } catch (error) {
+      console.error("BADGEIFY emergency login handler:", error);
+      show(error?.message || "تعذر تسجيل الدخول. راجع البريد وكلمة المرور وحاول مرة أخرى.");
+    } finally {
+      btn.disabled = false;
+    }
+  }, true);
+})();
+</script>
+
 </body>
 </html>`);
 
