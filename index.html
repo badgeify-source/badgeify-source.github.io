@@ -17,6 +17,23 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+<script id="badgeify-runtime-diagnostic">
+(function(){
+  function report(message){
+    window.__badgeifyLastRuntimeError=String(message||"خطأ JavaScript غير معروف");
+    function show(){
+      if(!document.body) return;
+      var box=document.getElementById("badgeify-runtime-diagnostic-box");
+      if(!box){box=document.createElement("div");box.id="badgeify-runtime-diagnostic-box";box.style.cssText="position:fixed;z-index:999999;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#3b1515;color:#fff;border:1px solid #f87171;border-radius:10px;padding:12px 14px;font:14px/1.6 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008";document.body.appendChild(box);}
+      box.textContent="تشخيص خطأ تشغيل الموقع: "+window.__badgeifyLastRuntimeError;
+    }
+    if(document.body) show(); else document.addEventListener("DOMContentLoaded",show,{once:true});
+  }
+  window.addEventListener("error",function(e){report((e.message||"Script error")+(e.filename?" — "+e.filename.split("/").pop():"")+(e.lineno?":"+e.lineno:""));});
+  window.addEventListener("unhandledrejection",function(e){var r=e.reason;report("Promise: "+(r&&r.message||r||"رفض غير معروف"));});
+})();
+</script>
+
 <style>
 
 :root{
@@ -13193,8 +13210,24 @@ window.saveSalehOpeningBalances=async function(){
         var loginView=document.getElementById('loginView'), appView=document.getElementById('appView');
         if(loginView) loginView.classList.add('hidden');
         if(appView) appView.classList.remove('hidden');
-        try{if(typeof window.applyBadgeifySession==='function') window.applyBadgeifySession(result.data.session,true);else if(typeof refresh==='function') refresh().catch(function(e){console.error('BADGEIFY fallback refresh',e);});}catch(sessionError){console.error('BADGEIFY fallback session handler',sessionError);}
-        msg.textContent='تم تسجيل الدخول. إذا لم تفتح اللوحة، حدّث الصفحة مرة واحدة.';
+        try{
+          if(typeof window.applyBadgeifySession==='function') window.applyBadgeifySession(result.data.session,true);
+          else if(typeof window.refresh==='function') await window.refresh();
+        }catch(sessionError){console.error('BADGEIFY fallback session handler',sessionError);}
+        // Read-only diagnostics: show whether this signed-in account can see the existing records.
+        await new Promise(function(resolve){setTimeout(resolve,1200);});
+        var checks=await Promise.all([
+          ['العملاء','customers'],['الاشتراكات','subscriptions'],['المدفوعات','subscription_payments'],
+          ['حركات لوحة صالح','personal_finance_transactions'],['السلف','personal_finance_loans']
+        ].map(async function(item){
+          try{var q=await client.from(item[1]).select('*',{count:'exact',head:true});return item[0]+': '+(q.count==null?'غير معروف':q.count)+(q.error?' (خطأ: '+q.error.message+')':'');}
+          catch(e){return item[0]+': خطأ ('+(e&&e.message||e)+')';}
+        }));
+        var diagnostic=document.getElementById('badgeify-data-diagnostic-box');
+        if(!diagnostic){diagnostic=document.createElement('div');diagnostic.id='badgeify-data-diagnostic-box';diagnostic.style.cssText='position:fixed;z-index:999998;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:10px;padding:12px 14px;font:14px/1.7 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008';document.body.appendChild(diagnostic);}
+        diagnostic.textContent='فحص قراءة البيانات للحساب '+(result.data.session.user.email||'المسجل')+'\\n'+checks.join('\\n')+'\\nابعثلي النص ده كما هو لو الأرقام صفر.';
+        console.log('BADGEIFY read-only data diagnostics',checks,window.__badgeifyLastRuntimeError||'No captured runtime error');
+        msg.textContent='تم تسجيل الدخول؛ تم فحص قراءة البيانات.';
       }catch(error){console.error('BADGEIFY login fallback:',error);msg.textContent=(error&&error.message)||'تعذر تسجيل الدخول. حاول مرة أخرى.';}
       finally{btn.disabled=false;delete btn.dataset.loginFallbackBusy;}
     });
