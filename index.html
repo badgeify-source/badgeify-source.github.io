@@ -6206,6 +6206,62 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 <!-- SALEH OPENING LOAN BALANCES -->
 
 
+
+<!-- BADGEIFY LOGIN CLICK RECOVERY: runs independently if the main app script stops early -->
+<script id="badgeify-login-click-recovery">
+(function(){
+  function install(){
+    var btn=document.getElementById("loginBtn");
+    var emailEl=document.getElementById("loginEmail");
+    var passEl=document.getElementById("loginPassword");
+    var msg=document.getElementById("loginMsg");
+    if(!btn||!emailEl||!passEl||!msg) return;
+    if(btn.dataset.badgeifyRecoveryInstalled==="1") return;
+    btn.dataset.badgeifyRecoveryInstalled="1";
+    btn.addEventListener("click", async function(){
+      // The primary handler owns login when it was installed successfully.
+      if(typeof btn.onclick==="function") return;
+      var email=(emailEl.value||"").trim();
+      var password=passEl.value||"";
+      if(!email||!password){msg.textContent="اكتب البريد الإلكتروني وكلمة المرور";return;}
+      if(!window.supabase||typeof window.supabase.createClient!=="function"){
+        msg.textContent="تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة أو افتحها في متصفح Chrome.";
+        return;
+      }
+      btn.disabled=true;
+      msg.textContent="جاري الاتصال بخدمة تسجيل الدخول...";
+      try{
+        var client=window.__badgeifyRecoveryClient;
+        if(!client){
+          client=window.supabase.createClient(
+            "https://rsvzachgbqsucqgrwguv.supabase.co",
+            "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
+            {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
+          );
+          window.__badgeifyRecoveryClient=client;
+        }
+        var result=await client.auth.signInWithPassword({email:email,password:password});
+        if(result.error) throw result.error;
+        if(!result.data||!result.data.session||!result.data.session.user) throw new Error("لم يتم إنشاء جلسة دخول. تأكد من بيانات الحساب.");
+        msg.textContent="تم تسجيل الدخول. جارٍ فتح لوحة التحكم...";
+        // Prefer the main app's session handler when available.
+        if(typeof window.applyBadgeifySession==="function"){
+          window.applyBadgeifySession(result.data.session,true);
+        }else{
+          msg.textContent="تم تسجيل الدخول بنجاح، لكن تحميل لوحة التحكم توقف. حدّث الصفحة مرة واحدة.";
+        }
+      }catch(err){
+        msg.textContent=(err&&err.message)||"تعذر تسجيل الدخول. حاول مرة أخرى.";
+      }finally{
+        btn.disabled=false;
+      }
+    });
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",install);
+  else install();
+})();
+</script>
+
 </body>
 </html>`);
 
