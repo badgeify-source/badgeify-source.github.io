@@ -17,49 +17,6 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script id="badgeify-runtime-diagnostic">
-(function(){
-  function report(message){
-    window.__badgeifyLastRuntimeError=String(message||"خطأ JavaScript غير معروف");
-    function show(){
-      if(!document.body) return;
-      var box=document.getElementById("badgeify-runtime-diagnostic-box");
-      if(!box){box=document.createElement("div");box.id="badgeify-runtime-diagnostic-box";box.style.cssText="position:fixed;z-index:999999;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#3b1515;color:#fff;border:1px solid #f87171;border-radius:10px;padding:12px 14px;font:14px/1.6 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008";document.body.appendChild(box);}
-      box.textContent="تشخيص خطأ تشغيل الموقع: "+window.__badgeifyLastRuntimeError;
-    }
-    if(document.body) show(); else document.addEventListener("DOMContentLoaded",show,{once:true});
-  }
-  window.addEventListener("error",function(e){report((e.message||"Script error")+(e.filename?" — "+e.filename.split("/").pop():"")+(e.lineno?":"+e.lineno:""));});
-  window.addEventListener("unhandledrejection",function(e){var r=e.reason;report("Promise: "+(r&&r.message||r||"رفض غير معروف"));});
-  async function inspectData(){
-    try{
-      var client=window.__badgeifyDb||window.__badgeifyLoginFallbackClient||window.__badgeifyRecoveryClient;
-      if(!client&&window.supabase&&typeof window.supabase.createClient==="function"){
-        client=window.supabase.createClient("https://rsvzachgbqsucqgrwguv.supabase.co","sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-        window.__badgeifyDiagnosticClient=client;
-      }
-      if(!client)return;
-      var auth=await client.auth.getSession(), user=auth&&auth.data&&auth.data.session&&auth.data.session.user;
-      var checks=await Promise.all([
-        ["العملاء","customers"],["الاشتراكات","subscriptions"],["المدفوعات","subscription_payments"],
-        ["حركات لوحة صالح","personal_finance_transactions"],["السلف","personal_finance_loans"]
-      ].map(async function(item){
-        try{var q=await client.from(item[1]).select("*",{count:"exact",head:true});return item[0]+": "+(q.count==null?"غير معروف":q.count)+(q.error?" (خطأ: "+q.error.message+")":"");}
-        catch(err){return item[0]+": خطأ ("+(err&&err.message||err)+")";}
-      }));
-      var box=document.getElementById("badgeify-data-diagnostic-box");
-      if(!box){box=document.createElement("div");box.id="badgeify-data-diagnostic-box";box.style.cssText="position:fixed;z-index:999998;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:10px;padding:12px 14px;font:14px/1.7 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008";document.body.appendChild(box);}
-      box.textContent="فحص قراءة البيانات — "+(user?"تم تسجيل الدخول":"لا توجد جلسة دخول")+(user&&user.email?" ("+user.email+")":"")+"\\n"+checks.join("\\n")+(window.__badgeifyLastRuntimeError?"\\nخطأ JavaScript: "+window.__badgeifyLastRuntimeError:"");
-      console.log("BADGEIFY data diagnostic",checks,window.__badgeifyLastRuntimeError||"No captured runtime error");
-    }catch(err){report("فحص البيانات: "+(err&&err.message||err));}
-  }
-  document.addEventListener("DOMContentLoaded",function(){
-    var btn=document.getElementById("loginBtn");
-    if(btn)btn.addEventListener("click",function(){setTimeout(inspectData,3500);},true);
-  });
-})();
-</script>
-
 <style>
 
 :root{
@@ -1596,19 +1553,11 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
 "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986";
 
-const db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY,
-    {
-        auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true
-        }
-    }
+const db =
+window.supabase.createClient(
+SUPABASE_URL,
+SUPABASE_KEY
 );
-// Share the app's original Supabase client with the login fallback.
-window.__badgeifyDb = db;
 
 
 /* =========================================
@@ -6250,62 +6199,6 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 
 <!-- SALEH OPENING LOAN BALANCES -->
 
-
-
-<!-- BADGEIFY LOGIN CLICK RECOVERY: runs independently if the main app script stops early -->
-<script id="badgeify-login-click-recovery">
-(function(){
-  function install(){
-    var btn=document.getElementById("loginBtn");
-    var emailEl=document.getElementById("loginEmail");
-    var passEl=document.getElementById("loginPassword");
-    var msg=document.getElementById("loginMsg");
-    if(!btn||!emailEl||!passEl||!msg) return;
-    if(btn.dataset.badgeifyRecoveryInstalled==="1") return;
-    btn.dataset.badgeifyRecoveryInstalled="1";
-    btn.addEventListener("click", async function(){
-      // The primary handler owns login when it was installed successfully.
-      if(typeof btn.onclick==="function") return;
-      var email=(emailEl.value||"").trim();
-      var password=passEl.value||"";
-      if(!email||!password){msg.textContent="اكتب البريد الإلكتروني وكلمة المرور";return;}
-      if(!window.supabase||typeof window.supabase.createClient!=="function"){
-        msg.textContent="تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة أو افتحها في متصفح Chrome.";
-        return;
-      }
-      btn.disabled=true;
-      msg.textContent="جاري الاتصال بخدمة تسجيل الدخول...";
-      try{
-        var client=window.__badgeifyRecoveryClient;
-        if(!client){
-          client=window.supabase.createClient(
-            "https://rsvzachgbqsucqgrwguv.supabase.co",
-            "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
-            {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}
-          );
-          window.__badgeifyRecoveryClient=client;
-        }
-        var result=await client.auth.signInWithPassword({email:email,password:password});
-        if(result.error) throw result.error;
-        if(!result.data||!result.data.session||!result.data.session.user) throw new Error("لم يتم إنشاء جلسة دخول. تأكد من بيانات الحساب.");
-        msg.textContent="تم تسجيل الدخول. جارٍ فتح لوحة التحكم...";
-        // Prefer the main app's session handler when available.
-        if(typeof window.applyBadgeifySession==="function"){
-          window.applyBadgeifySession(result.data.session,true);
-        }else{
-          msg.textContent="تم تسجيل الدخول بنجاح، لكن تحميل لوحة التحكم توقف. حدّث الصفحة مرة واحدة.";
-        }
-      }catch(err){
-        msg.textContent=(err&&err.message)||"تعذر تسجيل الدخول. حاول مرة أخرى.";
-      }finally{
-        btn.disabled=false;
-      }
-    });
-  }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",install);
-  else install();
-})();
-<\/script>
 
 </body>
 </html>`);
@@ -11664,24 +11557,20 @@ function updateSalehLoanDirectionUI(){
  if(label)label.textContent=d==='borrowed'?'إلى حساب':'من حساب';
 }
 async function saveSalehLoan(){
- if(!currentUser?.id){showToast('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى.',true);return;}
- const direction=document.getElementById('loanDirection')?.value;
+ const direction=document.getElementById('loanDirection').value;
  const select=document.getElementById('loanPerson')?.value||'',newName=(document.getElementById('loanNewPerson')?.value||'').trim(),phone=document.getElementById('loanPhone')?.value.trim()||'',amount=Number(document.getElementById('loanAmount').value||0),account=document.getElementById('loanAccount').value,date=document.getElementById('loanDate').value,purpose=document.getElementById('loanPurpose').value.trim(),notes=document.getElementById('loanNotes').value||'';
  if(amount<=0||!account||(!select&&!newName)){showToast('أدخل نوع السلفة والشخص والمبلغ واختر الحساب',true);return;}
  let personId=select;
  if(!personId){
-  const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:newName,phone:phone||null}).select('*').single();
-  if(p.error){showToast(p.error.message,true);return;}
-  if(!p.data?.id){showToast('تم إرسال طلب إضافة الشخص لكن لم يتم إرجاع بياناته. حدّث القائمة قبل إعادة المحاولة.',true);return;}
-  personId=p.data.id;
+  const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser?.id,person_name:newName,phone:phone||null}).select('*').single();
+  if(p.error){showToast(p.error.message,true);return;}personId=p.data.id;
  }
- const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
+ const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
  if(l.error){
   if(String(l.error.message||'').toLowerCase().includes('loan_direction'))showToast('قاعدة البيانات تحتاج إضافة حقل نوع السلفة. شغّل تحديث قاعدة البيانات المرفق باسم supabase_personal_finance_loans.sql.',true);
   else showToast(l.error.message,true);
   return;
  }
- if(!l.data?.id){showToast('لم يتم إرجاع رقم السلفة بعد الحفظ. حدّث قائمة السلف وتأكد من وجودها قبل إعادة التسجيل.',true);return;}
  const walletAmount=direction==='borrowed'?Math.abs(amount):-Math.abs(amount);
  const category=direction==='borrowed'?'استلام سلفة':'إعطاء سلفة';
  const description=direction==='borrowed'?'مبلغ مستلف من ':'مبلغ مسلف لـ ';
@@ -11702,38 +11591,22 @@ async function openLoanRepayment(loanId){
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveLoanRepayment(loanId){
- const {data:authData,error:authError}=await db.auth.getUser();
- const repaymentUser=authData?.user;
- if(authError||!repaymentUser){showToast('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى ثم حاول السداد.',true);return;}
- currentUser=repaymentUser;
  const loan=(state.loans||[]).find(x=>String(x.id)===String(loanId));if(!loan)return;
  const borrowed=loanDirection(loan)==='borrowed',rem=loanRemaining(loan),amount=Number(document.getElementById('loanPayAmount').value||0),account=document.getElementById('loanPayAccount').value,date=document.getElementById('loanPayDate').value,notes=document.getElementById('loanPayNotes').value||'';
  if(amount<=0||amount>rem||!account){showToast('أدخل المبلغ واختر الحساب',true);return;}
- const accountRow=(state.financeAccounts||[]).find(a=>String(a.id)===String(account));
- if(!accountRow){showToast('الحساب المحدد غير موجود في بيانات لوحة صالح. حدّث البيانات واختر الحساب مرة أخرى.',true);return;}
- const p=await db.from('personal_finance_loan_payments').insert({user_id:currentUser.id,loan_id:loanId,amount,wallet_account_id:account,payment_date:date,notes}).select('*').single();
+ const p=await db.from('personal_finance_loan_payments').insert({user_id:currentUser?.id,loan_id:loanId,amount,wallet_account_id:account,payment_date:date,notes}).select('*').single();
  if(p.error){showToast(p.error.message,true);return;}
- if(!p.data?.id){showToast('لم يتم إرجاع رقم عملية السداد. تحقق من سجل السلف قبل إعادة المحاولة.',true);return;}
  const walletAmount=borrowed?-Math.abs(amount):Math.abs(amount);
  const category=borrowed?'سداد سلفة':'تحصيل سلفة';
  const description=borrowed?'سداد إلى ':'تحصيل من ';
- const priorTx=await db.from('personal_finance_transactions').select('id').eq('user_id',currentUser.id).eq('source_type','loan_payment').eq('source_id',String(p.data.id)).limit(1);
- if(priorTx.error){
-  const rollback=await db.from('personal_finance_loan_payments').delete().eq('id',p.data.id).eq('user_id',currentUser.id);
-  if(rollback.error)console.error('repayment rollback failed',rollback.error);
-  showToast('تعذر التحقق من قيد الحساب: '+priorTx.error.message+(rollback.error?' — تعذر التراجع عن سجل السداد تلقائيًا؛ راجع الحركة قبل إعادة المحاولة.':' — تم إلغاء سجل السداد غير المكتمل.'),true);return;
- }
+ const priorTx=await db.from('personal_finance_transactions').select('id').eq('user_id',currentUser?.id).eq('source_type','loan_payment').eq('source_id',String(p.data.id)).limit(1);
+ if(priorTx.error){showToast('تم تسجيل العملية لكن تعذر التحقق من قيد الحساب: '+priorTx.error.message,true);return;}
  if(!(priorTx.data||[]).length){
-  const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(loanPerson(loan.person_id)?.person_name||'شخص'),source_type:'loan_payment',source_id:String(p.data.id),transaction_date:date,notes});
-  if(tx.error){
-   const rollback=await db.from('personal_finance_loan_payments').delete().eq('id',p.data.id).eq('user_id',currentUser.id);
-   if(rollback.error)console.error('repayment rollback failed',rollback.error);
-   showToast('تعذر تحديث رصيد الحساب: '+tx.error.message+(rollback.error?' — تعذر التراجع عن سجل السداد تلقائيًا؛ راجع الحركة قبل إعادة المحاولة.':' — تم إلغاء سجل السداد غير المكتمل.'),true);return;
-  }
+  const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:walletAmount,transaction_type:'adjustment',category,description:description+(loanPerson(loan.person_id)?.person_name||'شخص'),source_type:'loan_payment',source_id:String(p.data.id),transaction_date:date,notes});
+  if(tx.error){showToast('تم تسجيل العملية لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
  }
  const newRemaining=rem-amount;
- const statusUpdate=await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser.id);
- if(statusUpdate.error){console.error('loan status update failed',statusUpdate.error);showToast('تم تسجيل السداد وقيد الحساب، لكن تعذر تحديث حالة السلفة: '+statusUpdate.error.message,true);await refresh();return;}
+ await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser?.id);
  closeModal();await refresh();showToast(newRemaining<=0?(borrowed?'تم سداد المبلغ بالكامل':'تم تحصيل المبلغ بالكامل'):(borrowed?'تم تسجيل السداد':'تم تسجيل التحصيل'));
 }
 function buildLoanAlerts(){
@@ -11856,28 +11729,19 @@ function openSalehFinanceTransfer(){
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveSalehFinanceTransfer(){
- try{
-  const {data:authData,error:authError}=await db.auth.getSession();
-  if(authError)throw authError;
-  const userId=authData?.session?.user?.id||currentUser?.id||null;
-  if(!userId)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى.');
-  const amountEl=document.getElementById('ptAmount'),fromEl=document.getElementById('ptFrom'),toEl=document.getElementById('ptTo');
-  if(!amountEl||!fromEl||!toEl)throw new Error('نموذج التحويل انتهت صلاحيته. اقفله وافتحه مرة أخرى.');
-  const n=Number(amountEl.value||0),f=fromEl.value,t=toEl.value,
-   d=document.getElementById('ptDate')?.value||isoDate(new Date()),
-   desc=document.getElementById('ptDesc')?.value.trim()||'تحويل إلى حساب آخر',
-   notes=document.getElementById('ptNotes')?.value||'';
-  if(!Number.isFinite(n)||n<=0||!f||!t||f===t)throw new Error('راجع المبلغ والحسابات، واختر حسابين مختلفين.');
-  const accounts=state.financeAccounts||[];
-  if(!accounts.some(a=>String(a.id)===String(f))||!accounts.some(a=>String(a.id)===String(t)))throw new Error('تعذر العثور على أحد الحسابات. حدّث لوحة صالح ثم أعد المحاولة.');
-  const sourceId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():'transfer_'+Date.now()+'_'+Math.random().toString(36).slice(2);
-  const r=await db.from('personal_finance_transactions').insert([
-   {user_id:userId,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:sourceId,transaction_date:d,notes},
-   {user_id:userId,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:sourceId,transaction_date:d,notes}
-  ]);
-  if(r.error)throw r.error;
-  closeModal();await refresh();showToast('تم التحويل بنجاح');
- }catch(e){console.error('saveSalehFinanceTransfer',e);showToast(e?.message||'تعذر حفظ التحويل.',true);}
+ const n=Number(document.getElementById('ptAmount').value||0),
+ f=document.getElementById('ptFrom').value,t=document.getElementById('ptTo').value,
+ d=document.getElementById('ptDate').value,
+ desc=document.getElementById('ptDesc').value.trim()||'تحويل إلى حساب آخر',
+ notes=document.getElementById('ptNotes').value||'';
+ if(n<=0||!f||!t||f===t){showToast('راجع المبلغ والحسابات',true);return;}
+ const id=crypto.randomUUID();
+ const r=await db.from('personal_finance_transactions').insert([
+  {user_id:currentUser?.id,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes},
+  {user_id:currentUser?.id,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes}
+ ]);
+ if(r.error){showToast(r.error.message,true);return;}
+ closeModal();await refresh();showToast('تم التحويل بنجاح');
 }
 
 /* =========================================
@@ -12432,33 +12296,50 @@ registerBadgeifyServiceWorker().then(function(){
    LOGIN
 ========================================= */
 
-document.getElementById("loginBtn").onclick=async function(){
-    const btn=document.getElementById("loginBtn");
-    const emailEl=document.getElementById("loginEmail");
-    const passwordEl=document.getElementById("loginPassword");
-    const msg=document.getElementById("loginMsg");
-    const email=(emailEl?.value||"").trim();
-    const password=passwordEl?.value||"";
+document.getElementById(
+    "loginBtn"
+).onclick=async function(){
 
-    if(!email || !password){
-        msg.textContent="اكتب البريد الإلكتروني وكلمة المرور";
-        return;
+    const email=
+    document.getElementById(
+        "loginEmail"
+    ).value;
+
+    const password=
+    document.getElementById(
+        "loginPassword"
+    ).value;
+
+    document.getElementById(
+        "loginMsg"
+    ).textContent="...";
+
+
+    const result=
+    await db.auth.signInWithPassword({
+
+        email:email,
+
+        password:password
+
+    });
+
+
+    if(result.error){
+
+        document.getElementById(
+            "loginMsg"
+        ).textContent=
+        result.error.message;
+
+    }else{
+
+        document.getElementById(
+            "loginMsg"
+        ).textContent="";
+
     }
 
-    btn.disabled=true;
-    msg.textContent="جاري تسجيل الدخول...";
-
-    try{
-        const {data,error}=await db.auth.signInWithPassword({email,password});
-        if(error) throw error;
-        if(!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. تأكد من البريد وكلمة المرور ثم حاول مرة أخرى.");
-        applyBadgeifySession(data.session, true);
-        msg.textContent="تم تسجيل الدخول بنجاح";
-    }catch(error){
-        msg.textContent=error?.message||"تعذر تسجيل الدخول. حاول مرة أخرى.";
-    }finally{
-        btn.disabled=false;
-    }
 };
 
 
@@ -12481,38 +12362,48 @@ refresh;
    AUTH
 ========================================= */
 
-let badgeifyAuthRefreshQueued = false;
+db.auth.onAuthStateChange(
+async function(event,session){
 
-function applyBadgeifySession(session, shouldRefresh){
-    currentUser = session?.user || null;
-    const loginView = document.getElementById("loginView");
-    const appView = document.getElementById("appView");
+    currentUser=
+    session?.user||null;
 
     if(currentUser){
-        loginView?.classList.add("hidden");
-        appView?.classList.remove("hidden");
 
-        if(shouldRefresh && !badgeifyAuthRefreshQueued){
-            badgeifyAuthRefreshQueued = true;
-            setTimeout(async function(){
-                try{
-                    await refresh();
-                }catch(error){
-                    console.error("BADGEIFY session refresh failed:", error);
-                }finally{
-                    badgeifyAuthRefreshQueued = false;
-                }
-            }, 0);
-        }
+        document
+        .getElementById(
+            "loginView"
+        )
+        .classList
+        .add("hidden");
+
+        document
+        .getElementById(
+            "appView"
+        )
+        .classList
+        .remove("hidden");
+
+        await refresh();
+
     }else{
-        loginView?.classList.remove("hidden");
-        appView?.classList.add("hidden");
-    }
-}
 
-/* Keep the auth listener synchronous; load app data after the auth callback returns. */
-db.auth.onAuthStateChange(function(event, session){
-    applyBadgeifySession(session, !!session);
+        document
+        .getElementById(
+            "loginView"
+        )
+        .classList
+        .remove("hidden");
+
+        document
+        .getElementById(
+            "appView"
+        )
+        .classList
+        .add("hidden");
+
+    }
+
 });
 
 
@@ -12527,7 +12418,70 @@ applyTheme();
 
 </script>
 
+<script>
+/* BADGEIFY LOGIN SAFETY FALLBACK */
+(function(){
+    const btn = document.getElementById("loginBtn");
+    const emailEl = document.getElementById("loginEmail");
+    const passEl = document.getElementById("loginPassword");
+    const msgEl = document.getElementById("loginMsg");
 
+    if(!btn || !emailEl || !passEl || !msgEl) return;
+
+    btn.addEventListener("click", async function(e){
+        e.preventDefault();
+
+        const email = emailEl.value.trim();
+        const password = passEl.value;
+
+        if(!email || !password){
+            msgEl.textContent = "اكتب البريد الإلكتروني وكلمة المرور";
+            return;
+        }
+
+        btn.disabled = true;
+        msgEl.textContent = "جاري تسجيل الدخول...";
+
+        try{
+            const client = window.supabase.createClient(
+                "https://rsvzachgbqsucqgrwguv.supabase.co",
+                "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"
+            );
+
+            const { data, error } =
+                await client.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+            if(error){
+                msgEl.textContent = error.message || "بيانات الدخول غير صحيحة";
+                btn.disabled = false;
+                return;
+            }
+
+            if(data && data.session){
+                msgEl.textContent = "";
+                document.getElementById("loginView")?.classList.add("hidden");
+                document.getElementById("appView")?.classList.remove("hidden");
+
+                if(typeof window.refresh === "function"){
+                    window.refresh();
+                }
+            }else{
+                msgEl.textContent = "تم تسجيل الدخول ولكن لم يتم إنشاء جلسة.";
+            }
+
+        }catch(err){
+            msgEl.textContent =
+                err?.message ||
+                "حدث خطأ أثناء الاتصال. حاول مرة أخرى.";
+        }finally{
+            btn.disabled = false;
+        }
+    });
+})();
+</script>
 
 <script id="saleh-platform-finance-js">
 (function(){
@@ -12647,17 +12601,11 @@ applyTheme();
   };
   window.saveSalehPlatformDeposit=async function(editSourceId){
     try{
-      // Guard the session before reading currentUser.id anywhere in this save flow.
-      if(!currentUser || !currentUser.id)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى ثم أعد فتح لوحة صالح.');
-      const fromValue=document.getElementById('scDepFrom')?.value||'';
-      const toValue=document.getElementById('scDepPlatform')?.value||'';
-      const from=fromValue?platformById(fromValue):null;
-      const to=toValue?platformById(toValue):null;
+      const from=platformById(document.getElementById('scDepFrom')?.value);
+      const to=platformById(document.getElementById('scDepPlatform')?.value);
       const egp=num(document.getElementById('scDepAmount')?.value),rate=num(document.getElementById('scDepRate')?.value);
-      const d=document.getElementById('scDepDate')?.value||date(),notes=(document.getElementById('scDepNotes')?.value||'').trim(),currency='USDT';
-      if(!fromValue||!toValue||!from||!to)throw new Error('تعذر العثور على الحساب المحدد. حدّث بيانات لوحة صالح ثم افتح نموذج الإيداع مرة أخرى.');
-      if(isPlatform(from)||!isPlatform(to)||egp<=0||rate<=0||!Number.isFinite(egp)||!Number.isFinite(rate))throw new Error('اختر حسابًا نقديًا ومنصة صحيحة، وأدخل مبلغ الإيداع وسعر USDT بشكل صحيح.');
-      if(!Number.isFinite(egp/rate)||egp/rate<=0)throw new Error('قيمة USDT الناتجة غير صحيحة. راجع المبلغ وسعر الصرف.');
+      const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim(),currency='USDT';
+      if(!from||isPlatform(from)||!to||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختر الحساب والمنصة وأدخل المبلغ وسعر الدولار بشكل صحيح.');
       const oldRows=editSourceId?txs().filter(x=>x.source_type==='transfer'&&String(x.source_id)===String(editSourceId)):[],
         oldFrom=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit_egp'}catch(e){return false}}),
         oldTo=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit'}catch(e){return false}});
@@ -13207,60 +13155,6 @@ window.saveSalehOpeningBalances=async function(){
   #salehFinanceRedesign .finance-page-head .page-actions{grid-template-columns:1fr!important}
 }
 </style>
-
-
-<!-- BADGEIFY LOGIN FALLBACK: keeps login responsive if the main app script stops before wiring the button -->
-<script id="badgeify-login-fallback">
-(function(){
-  function install(){
-    var btn=document.getElementById('loginBtn'), emailEl=document.getElementById('loginEmail');
-    var passEl=document.getElementById('loginPassword'), msg=document.getElementById('loginMsg');
-    if(!btn||!emailEl||!passEl||!msg||btn.dataset.loginFallbackReady==='1') return;
-    btn.dataset.loginFallbackReady='1';
-    if(typeof btn.onclick==='function') return;
-    btn.addEventListener('click',async function(event){
-      event.preventDefault();
-      if(btn.dataset.loginFallbackBusy==='1') return;
-      var email=(emailEl.value||'').trim(), password=passEl.value||'';
-      if(!email||!password){msg.textContent='اكتب البريد الإلكتروني وكلمة المرور';return;}
-      if(!window.supabase||typeof window.supabase.createClient!=='function'){msg.textContent='تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة وحاول مرة أخرى.';return;}
-      btn.dataset.loginFallbackBusy='1';btn.disabled=true;msg.textContent='جاري الاتصال وتسجيل الدخول...';
-      try{
-        // Always prefer the same client used by the dashboard so its auth state and RLS queries stay in sync.
-        var client=window.__badgeifyDb||window.__badgeifyLoginFallbackClient;
-        if(!client){client=window.supabase.createClient('https://rsvzachgbqsucqgrwguv.supabase.co','sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});window.__badgeifyLoginFallbackClient=client;}
-        var result=await client.auth.signInWithPassword({email:email,password:password});
-        if(result.error) throw result.error;
-        if(!result.data||!result.data.session||!result.data.session.user) throw new Error('لم يتم إنشاء جلسة دخول. راجع البريد الإلكتروني وكلمة المرور.');
-        msg.textContent='تم تسجيل الدخول. جارٍ فتح لوحة التحكم...';
-        var loginView=document.getElementById('loginView'), appView=document.getElementById('appView');
-        if(loginView) loginView.classList.add('hidden');
-        if(appView) appView.classList.remove('hidden');
-        try{
-          if(typeof window.applyBadgeifySession==='function') window.applyBadgeifySession(result.data.session,true);
-          else if(typeof window.refresh==='function') await window.refresh();
-        }catch(sessionError){console.error('BADGEIFY fallback session handler',sessionError);}
-        // Read-only diagnostics: show whether this signed-in account can see the existing records.
-        await new Promise(function(resolve){setTimeout(resolve,1200);});
-        var checks=await Promise.all([
-          ['العملاء','customers'],['الاشتراكات','subscriptions'],['المدفوعات','subscription_payments'],
-          ['حركات لوحة صالح','personal_finance_transactions'],['السلف','personal_finance_loans']
-        ].map(async function(item){
-          try{var q=await client.from(item[1]).select('*',{count:'exact',head:true});return item[0]+': '+(q.count==null?'غير معروف':q.count)+(q.error?' (خطأ: '+q.error.message+')':'');}
-          catch(e){return item[0]+': خطأ ('+(e&&e.message||e)+')';}
-        }));
-        var diagnostic=document.getElementById('badgeify-data-diagnostic-box');
-        if(!diagnostic){diagnostic=document.createElement('div');diagnostic.id='badgeify-data-diagnostic-box';diagnostic.style.cssText='position:fixed;z-index:999998;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:10px;padding:12px 14px;font:14px/1.7 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008';document.body.appendChild(diagnostic);}
-        diagnostic.textContent='فحص قراءة البيانات للحساب '+(result.data.session.user.email||'المسجل')+'\\n'+checks.join('\\n')+'\\nابعثلي النص ده كما هو لو الأرقام صفر.';
-        console.log('BADGEIFY read-only data diagnostics',checks,window.__badgeifyLastRuntimeError||'No captured runtime error');
-        msg.textContent='تم تسجيل الدخول؛ تم فحص قراءة البيانات.';
-      }catch(error){console.error('BADGEIFY login fallback:',error);msg.textContent=(error&&error.message)||'تعذر تسجيل الدخول. حاول مرة أخرى.';}
-      finally{btn.disabled=false;delete btn.dataset.loginFallbackBusy;}
-    });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install,{once:true}); else install();
-})();
-</script>
 
 </body>
 </html>
