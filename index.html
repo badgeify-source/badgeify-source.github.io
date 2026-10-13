@@ -12456,6 +12456,41 @@ applyTheme();
 
 </script>
 
+<script id="badgeify-session-visible-diagnostic">
+(function () {
+  const msg = document.getElementById("loginMsg");
+  if (!msg) return;
+  msg.textContent = "فحص حفظ تسجيل الدخول...";
+  window.setTimeout(async function () {
+    try {
+      if (typeof db === "undefined" || !db || !db.auth) {
+        msg.textContent = "التشخيص: كود تسجيل الدخول الرئيسي لم يكتمل تشغيله. ابعتلي صورة الصفحة بعد التحديث.";
+        return;
+      }
+      let savedCount = 0;
+      try {
+        savedCount = Object.keys(window.localStorage || {}).filter(function (key) {
+          return key.indexOf("auth-token") !== -1;
+        }).length;
+      } catch (_) {}
+      const result = await db.auth.getSession();
+      if (result.error) {
+        msg.textContent = "التشخيص: Supabase رجّع خطأ أثناء استرجاع الجلسة. ابعتلي صورة الخطأ فقط.";
+      } else if (result.data && result.data.session && result.data.session.user) {
+        msg.textContent = "التشخيص: الجلسة محفوظة، لكن واجهة الموقع رجعت لتسجيل الدخول. هنراجع تعارض عرض الشاشة.";
+      } else if (savedCount > 0) {
+        msg.textContent = "التشخيص: فيه مفتاح جلسة محفوظ في Chrome لكن Supabase لم يسترجع جلسة. عدد المفاتيح: " + savedCount + ".";
+      } else {
+        msg.textContent = "التشخيص: لا يوجد مفتاح جلسة محفوظ في Chrome بعد التحديث.";
+      }
+    } catch (error) {
+      msg.textContent = "التشخيص: حصل خطأ قبل اكتمال فحص الجلسة. ابعتلي صورة الرسالة دي.";
+      console.error("BADGEIFY visible session diagnostic failed", error);
+    }
+  }, 1200);
+})();
+</script>
+
 <!-- Removed duplicate login handler: use the primary Supabase client and auth state listener only. -->
 
 <script id="saleh-platform-finance-js">
