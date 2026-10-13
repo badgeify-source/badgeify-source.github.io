@@ -1562,6 +1562,7 @@ SUPABASE_KEY,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
+        storageKey: "sb-rsvzachgbqsucqgrwguv-auth-token",
         storage: window.localStorage
     }
 }
@@ -13160,7 +13161,7 @@ window.saveSalehOpeningBalances=async function(){
         const client = (typeof db !== "undefined" && db?.auth) ? db : (window.__badgeifyEmergencyClient || (window.__badgeifyEmergencyClient = window.supabase.createClient(
           "https://rsvzachgbqsucqgrwguv.supabase.co",
           "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
-          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "sb-rsvzachgbqsucqgrwguv-auth-token", storage: window.localStorage } }
         )));
         const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
