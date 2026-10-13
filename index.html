@@ -11291,7 +11291,11 @@ window.openSalehTransactionEdit=async function(transactionId){
 window.saveSalehTransactionEdit=async function(){
  try{
   const row=window.salehEditingTransaction;
-  if(!row||!currentUser?.id)throw new Error('تعذر تحديد الحركة أو انتهت الجلسة.');
+  const {data:authData,error:authError}=await db.auth.getSession();
+  if(authError)throw authError;
+  const userId=authData?.session?.user?.id||currentUser?.id||null;
+  if(!row)throw new Error('تعذر تحديد الحركة. اقفل نافذة التعديل وافتح الحركة من سجل الحركات مرة أخرى.');
+  if(!userId)throw new Error('جلسة الدخول غير متاحة في Supabase. سجّل الدخول مرة أخرى.');
   const amount=Number(document.getElementById('salehEditTxAmount')?.value||0);
   const account=document.getElementById('salehEditTxAccount')?.value;
   const date=document.getElementById('salehEditTxDate')?.value;
@@ -11301,19 +11305,19 @@ window.saveSalehTransactionEdit=async function(){
   if(!Number.isFinite(amount)||amount<=0||!account||!date)throw new Error('أدخل مبلغًا صحيحًا واختر الحساب والتاريخ.');
   const base={transaction_date:date,category,description,notes};
   if(row.transaction_type==='transfer'&&row.source_id){
-   const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',currentUser.id).eq('source_id',row.source_id);
+   const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',userId).eq('source_id',row.source_id);
    if(q.error)throw q.error;
    if((q.data||[]).length<2)throw new Error('لم يتم العثور على طرفي التحويل؛ لم يتم حفظ أي تغيير.');
    const rows=q.data||[];
    for(const part of rows){
     const payload={...base,amount:Number(part.amount)<0?-Math.abs(amount):Math.abs(amount)};
     if(String(part.id)===String(row.id))payload.account_id=account;
-    const upd=await db.from('personal_finance_transactions').update(payload).eq('id',part.id).eq('user_id',currentUser.id);
+    const upd=await db.from('personal_finance_transactions').update(payload).eq('id',part.id).eq('user_id',userId);
     if(upd.error)throw upd.error;
    }
   }else{
    const signedAmount=row.transaction_type==='expense'?-Math.abs(amount):Number(row.amount)<0?-Math.abs(amount):Math.abs(amount);
-   const upd=await db.from('personal_finance_transactions').update({...base,account_id:account,amount:signedAmount}).eq('id',row.id).eq('user_id',currentUser.id);
+   const upd=await db.from('personal_finance_transactions').update({...base,account_id:account,amount:signedAmount}).eq('id',row.id).eq('user_id',userId);
    if(upd.error)throw upd.error;
   }
   closeModal();await refresh();showToast('تم تعديل الحركة المالية.');
@@ -11322,19 +11326,27 @@ window.saveSalehTransactionEdit=async function(){
 
 window.deleteSalehTransaction=async function(transactionId){
  try{
-  if(!currentUser?.id)throw new Error('جلسة المستخدم غير متاحة، سجّل الدخول مرة أخرى.');
-  const row=(state.financeTransactions||[]).find(x=>String(x.id)===String(transactionId));
-  if(!row)throw new Error('الحركة غير موجودة. حدّث الصفحة وحاول مرة أخرى.');
+  const {data:authData,error:authError}=await db.auth.getSession();
+  if(authError)throw authError;
+  const userId=authData?.session?.user?.id||currentUser?.id||null;
+  if(!userId)throw new Error('جلسة الدخول غير متاحة في Supabase. سجّل الدخول مرة أخرى.');
+  let row=(state.financeTransactions||[]).find(x=>String(x.id)===String(transactionId));
+  if(!row){
+   const lookup=await db.from('personal_finance_transactions').select('*').eq('user_id',userId).eq('id',transactionId).maybeSingle();
+   if(lookup.error)throw lookup.error;
+   row=lookup.data||null;
+  }
+  if(!row)throw new Error('الحركة غير موجودة. حدّث سجل الحركات وافتحه مرة أخرى.');
   const linked=String(row.transaction_type||'')==='transfer'&&row.source_id;
   const detail=linked?'سيتم حذف طرفي التحويل المرتبطين معًا حتى يرجع الرصيد في الحسابين.':'سيتم حذف سجل الحركة المحدد وتحديث الرصيد.';
   if(!confirm('هل تريد حذف الحركة «'+String(row.description||row.category||'حركة مالية')+'»؟\n'+detail+'\nلا يمكن التراجع عن الحذف.'))return;
   let q;
   if(linked){
-   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','transfer').eq('source_id',row.source_id);
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_type','transfer').eq('source_id',row.source_id);
   }else if(row.source_type==='platform_deduction'&&row.source_id){
-   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','platform_deduction').eq('source_id',row.source_id);
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_type','platform_deduction').eq('source_id',row.source_id);
   }else{
-   q=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('id',row.id);
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('id',row.id);
   }
   if(q.error)throw q.error;
   if(typeof loadFinanceData==='function')await loadFinanceData();
@@ -12639,7 +12651,7 @@ applyTheme();
   window.openSalehPlatformDeduction=async function(editId,platformId){
     const old=editId?txs().find(x=>x.source_type==='platform_deduction'&&String(x.source_id)===String(editId)):null;
     const selected=platformId||old?.account_id||'';
-    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?'تعديل خصم':'خصم اشتراك من المنصة')+'</h4><p>الخصم يقلل رصيد المنصة مباشرة.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDedPlatform"><option value="">اختر المنصة</option>'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(selected)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>العملة</label><select id="scDedCurrency"><option value="USD" '+((!old||currencyOf(old)==='USD')?'selected':'')+'>USD — دولار</option><option value="USDT" '+(old&&currencyOf(old)==='USDT'?'selected':'')+'>USDT — تيثر</option></select></div><div class="field finance-required"><label>المبلغ</label><input id="scDedAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(num(old.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="scDedDate" type="date" value="'+date(old?.transaction_date)+'"></div><div class="field"><label>العميل / الاشتراك</label><input id="scDedReason" value="'+escv(old?.description||'')+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field"><label>رقم المرجع</label><input id="scDedRef" value="'+escv(note(old?.notes).reference||'')+'"></div><div class="field full"><label>ملاحظات</label><textarea id="scDedNotes">'+escv(note(old?.notes).notes||'')+'</textarea></div></div></div>';
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-minus"></i></div><div><h4>'+(old?'تعديل خصم':'خصم اشتراك من المنصة')+'</h4><p>الخصم يقلل رصيد المنصة مباشرة.</p></div></div><div class="form-grid"><div class="field finance-required"><label>المنصة</label><select id="scDedPlatform"><option value="">اختر المنصة</option>'+platformAccounts().map(a=>'<option value="'+a.id+'" '+(String(a.id)===String(selected)?'selected':'')+'>'+escv(a.account_name)+'</option>').join('')+'</select></div><div class="field finance-required"><label>المبلغ</label><input id="scDedAmount" type="number" min="0" step="0.000001" value="'+(old?Math.abs(num(old.amount)):'')+'"></div><div class="field"><label>التاريخ</label><input id="scDedDate" type="date" value="'+date(old?.transaction_date)+'"></div><div class="field"><label>العميل / الاشتراك</label><input id="scDedReason" value="'+escv(old?.description||'')+'" placeholder="مثال: كرياتين هاوس — اشتراك إنستجرام"></div><div class="field"><label>رقم المرجع</label><input id="scDedRef" value="'+escv(note(old?.notes).reference||'')+'"></div><div class="field full"><label>ملاحظات</label><textarea id="scDedNotes">'+escv(note(old?.notes).notes||'')+'</textarea></div></div></div>';
     openModal(old?'تعديل خصم منصة':'خصم اشتراك من المنصة',body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformDeduction('+(old?escv(editId):'')+')">حفظ الخصم</button>');
   };
 
