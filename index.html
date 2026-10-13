@@ -12319,50 +12319,47 @@ registerBadgeifyServiceWorker().then(function(){
    LOGIN
 ========================================= */
 
-document.getElementById(
-    "loginBtn"
-).onclick=async function(){
+document.getElementById("loginBtn").onclick = async function(event) {
+    if (event) event.preventDefault();
 
-    const email=
-    document.getElementById(
-        "loginEmail"
-    ).value;
+    const btn = document.getElementById("loginBtn");
+    const emailEl = document.getElementById("loginEmail");
+    const passwordEl = document.getElementById("loginPassword");
+    const msgEl = document.getElementById("loginMsg");
 
-    const password=
-    document.getElementById(
-        "loginPassword"
-    ).value;
+    const email = (emailEl?.value || "").trim();
+    const password = passwordEl?.value || "";
 
-    document.getElementById(
-        "loginMsg"
-    ).textContent="...";
-
-
-    const result=
-    await db.auth.signInWithPassword({
-
-        email:email,
-
-        password:password
-
-    });
-
-
-    if(result.error){
-
-        document.getElementById(
-            "loginMsg"
-        ).textContent=
-        result.error.message;
-
-    }else{
-
-        document.getElementById(
-            "loginMsg"
-        ).textContent="";
-
+    if (!email || !password) {
+        if (msgEl) msgEl.textContent = "اكتب البريد الإلكتروني وكلمة المرور";
+        return;
     }
 
+    if (btn) btn.disabled = true;
+    if (msgEl) msgEl.textContent = "جاري تسجيل الدخول...";
+
+    try {
+        const { data, error } = await db.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        if (!data?.session?.user) {
+            throw new Error("تم إرسال طلب الدخول لكن لم يتم إنشاء جلسة. حاول مرة أخرى.");
+        }
+
+        currentUser = data.session.user;
+        if (msgEl) msgEl.textContent = "";
+        document.getElementById("loginView")?.classList.add("hidden");
+        document.getElementById("appView")?.classList.remove("hidden");
+
+        if (typeof refresh === "function") {
+            await refresh();
+        }
+    } catch (err) {
+        console.error("BADGEIFY login failed:", err);
+        if (msgEl) msgEl.textContent = err?.message || "تعذر تسجيل الدخول. حاول مرة أخرى.";
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 };
 
 
