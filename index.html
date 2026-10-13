@@ -12385,23 +12385,43 @@ refresh;
    AUTH
 ========================================= */
 
-// Keep the auth callback synchronous: Supabase warns against awaiting database work
-// inside onAuthStateChange because it can block subsequent auth events.
-db.auth.onAuthStateChange(
-async function(event, session) {
-    currentUser = session?.user || null;
-
-    if (currentUser) {
+// Keep the Supabase auth callback synchronous; restore the saved session explicitly on startup.
+let badgeifyLastSessionUserId = null;
+function applyBadgeifySession(session) {
+    const user = session?.user || null;
+    currentUser = user;
+    if (user) {
+        badgeifyLastSessionUserId = user.id;
         document.getElementById("loginView")?.classList.add("hidden");
         document.getElementById("appView")?.classList.remove("hidden");
-        await refresh();
+        // Avoid overlapping refresh calls from INITIAL_SESSION and SIGNED_IN.
+        if (!window.__badgeifyRefreshRunning) {
+            window.__badgeifyRefreshRunning = true;
+            Promise.resolve().then(() => refresh()).catch(err => {
+                console.error("BADGEIFY refresh after session restore:", err);
+            }).finally(() => { window.__badgeifyRefreshRunning = false; });
+        }
     } else {
-        // Do not let a transient empty event during an active sign-in reset the screen.
         if (window.__badgeifyLoginInProgress) return;
+        badgeifyLastSessionUserId = null;
         document.getElementById("loginView")?.classList.remove("hidden");
         document.getElementById("appView")?.classList.add("hidden");
     }
+}
+
+db.auth.onAuthStateChange(function(event, session) {
+    applyBadgeifySession(session);
 });
+
+// Independent startup check: recover the persisted session even if the initial auth event
+// is missed or arrives before the login/app elements are ready.
+db.auth.getSession().then(({ data, error }) => {
+    if (error) {
+        console.error("BADGEIFY session restore failed:", error);
+        return;
+    }
+    applyBadgeifySession(data?.session || null);
+}).catch(err => console.error("BADGEIFY getSession failed:", err));
 
 
 /* =========================================
