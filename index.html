@@ -13121,5 +13121,57 @@ window.saveSalehOpeningBalances=async function(){
 }
 </style>
 
+
+<script id="badgeify-login-emergency-handler">
+(function () {
+  function install() {
+    const btn = document.getElementById("loginBtn");
+    if (!btn || btn.dataset.emergencyLoginInstalled === "1") return;
+    btn.dataset.emergencyLoginInstalled = "1";
+    btn.addEventListener("click", async function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const email = (document.getElementById("loginEmail")?.value || "").trim();
+      const password = document.getElementById("loginPassword")?.value || "";
+      const msg = document.getElementById("loginMsg");
+      const show = value => { if (msg) msg.textContent = value; };
+      if (!email || !password) { show("اكتب البريد الإلكتروني وكلمة المرور."); return; }
+      btn.disabled = true;
+      show("جاري تسجيل الدخول...");
+      try {
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+          throw new Error("تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة وجرب مرة أخرى.");
+        }
+        const client = window.__badgeifyEmergencyClient || (window.__badgeifyEmergencyClient = window.supabase.createClient(
+          "https://rsvzachgbqsucqgrwguv.supabase.co",
+          "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
+          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+        ));
+        const { data, error } = await client.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        if (!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. حاول مرة أخرى.");
+        try { if (typeof currentUser !== "undefined") currentUser = data.session.user; } catch (_) {}
+        document.getElementById("loginView")?.classList.add("hidden");
+        document.getElementById("appView")?.classList.remove("hidden");
+        show("تم تسجيل الدخول. جاري تحميل اللوحة...");
+        if (typeof refresh === "function") {
+          await refresh();
+          show("");
+        } else {
+          show("تم تسجيل الدخول لكن كود تحميل اللوحة لم يعمل. ابعتلي صورة الخطأ من Console.");
+        }
+      } catch (err) {
+        console.error("BADGEIFY login:", err);
+        show(err?.message || "تعذر تسجيل الدخول. حاول مرة أخرى.");
+      } finally {
+        btn.disabled = false;
+      }
+    }, true);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
+  else install();
+})();
+</script>
+
 </body>
 </html>
