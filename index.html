@@ -1561,9 +1561,7 @@ SUPABASE_KEY,
     auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
-        storageKey: "sb-rsvzachgbqsucqgrwguv-auth-token",
-        storage: window.localStorage
+        detectSessionInUrl: true
     }
 }
 );
@@ -12389,60 +12387,21 @@ refresh;
 
 // Keep the auth callback synchronous: Supabase warns against awaiting database work
 // inside onAuthStateChange because it can block subsequent auth events.
-let badgeifyAuthRestoreComplete = false;
+db.auth.onAuthStateChange(
+async function(event, session) {
+    currentUser = session?.user || null;
 
-// Keep the auth callback synchronous; defer database loading until it returns.
-db.auth.onAuthStateChange(function(event, session) {
-    const user = session?.user || null;
-
-    // Do not let the initial empty event flash the login screen while storage restores.
-    if (!user && !badgeifyAuthRestoreComplete &&
-        (event === "INITIAL_SESSION" || event === "SIGNED_IN")) {
-        return;
-    }
-    if (!user && window.__badgeifyLoginInProgress) return;
-
-    currentUser = user;
-    if (user) {
+    if (currentUser) {
         document.getElementById("loginView")?.classList.add("hidden");
         document.getElementById("appView")?.classList.remove("hidden");
-        setTimeout(function() {
-            if (currentUser?.id === user.id && typeof refresh === "function") {
-                refresh().catch(function(err) {
-                    console.error("BADGEIFY post-auth refresh:", err);
-                });
-            }
-        }, 0);
+        await refresh();
     } else {
+        // Do not let a transient empty event during an active sign-in reset the screen.
+        if (window.__badgeifyLoginInProgress) return;
         document.getElementById("loginView")?.classList.remove("hidden");
         document.getElementById("appView")?.classList.add("hidden");
     }
 });
-
-// Explicitly restore the saved Supabase session on every page load.
-(async function restoreBadgeifySession() {
-    try {
-        const result = await db.auth.getSession();
-        if (result?.error) throw result.error;
-        const session = result?.data?.session || null;
-        currentUser = session?.user || null;
-        badgeifyAuthRestoreComplete = true;
-
-        if (currentUser) {
-            document.getElementById("loginView")?.classList.add("hidden");
-            document.getElementById("appView")?.classList.remove("hidden");
-            if (typeof refresh === "function") await refresh();
-        } else {
-            document.getElementById("loginView")?.classList.remove("hidden");
-            document.getElementById("appView")?.classList.add("hidden");
-        }
-    } catch (err) {
-        badgeifyAuthRestoreComplete = true;
-        console.error("BADGEIFY session restore failed:", err);
-        document.getElementById("loginView")?.classList.remove("hidden");
-        document.getElementById("appView")?.classList.add("hidden");
-    }
-})();
 
 
 /* =========================================
@@ -13161,7 +13120,7 @@ window.saveSalehOpeningBalances=async function(){
         const client = (typeof db !== "undefined" && db?.auth) ? db : (window.__badgeifyEmergencyClient || (window.__badgeifyEmergencyClient = window.supabase.createClient(
           "https://rsvzachgbqsucqgrwguv.supabase.co",
           "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",
-          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "sb-rsvzachgbqsucqgrwguv-auth-token", storage: window.localStorage } }
+          { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
         )));
         const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
