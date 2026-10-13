@@ -12418,10 +12418,31 @@ db.auth.onAuthStateChange(function(event, session) {
 db.auth.getSession().then(({ data, error }) => {
     if (error) {
         console.error("BADGEIFY session restore failed:", error);
+        const msg = document.getElementById("loginMsg");
+        if (msg && !currentUser) msg.textContent = "تشخيص الجلسة: تعذرت قراءة الجلسة المحفوظة. افتح Console لو تقدر وابعت صورة الخطأ فقط.";
         return;
     }
-    applyBadgeifySession(data?.session || null);
-}).catch(err => console.error("BADGEIFY getSession failed:", err));
+    const session = data?.session || null;
+    applyBadgeifySession(session);
+    if (!session?.user) {
+        // Diagnostic only: never read or display the actual token/session contents.
+        let savedAuthKeyCount = 0;
+        try {
+            savedAuthKeyCount = Object.keys(window.localStorage || {}).filter(key => key.includes("auth-token")).length;
+        } catch (_) {}
+        const msg = document.getElementById("loginMsg");
+        if (msg && !currentUser) {
+            msg.textContent = savedAuthKeyCount
+                ? "تشخيص الجلسة: بيانات دخول محفوظة في المتصفح لكن Supabase لم يسترجع الجلسة. عدد مفاتيح الجلسة: " + savedAuthKeyCount + "."
+                : "تشخيص الجلسة: لا يوجد مفتاح جلسة محفوظ في تخزين Chrome بعد التحديث.";
+        }
+        console.warn("BADGEIFY session diagnostic:", { sessionFound: false, savedAuthKeyCount });
+    }
+}).catch(err => {
+    console.error("BADGEIFY getSession failed:", err);
+    const msg = document.getElementById("loginMsg");
+    if (msg && !currentUser) msg.textContent = "تشخيص الجلسة: حصل خطأ أثناء استرجاع الجلسة. ابعتلي صورة الرسالة الظاهرة.";
+});
 
 
 /* =========================================
