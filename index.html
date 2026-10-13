@@ -6210,11 +6210,17 @@ function sendPaymentReceiptWhatsApp(){
 
 async function confirmPayment(subscriptionId,periodKey){
 
-    const s=
-    getSubscription(subscriptionId);
+    const s=getSubscription(subscriptionId);
+    if(!s){
+        showToast("الاشتراك غير موجود أو تم تحديث الصفحة. حدّث القائمة وافتح الاشتراك مرة أخرى.",true);
+        return;
+    }
 
-    const customer=
-    getCustomer(s.customer_id);
+    const customer=getCustomer(s.customer_id);
+    if(!customer){
+        showToast("العميل المرتبط بالاشتراك غير موجود. راجع بيانات الاشتراك قبل تأكيد الدفع.",true);
+        return;
+    }
 
     const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
     const due=period ? period.dueDate : subscriptionDueDate(s);
@@ -6260,6 +6266,7 @@ async function confirmPayment(subscriptionId,periodKey){
         if(isPlatformPayment){
             const platformNames={platform_bybit_saleh:'Bybit Saleh',platform_bybit_mahmoud:'Bybit Mahmoud',platform_binance:'Binance'};
             const platformName=platformNames[paymentMethod];
+            if(!currentUser || !currentUser.id)throw new Error('انتهت جلسة الدخول. سجّل الدخول مرة أخرى قبل خصم الاشتراك من المنصة.');
             const platformQuery=await db.from('personal_finance_accounts').select('*').eq('user_id',currentUser.id).eq('account_name',platformName).maybeSingle();
             if(platformQuery.error)throw platformQuery.error;
             if(!platformQuery.data)throw new Error('حساب المنصة '+platformName+' غير موجود في لوحة صالح.');
@@ -6294,9 +6301,12 @@ async function confirmPayment(subscriptionId,periodKey){
 
         if(result.error)
             throw result.error;
+        if(!result.data || result.data.id==null){
+            throw new Error("تم حفظ الدفعة دون إرجاع رقمها؛ حدّث الصفحة وتحقق من سجل المدفوعات قبل إعادة المحاولة.");
+        }
 
         if(isPlatformPayment){
-            await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data?.id,paymentDate,notes,customer?.client_name,getService(s.app_service_id)?.service_name||"اشتراك");
+            await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data.id,paymentDate,notes,customer.client_name,(getService(s.app_service_id)||{}).service_name||"اشتراك");
         }
 
         // مدفوعات المنصات تُسجّل كخصم USDT داخل حساب المنصة فقط.
