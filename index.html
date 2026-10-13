@@ -11748,7 +11748,7 @@ async function saveSalehFinanceTransfer(){
    REFRESH / RENDER
 ========================================= */
 
-async function refresh(){
+async function refresh(retriedAfterJwt=false){
 
     let refreshStep="تحميل بيانات الموقع";
     try{
@@ -11772,8 +11772,24 @@ async function refresh(){
         },300);
 
     }catch(error){
+        const errorMessage=error?.message||String(error);
+        if(/JWT issued at future/i.test(errorMessage)&&!retriedAfterJwt){
+            try{
+                const refreshed=await db.auth.refreshSession();
+                if(refreshed.error)throw refreshed.error;
+                const session=refreshed.data?.session;
+                if(!session?.user?.id)throw new Error("تعذر تجديد جلسة الدخول.");
+                currentUser=session.user;
+                console.warn("BADGEIFY: refreshed session after JWT issued at future; retrying data load once.");
+                return await refresh(true);
+            }catch(sessionError){
+                console.error("BADGEIFY JWT recovery failed:",sessionError);
+                showToast("تعذر تجديد جلسة الدخول بعد خطأ توقيت JWT. تأكد من ضبط ساعة الجهاز تلقائيًا ثم سجّل الدخول من جديد.",true);
+                return;
+            }
+        }
         console.error("BADGEIFY refresh failed at:",refreshStep,error);
-        showToast("خطأ أثناء "+refreshStep+": "+(error?.message||String(error)),true);
+        showToast("خطأ أثناء "+refreshStep+": "+errorMessage,true);
     }
 
 }
@@ -12601,11 +12617,16 @@ applyTheme();
   };
   window.saveSalehPlatformDeposit=async function(editSourceId){
     try{
+      const {data:sessionData,error:sessionError}=await db.auth.getSession();
+      if(sessionError)throw sessionError;
+      const user=sessionData?.session?.user;
+      if(!user?.id)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى ثم أعد محاولة الإيداع.');
+      currentUser=user;
       const from=platformById(document.getElementById('scDepFrom')?.value);
       const to=platformById(document.getElementById('scDepPlatform')?.value);
       const egp=num(document.getElementById('scDepAmount')?.value),rate=num(document.getElementById('scDepRate')?.value);
       const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim(),currency='USDT';
-      if(!from||isPlatform(from)||!to||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختر الحساب والمنصة وأدخل المبلغ وسعر الدولار بشكل صحيح.');
+      if(!from?.id||isPlatform(from)||!to?.id||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختَر حساب الدفع والمنصة وأدخل المبلغ وسعر USDT بشكل صحيح.');
       const oldRows=editSourceId?txs().filter(x=>x.source_type==='transfer'&&String(x.source_id)===String(editSourceId)):[],
         oldFrom=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit_egp'}catch(e){return false}}),
         oldTo=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit'}catch(e){return false}});
@@ -12617,14 +12638,14 @@ applyTheme();
         egpNotes=JSON.stringify({kind:'platform_deposit_egp',rate,notes,currency:'EGP'}),
         usdtNotes=JSON.stringify({kind:'platform_deposit',rate,notes,currency:'USDT'});
       if(editSourceId){
-        const q1=await db.from('personal_finance_transactions').update({account_id:from.id,amount:-egp,description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',transaction_date:d,notes:egpNotes,updated_at:new Date().toISOString()}).eq('id',oldFrom.id).eq('user_id',currentUser.id);
+        const q1=await db.from('personal_finance_transactions').update({account_id:from.id,amount:-egp,description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',transaction_date:d,notes:egpNotes,updated_at:new Date().toISOString()}).eq('id',oldFrom.id).eq('user_id',user.id);
         if(q1.error)throw q1.error;
-        const q2=await db.from('personal_finance_transactions').update({account_id:to.id,amount:usdtAmount,description:'إيداع USDT من '+from.account_name,transaction_date:d,notes:usdtNotes,updated_at:new Date().toISOString()}).eq('id',oldTo.id).eq('user_id',currentUser.id);
+        const q2=await db.from('personal_finance_transactions').update({account_id:to.id,amount:usdtAmount,description:'إيداع USDT من '+from.account_name,transaction_date:d,notes:usdtNotes,updated_at:new Date().toISOString()}).eq('id',oldTo.id).eq('user_id',user.id);
         if(q2.error)throw q2.error;
       }else{
         const rows=[
-          {user_id:currentUser.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',source_type:'transfer',source_id:sourceId,transaction_date:d,notes:egpNotes},
-          {user_id:currentUser.id,account_id:to.id,amount:usdtAmount,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:usdtNotes}
+          {user_id:user.id,account_id:from.id,amount:-egp,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع إلى '+to.account_name+' — خصم بالمصري (EGP)',source_type:'transfer',source_id:sourceId,transaction_date:d,notes:egpNotes},
+          {user_id:user.id,account_id:to.id,amount:usdtAmount,transaction_type:'transfer',category:'إيداع منصة',description:'إيداع USDT من '+from.account_name,source_type:'transfer',source_id:sourceId,transaction_date:d,notes:usdtNotes}
         ];
         const q=await db.from('personal_finance_transactions').insert(rows);
         if(q.error)throw q.error;
