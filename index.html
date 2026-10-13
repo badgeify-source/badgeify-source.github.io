@@ -12605,11 +12605,17 @@ applyTheme();
   };
   window.saveSalehPlatformDeposit=async function(editSourceId){
     try{
-      const from=platformById(document.getElementById('scDepFrom')?.value);
-      const to=platformById(document.getElementById('scDepPlatform')?.value);
+      // Guard the session before reading currentUser.id anywhere in this save flow.
+      if(!currentUser || !currentUser.id)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى ثم أعد فتح لوحة صالح.');
+      const fromValue=document.getElementById('scDepFrom')?.value||'';
+      const toValue=document.getElementById('scDepPlatform')?.value||'';
+      const from=fromValue?platformById(fromValue):null;
+      const to=toValue?platformById(toValue):null;
       const egp=num(document.getElementById('scDepAmount')?.value),rate=num(document.getElementById('scDepRate')?.value);
-      const d=document.getElementById('scDepDate')?.value||date(),notes=document.getElementById('scDepNotes')?.value.trim(),currency='USDT';
-      if(!from||isPlatform(from)||!to||!isPlatform(to)||egp<=0||rate<=0)throw new Error('اختر الحساب والمنصة وأدخل المبلغ وسعر الدولار بشكل صحيح.');
+      const d=document.getElementById('scDepDate')?.value||date(),notes=(document.getElementById('scDepNotes')?.value||'').trim(),currency='USDT';
+      if(!fromValue||!toValue||!from||!to)throw new Error('تعذر العثور على الحساب المحدد. حدّث بيانات لوحة صالح ثم افتح نموذج الإيداع مرة أخرى.');
+      if(isPlatform(from)||!isPlatform(to)||egp<=0||rate<=0||!Number.isFinite(egp)||!Number.isFinite(rate))throw new Error('اختر حسابًا نقديًا ومنصة صحيحة، وأدخل مبلغ الإيداع وسعر USDT بشكل صحيح.');
+      if(!Number.isFinite(egp/rate)||egp/rate<=0)throw new Error('قيمة USDT الناتجة غير صحيحة. راجع المبلغ وسعر الصرف.');
       const oldRows=editSourceId?txs().filter(x=>x.source_type==='transfer'&&String(x.source_id)===String(editSourceId)):[],
         oldFrom=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit_egp'}catch(e){return false}}),
         oldTo=oldRows.find(x=>{try{return JSON.parse(x.notes||'{}').kind==='platform_deposit'}catch(e){return false}});
