@@ -5829,11 +5829,19 @@ async function deleteSubscription(id){
 
 function openPaymentModal(subscriptionId,periodKey){
 
-    const s=
-    getSubscription(subscriptionId);
+    const s=getSubscription(subscriptionId);
+    if(!s){
+        showToast("مش لاقي الاشتراك المحدد. اقفل النافذة وحدّث قائمة الاشتراكات ثم جرّب مرة أخرى.",true);
+        console.error("openPaymentModal: subscription not found",{subscriptionId,periodKey});
+        return;
+    }
 
-    const customer=
-    getCustomer(s.customer_id);
+    const customer=getCustomer(s.customer_id);
+    if(!customer){
+        showToast("الاشتراك ده مرتبط بعميل غير موجود حاليًا. راجع ربط العميل بالاشتراك.",true);
+        console.error("openPaymentModal: customer not found",{subscriptionId,customer_id:s.customer_id});
+        return;
+    }
 
     const period=getSubscriptionPeriods(s).find(function(p){return p.periodKey===periodKey;}) || getCurrentSubscriptionPeriod(s);
     const due=period ? period.dueDate : subscriptionDueDate(s);
