@@ -12385,48 +12385,35 @@ refresh;
    AUTH
 ========================================= */
 
-db.auth.onAuthStateChange(
-async function(event,session){
+// Keep the auth callback synchronous: Supabase warns against awaiting database work
+// inside onAuthStateChange because it can block subsequent auth events.
+db.auth.onAuthStateChange(function(event, session) {
+    const user = session?.user || null;
 
-    currentUser=
-    session?.user||null;
-
-    if(currentUser){
-
-        document
-        .getElementById(
-            "loginView"
-        )
-        .classList
-        .add("hidden");
-
-        document
-        .getElementById(
-            "appView"
-        )
-        .classList
-        .remove("hidden");
-
-        await refresh();
-
-    }else{
-
-        document
-        .getElementById(
-            "loginView"
-        )
-        .classList
-        .remove("hidden");
-
-        document
-        .getElementById(
-            "appView"
-        )
-        .classList
-        .add("hidden");
-
+    // A null startup event must not undo a login that is currently being completed.
+    if (!user && window.__badgeifyLoginInProgress) {
+        console.info("BADGEIFY auth: ignoring temporary null session during login");
+        return;
     }
 
+    currentUser = user;
+
+    if (user) {
+        document.getElementById("loginView")?.classList.add("hidden");
+        document.getElementById("appView")?.classList.remove("hidden");
+
+        // Run data loading after Supabase has finished its auth callback.
+        setTimeout(function() {
+            if (currentUser?.id === user.id) {
+                refresh().catch(function(err) {
+                    console.error("BADGEIFY post-login refresh:", err);
+                });
+            }
+        }, 0);
+    } else {
+        document.getElementById("loginView")?.classList.remove("hidden");
+        document.getElementById("appView")?.classList.add("hidden");
+    }
 });
 
 
@@ -13137,6 +13124,7 @@ window.saveSalehOpeningBalances=async function(){
       const show = value => { if (msg) msg.textContent = value; };
       if (!email || !password) { show("اكتب البريد الإلكتروني وكلمة المرور."); return; }
       btn.disabled = true;
+      window.__badgeifyLoginInProgress = true;
       show("جاري تسجيل الدخول...");
       try {
         if (!window.supabase || typeof window.supabase.createClient !== "function") {
@@ -13150,7 +13138,14 @@ window.saveSalehOpeningBalances=async function(){
         const { data, error } = await client.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (!data?.session?.user) throw new Error("لم يتم إنشاء جلسة دخول. حاول مرة أخرى.");
-        try { if (typeof currentUser !== "undefined") currentUser = data.session.user; } catch (_) {}
+
+        // Confirm the session is actually persisted before allowing the auth UI to change.
+        const check = await client.auth.getSession();
+        const activeSession = check?.data?.session || data.session;
+        if (check?.error) throw check.error;
+        if (!activeSession?.user?.id) throw new Error("تم تسجيل الدخول لكن الجلسة لم تُحفظ. حدّث الصفحة وحاول مرة أخرى.");
+
+        try { if (typeof currentUser !== "undefined") currentUser = activeSession.user; } catch (_) {}
         document.getElementById("loginView")?.classList.add("hidden");
         document.getElementById("appView")?.classList.remove("hidden");
         show("تم تسجيل الدخول. جاري تحميل اللوحة...");
@@ -13160,7 +13155,9 @@ window.saveSalehOpeningBalances=async function(){
         } else {
           show("تم تسجيل الدخول لكن كود تحميل اللوحة لم يعمل. ابعتلي صورة الخطأ من Console.");
         }
+        window.__badgeifyLoginInProgress = false;
       } catch (err) {
+        window.__badgeifyLoginInProgress = false;
         console.error("BADGEIFY login:", err);
         show(err?.message || "تعذر تسجيل الدخول. حاول مرة أخرى.");
       } finally {
