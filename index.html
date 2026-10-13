@@ -11733,19 +11733,28 @@ function openSalehFinanceTransfer(){
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveSalehFinanceTransfer(){
- const n=Number(document.getElementById('ptAmount').value||0),
- f=document.getElementById('ptFrom').value,t=document.getElementById('ptTo').value,
- d=document.getElementById('ptDate').value,
- desc=document.getElementById('ptDesc').value.trim()||'تحويل إلى حساب آخر',
- notes=document.getElementById('ptNotes').value||'';
- if(n<=0||!f||!t||f===t){showToast('راجع المبلغ والحسابات',true);return;}
- const id=crypto.randomUUID();
- const r=await db.from('personal_finance_transactions').insert([
-  {user_id:currentUser?.id,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes},
-  {user_id:currentUser?.id,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes}
- ]);
- if(r.error){showToast(r.error.message,true);return;}
- closeModal();await refresh();showToast('تم التحويل بنجاح');
+ try{
+  const {data:authData,error:authError}=await db.auth.getSession();
+  if(authError)throw authError;
+  const userId=authData?.session?.user?.id||currentUser?.id||null;
+  if(!userId)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى.');
+  const amountEl=document.getElementById('ptAmount'),fromEl=document.getElementById('ptFrom'),toEl=document.getElementById('ptTo');
+  if(!amountEl||!fromEl||!toEl)throw new Error('نموذج التحويل انتهت صلاحيته. اقفله وافتحه مرة أخرى.');
+  const n=Number(amountEl.value||0),f=fromEl.value,t=toEl.value,
+   d=document.getElementById('ptDate')?.value||isoDate(new Date()),
+   desc=document.getElementById('ptDesc')?.value.trim()||'تحويل إلى حساب آخر',
+   notes=document.getElementById('ptNotes')?.value||'';
+  if(!Number.isFinite(n)||n<=0||!f||!t||f===t)throw new Error('راجع المبلغ والحسابات، واختر حسابين مختلفين.');
+  const accounts=state.financeAccounts||[];
+  if(!accounts.some(a=>String(a.id)===String(f))||!accounts.some(a=>String(a.id)===String(t)))throw new Error('تعذر العثور على أحد الحسابات. حدّث لوحة صالح ثم أعد المحاولة.');
+  const sourceId=(typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():'transfer_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+  const r=await db.from('personal_finance_transactions').insert([
+   {user_id:userId,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:sourceId,transaction_date:d,notes},
+   {user_id:userId,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:sourceId,transaction_date:d,notes}
+  ]);
+  if(r.error)throw r.error;
+  closeModal();await refresh();showToast('تم التحويل بنجاح');
+ }catch(e){console.error('saveSalehFinanceTransfer',e);showToast(e?.message||'تعذر حفظ التحويل.',true);}
 }
 
 /* =========================================
