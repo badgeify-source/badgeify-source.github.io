@@ -11557,20 +11557,24 @@ function updateSalehLoanDirectionUI(){
  if(label)label.textContent=d==='borrowed'?'إلى حساب':'من حساب';
 }
 async function saveSalehLoan(){
- const direction=document.getElementById('loanDirection').value;
+ if(!currentUser?.id){showToast('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى.',true);return;}
+ const direction=document.getElementById('loanDirection')?.value;
  const select=document.getElementById('loanPerson')?.value||'',newName=(document.getElementById('loanNewPerson')?.value||'').trim(),phone=document.getElementById('loanPhone')?.value.trim()||'',amount=Number(document.getElementById('loanAmount').value||0),account=document.getElementById('loanAccount').value,date=document.getElementById('loanDate').value,purpose=document.getElementById('loanPurpose').value.trim(),notes=document.getElementById('loanNotes').value||'';
  if(amount<=0||!account||(!select&&!newName)){showToast('أدخل نوع السلفة والشخص والمبلغ واختر الحساب',true);return;}
  let personId=select;
  if(!personId){
-  const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser?.id,person_name:newName,phone:phone||null}).select('*').single();
-  if(p.error){showToast(p.error.message,true);return;}personId=p.data.id;
+  const p=await db.from('personal_finance_loan_people').insert({user_id:currentUser.id,person_name:newName,phone:phone||null}).select('*').single();
+  if(p.error){showToast(p.error.message,true);return;}
+  if(!p.data?.id){showToast('تم إرسال طلب إضافة الشخص لكن لم يتم إرجاع بياناته. حدّث القائمة قبل إعادة المحاولة.',true);return;}
+  personId=p.data.id;
  }
- const l=await db.from('personal_finance_loans').insert({user_id:currentUser?.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
+ const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:direction,loan_direction:direction,amount,wallet_account_id:account,loan_date:date,purpose:purpose||null,notes:notes||null}).select('*').single();
  if(l.error){
   if(String(l.error.message||'').toLowerCase().includes('loan_direction'))showToast('قاعدة البيانات تحتاج إضافة حقل نوع السلفة. شغّل تحديث قاعدة البيانات المرفق باسم supabase_personal_finance_loans.sql.',true);
   else showToast(l.error.message,true);
   return;
  }
+ if(!l.data?.id){showToast('لم يتم إرجاع رقم السلفة بعد الحفظ. حدّث قائمة السلف وتأكد من وجودها قبل إعادة التسجيل.',true);return;}
  const walletAmount=direction==='borrowed'?Math.abs(amount):-Math.abs(amount);
  const category=direction==='borrowed'?'استلام سلفة':'إعطاء سلفة';
  const description=direction==='borrowed'?'مبلغ مستلف من ':'مبلغ مسلف لـ ';
@@ -11598,8 +11602,11 @@ async function saveLoanRepayment(loanId){
  const loan=(state.loans||[]).find(x=>String(x.id)===String(loanId));if(!loan)return;
  const borrowed=loanDirection(loan)==='borrowed',rem=loanRemaining(loan),amount=Number(document.getElementById('loanPayAmount').value||0),account=document.getElementById('loanPayAccount').value,date=document.getElementById('loanPayDate').value,notes=document.getElementById('loanPayNotes').value||'';
  if(amount<=0||amount>rem||!account){showToast('أدخل المبلغ واختر الحساب',true);return;}
- const p=await db.from('personal_finance_loan_payments').insert({user_id:currentUser?.id,loan_id:loanId,amount,wallet_account_id:account,payment_date:date,notes}).select('*').single();
+ const accountRow=(state.financeAccounts||[]).find(a=>String(a.id)===String(account));
+ if(!accountRow){showToast('الحساب المحدد غير موجود في بيانات لوحة صالح. حدّث البيانات واختر الحساب مرة أخرى.',true);return;}
+ const p=await db.from('personal_finance_loan_payments').insert({user_id:currentUser.id,loan_id:loanId,amount,wallet_account_id:account,payment_date:date,notes}).select('*').single();
  if(p.error){showToast(p.error.message,true);return;}
+ if(!p.data?.id){showToast('لم يتم إرجاع رقم عملية السداد. تحقق من سجل السلف قبل إعادة المحاولة.',true);return;}
  const walletAmount=borrowed?-Math.abs(amount):Math.abs(amount);
  const category=borrowed?'سداد سلفة':'تحصيل سلفة';
  const description=borrowed?'سداد إلى ':'تحصيل من ';
@@ -11610,7 +11617,8 @@ async function saveLoanRepayment(loanId){
   if(tx.error){showToast('تم تسجيل العملية لكن تعذر تحديث رصيد الحساب: '+tx.error.message,true);return;}
  }
  const newRemaining=rem-amount;
- await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser?.id);
+ const statusUpdate=await db.from('personal_finance_loans').update({status:newRemaining<=0?'paid':'partially_paid'}).eq('id',loanId).eq('user_id',currentUser.id);
+ if(statusUpdate.error){console.error('loan status update failed',statusUpdate.error);showToast('تم تسجيل السداد وقيد الحساب، لكن تعذر تحديث حالة السلفة: '+statusUpdate.error.message,true);await refresh();return;}
  closeModal();await refresh();showToast(newRemaining<=0?(borrowed?'تم سداد المبلغ بالكامل':'تم تحصيل المبلغ بالكامل'):(borrowed?'تم تسجيل السداد':'تم تسجيل التحصيل'));
 }
 function buildLoanAlerts(){
