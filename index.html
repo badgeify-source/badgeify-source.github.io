@@ -1564,6 +1564,8 @@ const db = window.supabase.createClient(
         }
     }
 );
+// Share the app's original Supabase client with the login fallback.
+window.__badgeifyDb = db;
 
 
 /* =========================================
@@ -13181,7 +13183,8 @@ window.saveSalehOpeningBalances=async function(){
       if(!window.supabase||typeof window.supabase.createClient!=='function'){msg.textContent='تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة وحاول مرة أخرى.';return;}
       btn.dataset.loginFallbackBusy='1';btn.disabled=true;msg.textContent='جاري الاتصال وتسجيل الدخول...';
       try{
-        var client=window.__badgeifyLoginFallbackClient;
+        // Always prefer the same client used by the dashboard so its auth state and RLS queries stay in sync.
+        var client=window.__badgeifyDb||window.__badgeifyLoginFallbackClient;
         if(!client){client=window.supabase.createClient('https://rsvzachgbqsucqgrwguv.supabase.co','sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});window.__badgeifyLoginFallbackClient=client;}
         var result=await client.auth.signInWithPassword({email:email,password:password});
         if(result.error) throw result.error;
