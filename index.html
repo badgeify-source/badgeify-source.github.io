@@ -11713,14 +11713,19 @@ async function saveSalehFinanceTransfer(){
 
 async function refresh(){
 
+    let refreshStep="تحميل بيانات الموقع";
     try{
 
         await loadData();
+        refreshStep="تحميل بيانات لوحة صالح";
         await loadFinanceData();
+        refreshStep="تحميل بيانات السلف";
         await loadLoanData();
 
+        refreshStep="عرض الصفحة وتحديث العناصر";
         render();
 
+        refreshStep="تحديث الإشعارات";
         updateNotificationUI();
 
         setTimeout(function(){
@@ -11730,12 +11735,8 @@ async function refresh(){
         },300);
 
     }catch(error){
-
-        showToast(
-            error.message,
-            true
-        );
-
+        console.error("BADGEIFY refresh failed at:",refreshStep,error);
+        showToast("خطأ أثناء "+refreshStep+": "+(error?.message||String(error)),true);
     }
 
 }
