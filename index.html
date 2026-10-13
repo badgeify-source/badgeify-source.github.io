@@ -11687,13 +11687,30 @@ async function openSalehRecharge(service){
 async function saveSalehRecharge(service){
  const kind=document.getElementById('rechargeKind')?.value,amount=Number(document.getElementById('rechargeAmount')?.value||0),account=document.getElementById('rechargeAccount')?.value,date=document.getElementById('rechargeDate')?.value,desc=document.getElementById('rechargeDesc')?.value.trim();
  const isPubg=service==='pubg',label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل',sourceType=isPubg?'pubg_recharge':'mobile_recharge';
- if(!['income','expense'].includes(kind)||amount<=0||!account){showToast('اختار نوع الحركة والحساب واكتب مبلغ صحيح.',true);return;}
- const accountObj=(state.financeAccounts||[]).find(a=>String(a.id)===String(account));
- if(!accountObj||['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(accountObj.account_name||''))){showToast('اختار حسابًا نقديًا بالجنيه، وليس حساب منصة USDT.',true);return;}
- const description=desc||(kind==='income'?'مبلغ مستلم من '+label:'تكلفة '+label);
- const r=await db.from('personal_finance_transactions').insert({user_id:currentUser?.id,account_id:account,amount:kind==='expense'?-Math.abs(amount):Math.abs(amount),transaction_type:kind,category:label,description,source_type:sourceType,source_id:crypto.randomUUID(),transaction_date:date,notes:'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'});
- if(r.error){showToast(r.error.message,true);return;}
- closeModal();await refresh();showToast(kind==='income'?'تم تسجيل المبلغ المستلم من '+label:'تم تسجيل تكلفة '+label);
+ if(!['income','expense'].includes(kind)||!Number.isFinite(amount)||amount<=0||!account||!date){showToast('اختار نوع الحركة والحساب واكتب مبلغًا وتاريخًا صحيحين.',true);return;}
+ try{
+  // استخدم جلسة Supabase الفعلية؛ currentUser وحده لا يضمن أن طلب قاعدة البيانات يحمل JWT صالحًا.
+  const {data:authData,error:authError}=await db.auth.getSession();
+  if(authError)throw authError;
+  const session=authData?.session;
+  const userId=session?.user?.id;
+  if(!session?.access_token||!userId)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى ثم حاول حفظ الشحنة.');
+  const accountQuery=await db.from('personal_finance_accounts').select('id,account_name,user_id').eq('id',account).eq('user_id',userId).maybeSingle();
+  if(accountQuery.error)throw accountQuery.error;
+  const accountObj=accountQuery.data;
+  if(!accountObj)throw new Error('الحساب المحدد غير تابع للمستخدم الحالي. حدّث لوحة صالح واختر الحساب مرة أخرى.');
+  if(['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(accountObj.account_name||''))){throw new Error('اختار حسابًا نقديًا بالجنيه، وليس حساب منصة USDT.');}
+  const description=desc||(kind==='income'?'مبلغ مستلم من '+label:'تكلفة '+label);
+  const payload={user_id:userId,account_id:accountObj.id,amount:kind==='expense'?-Math.abs(amount):Math.abs(amount),transaction_type:kind,category:label,description,source_type:sourceType,source_id:crypto.randomUUID(),transaction_date:date,notes:'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'};
+  const result=await db.from('personal_finance_transactions').insert(payload);
+  if(result.error)throw result.error;
+  closeModal();
+  await refresh();
+  showToast(kind==='income'?'تم تسجيل المبلغ المستلم من '+label:'تم تسجيل تكلفة '+label);
+ }catch(e){
+  console.error('save Saleh recharge transaction',e);
+  showToast(e?.message||'تعذر تسجيل حركة الشحن.',true);
+ }
 }
 
 function openSalehFinanceTransfer(){
