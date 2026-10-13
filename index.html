@@ -13034,5 +13034,56 @@ window.saveSalehOpeningBalances=async function(){
 };
 })();
 </script>
+
+<style id="saleh-finance-header-buttons-fix">
+/* Expand Saleh Finance header so every action button remains visible */
+#salehFinanceRedesign .finance-page-head{
+  min-height:0!important;
+  height:auto!important;
+  align-items:flex-start!important;
+  flex-wrap:wrap!important;
+  gap:18px!important;
+  padding:26px!important;
+  overflow:visible!important;
+}
+#salehFinanceRedesign .finance-page-head>div:first-child{
+  flex:1 1 240px!important;
+  min-width:220px!important;
+}
+#salehFinanceRedesign .finance-page-head .page-actions{
+  flex:1 1 100%!important;
+  width:100%!important;
+  max-width:none!important;
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(145px,1fr))!important;
+  gap:9px!important;
+  justify-content:stretch!important;
+}
+#salehFinanceRedesign .finance-page-head .page-actions button,
+#salehFinanceRedesign .finance-page-head .page-actions button:nth-child(n){
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:44px!important;
+  height:auto!important;
+  padding:10px 12px!important;
+  white-space:normal!important;
+  line-height:1.5!important;
+  font-size:12px!important;
+}
+@media(max-width:720px){
+  #salehFinanceRedesign .finance-page-head{padding:18px!important}
+  #salehFinanceRedesign .finance-page-head>div:first-child{min-width:0!important;flex-basis:100%!important}
+  #salehFinanceRedesign .finance-page-head .page-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #salehFinanceRedesign .finance-page-head .page-actions button{font-size:11px!important;padding:10px 7px!important}
+}
+@media(max-width:360px){
+  #salehFinanceRedesign .finance-page-head .page-actions{grid-template-columns:1fr!important}
+}
+</style>
+
 </body>
 </html>
