@@ -31,6 +31,32 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
   }
   window.addEventListener("error",function(e){report((e.message||"Script error")+(e.filename?" — "+e.filename.split("/").pop():"")+(e.lineno?":"+e.lineno:""));});
   window.addEventListener("unhandledrejection",function(e){var r=e.reason;report("Promise: "+(r&&r.message||r||"رفض غير معروف"));});
+  async function inspectData(){
+    try{
+      var client=window.__badgeifyDb||window.__badgeifyLoginFallbackClient||window.__badgeifyRecoveryClient;
+      if(!client&&window.supabase&&typeof window.supabase.createClient==="function"){
+        client=window.supabase.createClient("https://rsvzachgbqsucqgrwguv.supabase.co","sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+        window.__badgeifyDiagnosticClient=client;
+      }
+      if(!client)return;
+      var auth=await client.auth.getSession(), user=auth&&auth.data&&auth.data.session&&auth.data.session.user;
+      var checks=await Promise.all([
+        ["العملاء","customers"],["الاشتراكات","subscriptions"],["المدفوعات","subscription_payments"],
+        ["حركات لوحة صالح","personal_finance_transactions"],["السلف","personal_finance_loans"]
+      ].map(async function(item){
+        try{var q=await client.from(item[1]).select("*",{count:"exact",head:true});return item[0]+": "+(q.count==null?"غير معروف":q.count)+(q.error?" (خطأ: "+q.error.message+")":"");}
+        catch(err){return item[0]+": خطأ ("+(err&&err.message||err)+")";}
+      }));
+      var box=document.getElementById("badgeify-data-diagnostic-box");
+      if(!box){box=document.createElement("div");box.id="badgeify-data-diagnostic-box";box.style.cssText="position:fixed;z-index:999998;bottom:12px;left:12px;right:12px;max-width:760px;margin:auto;background:#111827;color:#fff;border:1px solid #64748b;border-radius:10px;padding:12px 14px;font:14px/1.7 sans-serif;white-space:pre-wrap;box-shadow:0 8px 28px #0008";document.body.appendChild(box);}
+      box.textContent="فحص قراءة البيانات — "+(user?"تم تسجيل الدخول":"لا توجد جلسة دخول")+(user&&user.email?" ("+user.email+")":"")+"\\n"+checks.join("\\n")+(window.__badgeifyLastRuntimeError?"\\nخطأ JavaScript: "+window.__badgeifyLastRuntimeError:"");
+      console.log("BADGEIFY data diagnostic",checks,window.__badgeifyLastRuntimeError||"No captured runtime error");
+    }catch(err){report("فحص البيانات: "+(err&&err.message||err));}
+  }
+  document.addEventListener("DOMContentLoaded",function(){
+    var btn=document.getElementById("loginBtn");
+    if(btn)btn.addEventListener("click",function(){setTimeout(inspectData,3500);},true);
+  });
 })();
 </script>
 
