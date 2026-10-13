@@ -12325,50 +12325,32 @@ registerBadgeifyServiceWorker().then(function(){
    LOGIN
 ========================================= */
 
-document.getElementById(
-    "loginBtn"
-).onclick=async function(){
+document.getElementById("loginBtn").onclick=async function(){
+    const btn=document.getElementById("loginBtn");
+    const emailEl=document.getElementById("loginEmail");
+    const passwordEl=document.getElementById("loginPassword");
+    const msg=document.getElementById("loginMsg");
+    const email=(emailEl?.value||"").trim();
+    const password=passwordEl?.value||"";
 
-    const email=
-    document.getElementById(
-        "loginEmail"
-    ).value;
-
-    const password=
-    document.getElementById(
-        "loginPassword"
-    ).value;
-
-    document.getElementById(
-        "loginMsg"
-    ).textContent="...";
-
-
-    const result=
-    await db.auth.signInWithPassword({
-
-        email:email,
-
-        password:password
-
-    });
-
-
-    if(result.error){
-
-        document.getElementById(
-            "loginMsg"
-        ).textContent=
-        result.error.message;
-
-    }else{
-
-        document.getElementById(
-            "loginMsg"
-        ).textContent="";
-
+    if(!email || !password){
+        msg.textContent="اكتب البريد الإلكتروني وكلمة المرور";
+        return;
     }
 
+    btn.disabled=true;
+    msg.textContent="جاري تسجيل الدخول...";
+
+    try{
+        const {data,error}=await db.auth.signInWithPassword({email,password});
+        if(error) throw error;
+        if(!data?.session) throw new Error("تم التحقق من البيانات لكن لم يتم إنشاء جلسة دخول.");
+        msg.textContent="";
+    }catch(error){
+        msg.textContent=error?.message||"تعذر تسجيل الدخول. حاول مرة أخرى.";
+    }finally{
+        btn.disabled=false;
+    }
 };
 
 
@@ -12447,70 +12429,7 @@ applyTheme();
 
 </script>
 
-<script>
-/* BADGEIFY LOGIN SAFETY FALLBACK */
-(function(){
-    const btn = document.getElementById("loginBtn");
-    const emailEl = document.getElementById("loginEmail");
-    const passEl = document.getElementById("loginPassword");
-    const msgEl = document.getElementById("loginMsg");
 
-    if(!btn || !emailEl || !passEl || !msgEl) return;
-
-    btn.addEventListener("click", async function(e){
-        e.preventDefault();
-
-        const email = emailEl.value.trim();
-        const password = passEl.value;
-
-        if(!email || !password){
-            msgEl.textContent = "اكتب البريد الإلكتروني وكلمة المرور";
-            return;
-        }
-
-        btn.disabled = true;
-        msgEl.textContent = "جاري تسجيل الدخول...";
-
-        try{
-            const client = window.supabase.createClient(
-                "https://rsvzachgbqsucqgrwguv.supabase.co",
-                "sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986"
-            );
-
-            const { data, error } =
-                await client.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-
-            if(error){
-                msgEl.textContent = error.message || "بيانات الدخول غير صحيحة";
-                btn.disabled = false;
-                return;
-            }
-
-            if(data && data.session){
-                msgEl.textContent = "";
-                document.getElementById("loginView")?.classList.add("hidden");
-                document.getElementById("appView")?.classList.remove("hidden");
-
-                if(typeof window.refresh === "function"){
-                    window.refresh();
-                }
-            }else{
-                msgEl.textContent = "تم تسجيل الدخول ولكن لم يتم إنشاء جلسة.";
-            }
-
-        }catch(err){
-            msgEl.textContent =
-                err?.message ||
-                "حدث خطأ أثناء الاتصال. حاول مرة أخرى.";
-        }finally{
-            btn.disabled = false;
-        }
-    });
-})();
-</script>
 
 <script id="saleh-platform-finance-js">
 (function(){
