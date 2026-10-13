@@ -11591,6 +11591,10 @@ async function openLoanRepayment(loanId){
  document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
 }
 async function saveLoanRepayment(loanId){
+ const {data:authData,error:authError}=await db.auth.getUser();
+ const repaymentUser=authData?.user;
+ if(authError||!repaymentUser){showToast('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى ثم حاول السداد.',true);return;}
+ currentUser=repaymentUser;
  const loan=(state.loans||[]).find(x=>String(x.id)===String(loanId));if(!loan)return;
  const borrowed=loanDirection(loan)==='borrowed',rem=loanRemaining(loan),amount=Number(document.getElementById('loanPayAmount').value||0),account=document.getElementById('loanPayAccount').value,date=document.getElementById('loanPayDate').value,notes=document.getElementById('loanPayNotes').value||'';
  if(amount<=0||amount>rem||!account){showToast('أدخل المبلغ واختر الحساب',true);return;}
