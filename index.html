@@ -13163,5 +13163,42 @@ window.saveSalehOpeningBalances=async function(){
 }
 </style>
 
+
+<!-- BADGEIFY LOGIN FALLBACK: keeps login responsive if the main app script stops before wiring the button -->
+<script id="badgeify-login-fallback">
+(function(){
+  function install(){
+    var btn=document.getElementById('loginBtn'), emailEl=document.getElementById('loginEmail');
+    var passEl=document.getElementById('loginPassword'), msg=document.getElementById('loginMsg');
+    if(!btn||!emailEl||!passEl||!msg||btn.dataset.loginFallbackReady==='1') return;
+    btn.dataset.loginFallbackReady='1';
+    if(typeof btn.onclick==='function') return;
+    btn.addEventListener('click',async function(event){
+      event.preventDefault();
+      if(btn.dataset.loginFallbackBusy==='1') return;
+      var email=(emailEl.value||'').trim(), password=passEl.value||'';
+      if(!email||!password){msg.textContent='اكتب البريد الإلكتروني وكلمة المرور';return;}
+      if(!window.supabase||typeof window.supabase.createClient!=='function'){msg.textContent='تعذر تحميل خدمة تسجيل الدخول. حدّث الصفحة وحاول مرة أخرى.';return;}
+      btn.dataset.loginFallbackBusy='1';btn.disabled=true;msg.textContent='جاري الاتصال وتسجيل الدخول...';
+      try{
+        var client=window.__badgeifyLoginFallbackClient;
+        if(!client){client=window.supabase.createClient('https://rsvzachgbqsucqgrwguv.supabase.co','sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});window.__badgeifyLoginFallbackClient=client;}
+        var result=await client.auth.signInWithPassword({email:email,password:password});
+        if(result.error) throw result.error;
+        if(!result.data||!result.data.session||!result.data.session.user) throw new Error('لم يتم إنشاء جلسة دخول. راجع البريد الإلكتروني وكلمة المرور.');
+        msg.textContent='تم تسجيل الدخول. جارٍ فتح لوحة التحكم...';
+        var loginView=document.getElementById('loginView'), appView=document.getElementById('appView');
+        if(loginView) loginView.classList.add('hidden');
+        if(appView) appView.classList.remove('hidden');
+        try{if(typeof window.applyBadgeifySession==='function') window.applyBadgeifySession(result.data.session,true);else if(typeof refresh==='function') refresh().catch(function(e){console.error('BADGEIFY fallback refresh',e);});}catch(sessionError){console.error('BADGEIFY fallback session handler',sessionError);}
+        msg.textContent='تم تسجيل الدخول. إذا لم تفتح اللوحة، حدّث الصفحة مرة واحدة.';
+      }catch(error){console.error('BADGEIFY login fallback:',error);msg.textContent=(error&&error.message)||'تعذر تسجيل الدخول. حاول مرة أخرى.';}
+      finally{btn.disabled=false;delete btn.dataset.loginFallbackBusy;}
+    });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',install,{once:true}); else install();
+})();
+</script>
+
 </body>
 </html>
