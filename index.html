@@ -3952,12 +3952,14 @@ function sendCustomerWhatsApp(customerId){
         return;
     }
 
-    if(!customer.phone){
-        showToast("لا يوجد رقم هاتف للعميل", true);
+    const customerPhone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    if(!customerPhone){
+        showToast("لا يوجد رقم هاتف محفوظ للعميل", true);
         return;
     }
 
-    let number = String(customer.phone)
+    let number = String(customerPhone)
+        .replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));})
         .replace(/\D/g,"");
 
     if(number.startsWith("0")){
@@ -6269,6 +6271,10 @@ function sendPaymentReceiptWhatsApp(){
 
 async function confirmPayment(subscriptionId,periodKey){
 
+    let savedPaymentId=null;
+    let paymentPersisted=false;
+    let platformSyncError=null;
+
     const s=getSubscription(subscriptionId);
     if(!s){
         showToast("الاشتراك غير موجود أو تم تحديث الصفحة. حدّث القائمة وافتح الاشتراك مرة أخرى.",true);
@@ -6363,9 +6369,16 @@ async function confirmPayment(subscriptionId,periodKey){
         if(!result.data || result.data.id==null){
             throw new Error("تم حفظ الدفعة دون إرجاع رقمها؛ حدّث الصفحة وتحقق من سجل المدفوعات قبل إعادة المحاولة.");
         }
+        savedPaymentId=result.data.id;
+        paymentPersisted=true;
 
         if(isPlatformPayment){
-            await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data.id,paymentDate,notes,customer.client_name,(getService(s.app_service_id)||{}).service_name||"اشتراك");
+            try{
+                await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data.id,paymentDate,notes,customer.client_name,(getService(s.app_service_id)||{}).service_name||"اشتراك");
+            }catch(syncError){
+                platformSyncError=syncError;
+                console.error("Subscription payment saved but platform deduction sync failed:",syncError);
+            }
         }
 
         // مدفوعات المنصات تُسجّل كخصم USDT داخل حساب المنصة فقط.
@@ -6416,7 +6429,9 @@ async function confirmPayment(subscriptionId,periodKey){
             notes:notes
         });
 
-        if(financeSync && financeSync.ok===false){
+        if(platformSyncError){
+            showToast("تم حفظ الدفعة، لكن تعذر تسجيل خصم USDT في المنصة: "+(platformSyncError.message||"خطأ غير معروف")+". لا تعِد تأكيد الدفع؛ راجع رصيد المنصة وسجل الحركات أولًا.",true);
+        }else if(financeSync && financeSync.ok===false){
             console.error("Badgeify → Saleh Finance:",financeSync.message,financeSync.error);
             showToast("تم تأكيد الدفع، لكن تعذر إضافة المبلغ إلى لوحة صالح: "+(financeSync.message||"خطأ غير معروف"),true);
         }else{
@@ -6424,12 +6439,13 @@ async function confirmPayment(subscriptionId,periodKey){
         }
 
     }catch(error){
-
-        showToast(
-            error.message,
-            true
-        );
-
+        if(paymentPersisted){
+            console.error("Payment was saved before a later step failed:",savedPaymentId,error);
+            try{await refresh();}catch(refreshError){console.error("Refresh after partial payment save failed:",refreshError);}
+            showToast("تم حفظ الدفعة بالفعل (رقم "+savedPaymentId+") لكن لم تكتمل كل خطوات المزامنة. لا تعِد تأكيد الدفع؛ راجع سجل الدفعات ورصيد لوحة صالح أولًا. "+(error?.message||""),true);
+        }else{
+            showToast(error?.message||"تعذر تأكيد الدفع.",true);
+        }
     }
 
 }
@@ -6483,39 +6499,64 @@ async function deletePayment(paymentId){
 
     if(!confirm(
         state.lang==="ar"
-        ?"هل تريد حذف الدفعة؟ سيتم أيضاً خصمها من لوحة صالح."
-        :"Delete this payment? It will also be removed from Saleh Finance."
+        ?"هل تريد حذف الدفعة؟ سيتم حذف الحركة المرتبطة بها من لوحة صالح، بما فيها خصم USDT من المنصة إن وجد."
+        :"Delete this payment and its linked Saleh Finance movement, including any platform deduction?"
     )) return;
 
     try{
-        const result=await db
-            .from("subscription_payments")
-            .delete()
-            .eq("id",paymentId);
+        const {data:authData,error:authError}=await db.auth.getSession();
+        if(authError) throw authError;
+        const userId=authData?.session?.user?.id||currentUser?.id;
+        if(!userId) throw new Error("جلسة الدخول غير متاحة. سجّل الدخول مرة أخرى قبل حذف الدفعة.");
 
+        // Preflight all linked records before changing either side.
+        const paymentCheck=await db.from("subscription_payments")
+            .select("id").eq("id",paymentId).maybeSingle();
+        if(paymentCheck.error) throw paymentCheck.error;
+        if(!paymentCheck.data){
+            showToast("الدفعة غير موجودة أو تم حذفها بالفعل. حدّث سجل المدفوعات.",true);
+            await refresh();
+            return;
+        }
+
+        const linked=await db.from("personal_finance_transactions")
+            .select("id,source_type")
+            .eq("user_id",userId)
+            .eq("source_id",String(paymentId))
+            .in("source_type",["subscription_payment","platform_deduction"]);
+        if(linked.error) throw linked.error;
+
+        const result=await db.from("subscription_payments")
+            .delete().eq("id",paymentId).select("id").maybeSingle();
         if(result.error) throw result.error;
+        if(!result.data){
+            throw new Error("لم يؤكد النظام حذف الدفعة. لم يتم حذف الحركات المالية المرتبطة.");
+        }
 
-        const financeResult=await db
-            .from("personal_finance_transactions")
+        // Both ordinary receipts and USDT platform deductions share the payment id.
+        // Remove all linked rows for this owner so balances are recalculated correctly.
+        const financeResult=await db.from("personal_finance_transactions")
             .delete()
-            .eq("source_type","subscription_payment")
-            .eq("source_id",String(paymentId));
+            .eq("user_id",userId)
+            .eq("source_id",String(paymentId))
+            .in("source_type",["subscription_payment","platform_deduction"]);
 
         if(financeResult.error){
-            console.error("Payment deleted but Saleh Finance cleanup failed:",financeResult.error);
+            console.error("Payment deleted but linked finance cleanup failed:",financeResult.error,linked.data);
+            await refresh();
             showToast(
-                "تم حذف الدفعة، لكن تعذر حذفها من لوحة صالح: "+financeResult.error.message,
+                "تم حذف الدفعة، لكن تعذر تنظيف كل الحركات المرتبطة بها في لوحة صالح. لا تعِد تسجيل الدفعة؛ راجع حركة المصدر "+String(paymentId)+".",
                 true
             );
-        }else{
-            showToast(t("deleted"));
+            return;
         }
 
         await refresh();
+        showToast(t("deleted"));
 
     }catch(error){
         console.error("deletePayment:",error);
-        showToast(error.message,true);
+        showToast(error?.message||"تعذر حذف الدفعة بأمان.",true);
     }
 }
 
@@ -6552,7 +6593,13 @@ async function savePaymentEdit(paymentId){
         await logActivity("PAYMENT_EDIT","payment",paymentId,"Edited payment");
         closeModal();
         await refresh();
-        showToast(t("saved"));
+        if(!financeEdit.ok){
+            showToast("تم تعديل الدفعة في سجل الاشتراكات، لكن تعذرت مزامنة لوحة صالح. لا تعِد تسجيل الدفعة؛ افتح الحركة المرتبطة وحاول المزامنة مرة أخرى. "+(financeEdit.message||financeEdit.error?.message||""),true);
+        }else if(financeEdit.skipped){
+            showToast("تم تعديل الدفعة. لم توجد حركة مالية مرتبطة بها في لوحة صالح للمزامنة.",true);
+        }else{
+            showToast(t("saved"));
+        }
 
     }catch(error){
         showToast(error.message,true);
@@ -10110,8 +10157,9 @@ async function sendPortalWhatsApp(customerId, link){
         return;
     }
 
-    if(!customer.phone){
-        showToast("لا يوجد رقم هاتف للعميل", true);
+    const customerPhone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    if(!customerPhone){
+        showToast("لا يوجد رقم هاتف محفوظ للعميل", true);
         return;
     }
 
@@ -10152,7 +10200,7 @@ async function sendPortalWhatsApp(customerId, link){
         }
     );
 
-    openWhatsAppBusiness(customer.phone, message);
+    openWhatsAppBusiness(customerPhone, message);
 
 }
 
@@ -11293,22 +11341,52 @@ async function syncSalehPayment(amount,paymentId,customerId,traderId,method,date
 
 async function syncSalehPaymentEdit(paymentId,amount,date,notes){
     try{
-        const r=await db
-            .from('personal_finance_transactions')
-            .update({
-                amount:Number(amount),
-                transaction_date:date,
-                notes:notes||null,
-                updated_at:new Date().toISOString()
-            })
-            .eq('source_type','subscription_payment')
-            .eq('source_id',String(paymentId));
+        const {data:authData,error:authError}=await db.auth.getSession();
+        if(authError) throw authError;
+        const userId=authData?.session?.user?.id||currentUser?.id;
+        if(!userId) throw new Error('جلسة الدخول غير متاحة لمزامنة الحركة المالية.');
 
-        if(r.error) throw r.error;
-        return {ok:true};
+        const lookup=await db.from('personal_finance_transactions')
+            .select('id,source_type,amount,notes')
+            .eq('user_id',userId)
+            .eq('source_id',String(paymentId))
+            .in('source_type',['subscription_payment','platform_deduction']);
+        if(lookup.error) throw lookup.error;
+        const rows=lookup.data||[];
+        if(!rows.length) return {ok:true,skipped:true};
+
+        for(const row of rows){
+            const isPlatform=row.source_type==='platform_deduction';
+            let updatedNotes=notes||null;
+            if(isPlatform){
+                let metadata={};
+                try{
+                    const parsed=JSON.parse(row.notes||'{}');
+                    if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)) metadata=parsed;
+                    else if(row.notes) metadata={legacy_notes:row.notes};
+                }catch(_){
+                    if(row.notes) metadata={legacy_notes:row.notes};
+                }
+                metadata.notes=notes||'';
+                metadata.currency=metadata.currency||'USDT';
+                updatedNotes=JSON.stringify(metadata);
+            }
+
+            const update=await db.from('personal_finance_transactions')
+                .update({
+                    amount:isPlatform?-Math.abs(Number(amount)):Math.abs(Number(amount)),
+                    transaction_date:date,
+                    notes:updatedNotes,
+                    updated_at:new Date().toISOString()
+                })
+                .eq('user_id',userId)
+                .eq('id',row.id);
+            if(update.error) throw update.error;
+        }
+        return {ok:true,updated:rows.length};
     }catch(e){
         console.error('Saleh Finance payment edit sync:',e);
-        return {ok:false,error:e};
+        return {ok:false,error:e,message:e?.message||'تعذر مزامنة الحركة المالية'};
     }
 }
 let salehDonationsVisible=false;
@@ -12798,13 +12876,20 @@ applyTheme();
       if(!select?.value||!a||!a.id||!isPlatform(a))throw new Error('حساب المنصة المحدد غير موجود في البيانات المحمّلة. حدّث لوحة صالح ثم جرّب مرة أخرى.');
       if(!Number.isFinite(amt)||amt<=0)throw new Error('أدخل مبلغ خصم صحيح بعملة USDT.');
       stage='حفظ حركة الخصم في قاعدة البيانات';
-      if(editId){
-        const del=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_type','platform_deduction').eq('source_id',String(editId));
-        if(del.error)throw del.error;
-      }
       const sourceId=editId||id();
-      const q=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes,currency,kind:'platform_subscription_deduction'})});
-      if(q.error)throw q.error;
+      const payload={user_id:userId,account_id:a.id,amount:-amt,transaction_type:'expense',category:'خصم اشتراك من المنصة',description:reason||('خصم من '+a.account_name),source_type:'platform_deduction',source_id:sourceId,transaction_date:d,notes:JSON.stringify({reference,notes,currency,kind:'platform_subscription_deduction'}),updated_at:new Date().toISOString()};
+      if(editId){
+        const existing=await db.from('personal_finance_transactions').select('id')
+          .eq('user_id',userId).eq('source_type','platform_deduction').eq('source_id',String(editId)).maybeSingle();
+        if(existing.error)throw existing.error;
+        if(!existing.data)throw new Error('لم يتم العثور على الخصم القديم؛ لم يتم حذف أي حركة. حدّث لوحة صالح وحاول مرة أخرى.');
+        const updated=await db.from('personal_finance_transactions').update(payload)
+          .eq('user_id',userId).eq('id',existing.data.id);
+        if(updated.error)throw updated.error;
+      }else{
+        const q=await db.from('personal_finance_transactions').insert(payload);
+        if(q.error)throw q.error;
+      }
       stage='إعادة تحميل أرصدة لوحة صالح';
       await loadFinanceData();
       stage='إعادة عرض قسم المنصات';

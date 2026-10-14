@@ -2,9 +2,25 @@
 -- تشغيل مرة واحدة في Supabase SQL Editor
 -- هذه الترقية تخص نظام PERSONAL FINANCE فقط.
 
+-- Stop before changing indexes if duplicate platform/account names already exist.
+do $
+begin
+  if exists (
+    select 1
+    from public.personal_finance_accounts
+    group by user_id, lower(account_name)
+    having count(*) > 1
+  ) then
+    raise exception 'Duplicate account names exist for a user. Resolve those duplicates before running this migration; no indexes were changed.';
+  end if;
+end
+$;
+
 drop index if exists public.personal_finance_accounts_user_type_uq;
 drop index if exists public.personal_finance_accounts_user_account_type_key;
 drop index if exists public.personal_finance_accounts_user_id_account_type_key;
+-- The base schema creates this exact index name; remove it too so each user can own 3+ platform accounts.
+drop index if exists public.personal_finance_accounts_user_type_idx;
 
 create unique index if not exists personal_finance_accounts_user_name_uq
 on public.personal_finance_accounts(user_id, lower(account_name));
