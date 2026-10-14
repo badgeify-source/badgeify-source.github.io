@@ -2610,10 +2610,11 @@ function buildWhatsAppMessage(
 }
 
 
-function sendWhatsApp(
+async function sendWhatsApp(
     customerId,
     subscriptionId,
-    type
+    type,
+    periodKey
 ){
 
     const customer =
@@ -2653,6 +2654,44 @@ function sendWhatsApp(
             "رقم هاتف العميل غير صحيح",
             true
         );
+        return;
+    }
+
+    // If this subscription is paid, send the saved payment receipt instead of a reminder.
+    if(type==="receipt" || type==="paid"){
+        try{
+            let paymentQuery=db.from("subscription_payments").select("*").eq("subscription_id",subscriptionId);
+            if(periodKey) paymentQuery=paymentQuery.eq("paid_month",periodKey);
+            const paymentResult=await paymentQuery.order("payment_date",{ascending:false}).limit(1);
+            if(paymentResult.error) throw paymentResult.error;
+            const payment=paymentResult.data&&paymentResult.data[0];
+            if(!payment){
+                showToast("لم يتم العثور على دفعة محفوظة لهذا الاشتراك لإرسال إيصالها.",true);
+                return;
+            }
+            const service=state.services.find(function(x){return String(x.id)===String(subscription.app_service_id);});
+            const outstanding=getCustomerOutstandingForReceipt(customer.id,subscriptionId);
+            const receiptData={
+                customerName:customer.client_name||"-",
+                phone:customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"",
+                serviceName:service?.service_name||subscription.page_name||"اشتراك",
+                amount:Number(payment.amount||0),
+                currency:payment.currency||subscription.currency||state.settings.currency||"EGP",
+                paymentMethod:payment.payment_method||"غير مسجل في سجل الدفعة",
+                methodDetails:payment.method_details||"",
+                dueDate:payment.paid_month||subscriptionDueDate(subscription),
+                paymentDate:payment.payment_date||"",
+                payerName:payment.payer_name||customer.client_name||"",
+                payerRelationText:payment.payer_relation||"غير مسجل",
+                outstanding:outstanding,
+                remainingTotal:outstanding.reduce(function(sum,row){return sum+Number(row.amount||0);},0),
+                notes:payment.notes||""
+            };
+            openWhatsAppBusiness(receiptData.phone,buildPaymentReceiptMessage(receiptData));
+        }catch(error){
+            console.error("Send saved payment receipt:",error);
+            showToast("تعذر تجهيز إيصال الدفع: "+(error.message||"خطأ غير معروف"),true);
+        }
         return;
     }
 
@@ -4538,7 +4577,7 @@ function renderSubscriptions(){
                                 <i class="fa-solid fa-check"></i>
                             </button>`:""}
                             ${customer?.phone?`
-                            <button class="mini-btn wa" onclick="sendWhatsApp(${customer.id},${s.id},'${status.type==="overdue"?"overdue":status.type==="due"?"due":"payment"}')" title="WhatsApp">
+                            <button class="mini-btn wa" onclick="sendWhatsApp(${customer.id},${s.id},'${status.type==="paid"?"receipt":status.type==="overdue"?"overdue":status.type==="due"?"due":"payment"}','${s._periodKey}')" title="WhatsApp">
                                 <i class="fa-brands fa-whatsapp"></i>
                             </button>`:""}
                             ${customer?`
@@ -7572,7 +7611,7 @@ function openTraderAccount(traderId){
                                         `
                                         <button
                                         class="mini-btn wa"
-                                        onclick="sendWhatsApp(${c.id},${s.id},'${paymentState.type==="overdue"?"overdue":paymentState.type==="due"?"due":"payment"}')">
+                                        onclick="sendWhatsApp(${c.id},${s.id},'${paymentState.type==="paid"?"receipt":paymentState.type==="overdue"?"overdue":paymentState.type==="due"?"due":"payment"}','${s._periodKey}')">
                                             <i class="fa-brands fa-whatsapp"></i>
                                             واتساب
                                         </button>
