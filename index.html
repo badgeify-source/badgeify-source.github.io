@@ -6220,9 +6220,11 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 function sendPaymentReceiptWhatsApp(){
     const data=window._lastPaymentReceipt;
     if(!data){showToast("لا يوجد إيصال جاهز للإرسال",true);return;}
-    let number=String(data.phone||"").replace(/\D/g,"");
+    let number=String(data.phone||"").replace(/[٠-٩]/g,d=>String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g,"");
+    if(number.startsWith("00"))number=number.substring(2);
     if(number.startsWith("0"))number="20"+number.substring(1);
-    if(!number||number.length<10){showToast("رقم هاتف العميل غير صحيح",true);return;}
+    if(number.startsWith("20")&&number.length===12){} 
+    if(!number||number.length<10||number.length>15){showToast("رقم واتساب العميل غير موجود أو غير صحيح. افتح بيانات العميل وتأكد من حفظ رقم الهاتف.",true);return;}
     window.location.href="https://wa.me/"+number+"?text="+encodeURIComponent(data.message);
 }
 
@@ -6360,7 +6362,7 @@ async function confirmPayment(subscriptionId,periodKey){
 
         showPaymentReceiptModal({
             customerName:customer?.client_name||"-",
-            phone:customer?.phone||"",
+            phone:customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number||"",
             serviceName:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",
             amount:amount,
             currency:isPlatformPayment?"USDT":(s.currency||state.settings.currency||"EGP"),
