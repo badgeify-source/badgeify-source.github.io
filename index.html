@@ -2639,8 +2639,8 @@ async function sendWhatsApp(
         return;
     }
 
-    const rawPhone =
-        String(customer.phone || "").replace(/\\D/g,"");
+    const customerPhone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    const rawPhone=String(customerPhone).replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));}).replace(/[^0-9]/g,"");
 
     let number = rawPhone;
 
@@ -3826,7 +3826,7 @@ function renderCustomers(){
 
 
                                     ${
-                                        c.phone
+                                        (c.phone||c.whatsapp||c.whatsapp_number||c.mobile||c.phone_number)
                                         ?
 
                                         `
@@ -4576,7 +4576,7 @@ function renderSubscriptions(){
                             <button class="mini-btn pay" onclick="openPaymentModal(${s.id},'${s._periodKey}')" title="${t("confirmPayment")}">
                                 <i class="fa-solid fa-check"></i>
                             </button>`:""}
-                            ${customer?.phone?`
+                            ${(customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number)?`
                             <button class="mini-btn wa" onclick="sendWhatsApp(${customer.id},${s.id},'${status.type==="paid"?"receipt":status.type==="overdue"?"overdue":status.type==="due"?"due":"payment"}','${s._periodKey}')" title="WhatsApp">
                                 <i class="fa-brands fa-whatsapp"></i>
                             </button>`:""}
