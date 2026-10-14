@@ -2728,6 +2728,37 @@ async function sendWhatsApp(
         state.settings.currency ||
         "EGP";
 
+    // Add the secure customer portal URL to overdue WhatsApp reminders.
+    // Reuse an active token; create one only when the owner sends this reminder.
+    let portalLink = "";
+    if(type === "overdue"){
+        try{
+            let tokenResult = await db
+                .from("customer_portal_tokens")
+                .select("token")
+                .eq("customer_id", customerId)
+                .eq("is_active", true)
+                .order("id", {ascending:false})
+                .limit(1);
+            if(tokenResult.error) throw tokenResult.error;
+            let activeToken = tokenResult.data?.[0];
+            if(!activeToken){
+                const newToken = crypto.randomUUID().replace(/-/g,"") + crypto.randomUUID().replace(/-/g,"");
+                tokenResult = await db.from("customer_portal_tokens")
+                    .insert({customer_id:customerId, token:newToken, is_active:true})
+                    .select("token").single();
+                if(tokenResult.error) throw tokenResult.error;
+                activeToken = tokenResult.data;
+            }
+            if(activeToken?.token){
+                portalLink = new URL("client.html", window.location.href).href + "?token=" + encodeURIComponent(activeToken.token);
+            }
+        }catch(portalError){
+            console.error("Unable to prepare customer portal link for overdue reminder:",portalError);
+            showToast("تعذر تجهيز رابط بوابة العميل؛ سيتم إرسال تذكير التأخير بدون الرابط.",true);
+        }
+    }
+
     const values = {
         client_name: customer.client_name || "",
         phone: customer.phone || "",
@@ -2736,16 +2767,19 @@ async function sendWhatsApp(
         currency: currency,
         page_name: subscription?.page_name || "",
         platform: subscription?.platform || "",
-        company_name: state.settings.company_name || "BADGEIFY"
+        company_name: state.settings.company_name || "BADGEIFY",
+        portal_link: portalLink
     };
 
-    const message =
-        String(template).replace(
-            /{{(\w+)}}/g,
-            function(_,key){
-                return values[key] ?? "";
-            }
-        );
+    let message = String(template).replace(
+        /{{(\w+)}}/g,
+        function(_,key){ return values[key] ?? ""; }
+    );
+
+    // Older saved templates may not contain the placeholder, so append the link.
+    if(type === "overdue" && portalLink && !String(template).includes("{{portal_link}}")){
+        message += "\n\nلمتابعة اشتراكك والمدفوعات، افتح رابط بوابة العميل:\n" + portalLink;
+    }
 
     const encodedMessage =
         encodeURIComponent(String(message || ""));
