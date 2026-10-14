@@ -3952,12 +3952,14 @@ function sendCustomerWhatsApp(customerId){
         return;
     }
 
-    if(!customer.phone){
-        showToast("لا يوجد رقم هاتف للعميل", true);
+    const customerPhone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    if(!customerPhone){
+        showToast("لا يوجد رقم هاتف محفوظ للعميل", true);
         return;
     }
 
-    let number = String(customer.phone)
+    let number = String(customerPhone)
+        .replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));})
         .replace(/\D/g,"");
 
     if(number.startsWith("0")){
@@ -10155,8 +10157,9 @@ async function sendPortalWhatsApp(customerId, link){
         return;
     }
 
-    if(!customer.phone){
-        showToast("لا يوجد رقم هاتف للعميل", true);
+    const customerPhone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    if(!customerPhone){
+        showToast("لا يوجد رقم هاتف محفوظ للعميل", true);
         return;
     }
 
@@ -10197,7 +10200,7 @@ async function sendPortalWhatsApp(customerId, link){
         }
     );
 
-    openWhatsAppBusiness(customer.phone, message);
+    openWhatsAppBusiness(customerPhone, message);
 
 }
 
