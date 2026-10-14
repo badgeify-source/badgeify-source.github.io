@@ -4,3 +4,13 @@ user_id uuid not null,
 category_name text not null,
 created_at timestamptz not null default now()
 );
+
+-- Restrict each user's expense categories to their own authenticated account.
+alter table public.personal_finance_expense_categories enable row level security;
+
+drop policy if exists "personal_finance_expense_categories_owner_all" on public.personal_finance_expense_categories;
+create policy "personal_finance_expense_categories_owner_all"
+on public.personal_finance_expense_categories
+for all
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
