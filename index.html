@@ -4583,8 +4583,8 @@ function renderSubscriptions(){
                                 <i class="fa-brands fa-whatsapp"></i>
                             </button>`:""}
                             ${customer?`
-                            <button class="mini-btn" title="رابط العميل" onclick="openCustomerPortal(${customer.id})">
-                                <i class="fa-solid fa-link"></i>
+                            <button class="mini-btn" title="رابط العميل" aria-label="رابط العميل" onclick="openCustomerPortal(${customer.id})" style="${status.type==="overdue"?"display:inline-flex;align-items:center;gap:5px;padding:5px 9px;white-space:nowrap;":""}">
+                                <i class="fa-solid fa-link"></i>${status.type==="overdue"?"رابط العميل":""}
                             </button>`:""}
                             <button class="mini-btn" onclick="openSubscriptionModal(${s.id})" title="${t("edit")}">
                                 <i class="fa-solid fa-pen"></i>
