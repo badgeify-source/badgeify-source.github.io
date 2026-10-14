@@ -2700,7 +2700,7 @@ async function sendWhatsApp(
     if(type==="overdue"){
         template =
             state.settings.wa_overdue_reminder ||
-            "السلام عليكم {{client_name}}\\nاشتراك {{service_name}} متأخر عن السداد. المبلغ المطلوب {{amount}} {{currency}}.";
+            "السلام عليكم {{client_name}}\\nاشتراك {{service_name}} متأخر عن السداد. المبلغ المطلوب {{amount}} {{currency}}.\\nرابط متابعة اشتراكك: {{client_link}}";
     }else if(type==="due"){
         template =
             state.settings.wa_due_reminder ||
@@ -2768,7 +2768,8 @@ async function sendWhatsApp(
         page_name: subscription?.page_name || "",
         platform: subscription?.platform || "",
         company_name: state.settings.company_name || "BADGEIFY",
-        portal_link: portalLink
+        portal_link: portalLink,
+        client_link: portalLink
     };
 
     let message = String(template).replace(
@@ -2777,7 +2778,7 @@ async function sendWhatsApp(
     );
 
     // Older saved templates may not contain the placeholder, so append the link.
-    if(type === "overdue" && portalLink && !String(template).includes("{{portal_link}}")){
+    if(type === "overdue" && portalLink && !String(template).includes("{{portal_link}}") && !String(template).includes("{{client_link}}")){
         message += "\n\nلمتابعة اشتراكك والمدفوعات، افتح رابط بوابة العميل:\n" + portalLink;
     }
 
