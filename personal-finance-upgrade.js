@@ -195,10 +195,19 @@ U.saveSalehPlatformDeduction = async function(editId){
   try{
     const a=pfAccount0(document.getElementById("pfDeductionAccount")?.value),subId=document.getElementById("pfDeductionSub")?.value||null,amt=Number(document.getElementById("pfDeductionAmount")?.value||0),date=document.getElementById("pfDeductionDate")?.value||today0(),ref=document.getElementById("pfDeductionRef")?.value.trim(),customer=document.getElementById("pfDeductionCustomer")?.value.trim(),notes=document.getElementById("pfDeductionNotes")?.value.trim();
     if(!a||!/bybit|binance|crypto/i.test(String(a.account_name||""))||amt<=0) throw new Error("اختر منصة صحيحة وأدخل مبلغ الخصم.");
-    if(editId) await db.from("personal_finance_transactions").delete().eq("user_id",currentUser.id).eq("source_type","platform_deduction").eq("source_id",String(editId));
     const note=JSON.stringify({subscription_id:subId,customer,reference:ref,notes});
-    const r=await db.from("personal_finance_transactions").insert({user_id:currentUser.id,account_id:a.id,amount:-Math.abs(amt),transaction_type:"expense",category:"خصم اشتراك من المنصة",description:customer||"خصم من "+a.account_name,source_type:"platform_deduction",source_id:editId||uuid0(),transaction_date:date,notes:note});
-    if(r.error) throw r.error;
+    const sourceId=editId||uuid0();
+    const payload={user_id:currentUser.id,account_id:a.id,amount:-Math.abs(amt),transaction_type:"expense",category:"خصم اشتراك من المنصة",description:customer||"خصم من "+a.account_name,source_type:"platform_deduction",source_id:sourceId,transaction_date:date,notes:note,updated_at:new Date().toISOString()};
+    if(editId){
+      const existing=await db.from("personal_finance_transactions").select("id").eq("user_id",currentUser.id).eq("source_type","platform_deduction").eq("source_id",String(editId)).maybeSingle();
+      if(existing.error) throw existing.error;
+      if(!existing.data) throw new Error("لم يتم العثور على الخصم القديم؛ لم يتم حذف أي حركة. حدّث لوحة صالح وحاول مرة أخرى.");
+      const updated=await db.from("personal_finance_transactions").update(payload).eq("user_id",currentUser.id).eq("id",existing.data.id);
+      if(updated.error) throw updated.error;
+    }else{
+      const inserted=await db.from("personal_finance_transactions").insert(payload);
+      if(inserted.error) throw inserted.error;
+    }
     U.closeModal();await U.refresh();U.showToast(editId?"تم تعديل خصم المنصة.":"تم تسجيل خصم الاشتراك من المنصة.");
   }catch(e){U.showToast(e.message||"تعذر تسجيل الخصم.",true);}
 };
@@ -222,7 +231,7 @@ async function getGoals(){
   const r=await db.from("personal_finance_goals").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
   if(r.error) throw r.error; return r.data||[];
 }
-U.openSalehAdvancedFinance=function(){
+U.openSalehAdvancedFinance=async function(){
   U.openModal("الأدوات المتقدمة",
     '<div class="grid cols"><div class="card"><div class="card-head"><h3>ميزانية الشهر</h3></div><div class="card-body"><div class="field"><label>البند</label><input id="advBudgetCat" placeholder="مثال: البيت"></div><div class="field"><label>المبلغ</label><input id="advBudgetAmount" type="number" min="0" step="0.01"></div><button class="gold-btn" onclick="saveSalehBudgetLine()">حفظ الميزانية</button><div id="advBudgetList" style="margin-top:12px">جاري التحميل...</div></div></div><div class="card"><div class="card-head"><h3>الأهداف المالية</h3></div><div class="card-body"><div class="field"><label>اسم الهدف</label><input id="advGoalName" placeholder="مثال: شراء جهاز"></div><div class="field"><label>المبلغ المستهدف</label><input id="advGoalTarget" type="number" min="0" step="0.01"></div><div class="field"><label>المبلغ الحالي</label><input id="advGoalCurrent" type="number" min="0" step="0.01" value="0"></div><div class="field"><label>تاريخ الهدف</label><input id="advGoalDate" type="date"></div><button class="gold-btn" onclick="saveSalehGoal()">حفظ الهدف</button><div id="advGoalList" style="margin-top:12px">جاري التحميل...</div></div></div></div>',
     '<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
