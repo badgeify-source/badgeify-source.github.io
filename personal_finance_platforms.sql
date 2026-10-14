@@ -3,7 +3,7 @@
 -- هذه الترقية تخص نظام PERSONAL FINANCE فقط.
 
 -- Stop before changing indexes if duplicate platform/account names already exist.
-do $
+do $$
 begin
   if exists (
     select 1
@@ -14,7 +14,7 @@ begin
     raise exception 'Duplicate account names exist for a user. Resolve those duplicates before running this migration; no indexes were changed.';
   end if;
 end
-$;
+$$;
 
 drop index if exists public.personal_finance_accounts_user_type_uq;
 drop index if exists public.personal_finance_accounts_user_account_type_key;
