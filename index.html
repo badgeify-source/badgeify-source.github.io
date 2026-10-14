@@ -2741,7 +2741,7 @@ async function sendWhatsApp(
 
     const message =
         String(template).replace(
-            /{{(\\w+)}}/g,
+            /{{(\w+)}}/g,
             function(_,key){
                 return values[key] ?? "";
             }
