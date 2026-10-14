@@ -12506,8 +12506,14 @@ refresh;
 
 // Keep the Supabase auth callback synchronous; restore the saved session explicitly on startup.
 let badgeifyLastSessionUserId = null;
-function applyBadgeifySession(session) {
+function applyBadgeifySession(session, eventName) {
     const user = session?.user || null;
+    // A late INITIAL_SESSION/null callback must not erase a session already restored by getSession().
+    // Only an explicit SIGNED_OUT event or the authoritative startup check may clear that state.
+    if (!user && eventName !== "SIGNED_OUT" && eventName !== "RESTORE_CHECK" &&
+        badgeifyLastSessionUserId && currentUser?.id === badgeifyLastSessionUserId) {
+        return;
+    }
     currentUser = user;
     if (user) {
         badgeifyLastSessionUserId = user.id;
@@ -12529,7 +12535,7 @@ function applyBadgeifySession(session) {
 }
 
 db.auth.onAuthStateChange(function(event, session) {
-    applyBadgeifySession(session);
+    applyBadgeifySession(session, event);
 });
 
 // Independent startup check: recover the persisted session even if the initial auth event
@@ -12542,7 +12548,7 @@ db.auth.getSession().then(({ data, error }) => {
         return;
     }
     const session = data?.session || null;
-    applyBadgeifySession(session);
+    applyBadgeifySession(session, "RESTORE_CHECK");
     if (!session?.user) {
         // Diagnostic only: never read or display the actual token/session contents.
         let savedAuthKeyCount = 0;
