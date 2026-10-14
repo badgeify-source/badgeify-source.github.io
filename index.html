@@ -2772,13 +2772,13 @@ async function sendWhatsApp(
     };
 
     let message = String(template).replace(
-        /{{(\\w+)}}/g,
+        /{{(\w+)}}/g,
         function(_,key){ return values[key] ?? ""; }
     );
 
     // Older saved templates may not contain the placeholder, so append the link.
     if(type === "overdue" && portalLink && !String(template).includes("{{portal_link}}")){
-        message += "\\n\\nلمتابعة اشتراكك والمدفوعات، افتح رابط بوابة العميل:\\n" + portalLink;
+        message += "\n\nلمتابعة اشتراكك والمدفوعات، افتح رابط بوابة العميل:\n" + portalLink;
     }
 
     const encodedMessage =
