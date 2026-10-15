@@ -13543,7 +13543,18 @@ window.saveSalehOpeningBalances=async function(){
    else if(t.includes('الجيب')||t.includes('جيبي')||t.toLowerCase().includes('pocket')){icon.querySelector('i')?.remove();if(!icon.querySelector('.saleh-pocket-mark'))icon.insertAdjacentHTML('afterbegin','<span class="saleh-pocket-mark" role="img" aria-label="Pocket"><i class="fa-solid fa-wallet"></i></span>');}
   });
  }
+ // The finance dashboard is rendered dynamically, so re-apply branding whenever its cards are created.
+ let brandingQueued=false;
+ function scheduleReplace(){
+  if(brandingQueued)return;
+  brandingQueued=true;
+  requestAnimationFrame(()=>{brandingQueued=false;replace();});
+ }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',replace,{once:true});else replace();
+ if(document.body&&window.MutationObserver){
+  const observer=new MutationObserver(scheduleReplace);
+  observer.observe(document.body,{childList:true,subtree:true});
+ }
 })();
 </script>
 </body>
