@@ -11726,21 +11726,7 @@ window.toggleSalehMovements=window.toggleSalehMovements||function(){
  el.style.display=opening?'block':'none';
  if(opening)el.scrollIntoView({behavior:'smooth',block:'start'});
 };
- const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
- const get=(type)=>A.find(a=>String(a.account_type||a.type||'').toLowerCase()===type);
- const val=(type)=>{const a=get(type);return a?financeBalance(a.id):0;};
- const html='<div class="finance-modal-shell">'+
-  '<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-vault"></i></div><div><h4>الأرصدة الافتتاحية</h4><p>حدد الرصيد الموجود فعليًا في كل حساب قبل بدء تسجيل الحركات. الرصيد الافتتاحي لا يُحسب دخلًا ولا ربحًا.</p></div></div>'+
-  '<div class="form-grid">'+
-  '<div class="field finance-field finance-required"><label><i class="fa-solid fa-bag-shopping saleh-brand-icon saleh-pocket-icon"></i> الكاش / الجيب</label><input id="salehOpenCash" type="number" step="0.01" value="'+val('cash')+'" placeholder="مثال: 5000"></div>'+
-  '<div class="field finance-field finance-required"><label><span class="saleh-instapay-mark">i</span> InstaPay</label><input id="salehOpenInstapay" type="number" step="0.01" value="'+val('instapay')+'" placeholder="مثال: 3000"></div>'+
-  '<div class="field finance-field finance-required"><label><i class="fa-solid fa-mobile-screen-button saleh-brand-icon saleh-vodafone-icon"></i> Vodafone Cash</label><input id="salehOpenVodafone" type="number" step="0.01" value="'+val('vodafone_cash')+'" placeholder="مثال: 2000"></div>'+
-  '</div>'+
-  '<div class="finance-reconcile-note" style="margin-top:12px">سيتم تحديث الرصيد الافتتاحي لكل حساب فقط، مع الحفاظ على جميع الحركات السابقة وعدم اعتبار المبلغ إيرادًا.</div>'+
-  '</div>';
- openModal('الأرصدة الافتتاحية',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalances()"><i class="fa-solid fa-check"></i> حفظ الأرصدة</button></div>');
- document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
-}
+
 async function openSalehLoan(personId,direction){
  const A=state.financeAccounts||[],P=state.loanPeople||[],fixedPerson=personId?loanPerson(personId):null,fixedDirection=direction==='borrowed'?'borrowed':'lent',fromPerson=!!fixedPerson;
  const directionField=fromPerson?'<input type="hidden" id="loanDirection" value="'+fixedDirection+'">':'<div class="field full"><label>نوع العملية</label><select id="loanDirection" onchange="updateSalehLoanDirectionUI()"><option value="lent">فلوس مسلفها — ليا فلوس عند الشخص</option><option value="borrowed">فلوس مستلفها — عليَّ فلوس للشخص</option></select></div>';
