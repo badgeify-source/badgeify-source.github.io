@@ -11871,7 +11871,7 @@ async function saveSalehFinanceEntry(kind){
  if(r.error){showToast(r.error.message,true);return;}
  closeModal();await refresh();showToast(kind==='expense'?'تم تسجيل المصروف':'تم تسجيل المبلغ المستلم');
 }
-async 
+
 async function openSalehRecharge(service){
  const isPubg=service==='pubg',label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل',A=state.financeAccounts||[];
  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid '+(isPubg?'fa-gamepad':'fa-mobile-screen-button')+'"></i></div><div><h4>'+label+'</h4><p>سجّل المبلغ المستلم أو تكلفة الشحن مباشرة في نفس حساباتك الحالية، بدون بيانات عملاء.</p></div></div><div class="form-grid">'+
