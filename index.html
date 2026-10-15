@@ -11588,15 +11588,15 @@ function renderPersonalFinance(){
   }).join('')||'<tr><td colspan="6"><div class="empty">لا توجد حركات مطابقة للبحث.</div></td></tr>';
 
   document.getElementById('content').innerHTML=
-   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehRecharge(\'pubg\')"><i class="fa-solid fa-gamepad"></i> شحن ببجي</button><button class="ghost-btn" onclick="openSalehRecharge(\'mobile\')"><i class="fa-solid fa-mobile-screen-button"></i> شحن رصيد الموبايل</button><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeople()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="gold-btn saleh-donations-top-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="document.getElementById(\'salehMovementsSection\')?.scrollIntoView({behavior:\'smooth\',block:\'start\'})"><i class="fa-solid fa-list-ul"></i> الحركات</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
+   '<div class="page-head finance-page-head"><div><div class="finance-kicker">PERSONAL FINANCE</div><h1>لوحة تحكم صالح</h1><p>كل حركة مالية تتسجل مرة واحدة، والأرصدة تتحدث تلقائيًا.</p></div><div class="page-actions"><button class="ghost-btn" onclick="openSalehRecharge(\'pubg\')"><i class="fa-solid fa-gamepad"></i> شحن ببجي</button><button class="ghost-btn" onclick="openSalehRecharge(\'mobile\')"><i class="fa-solid fa-mobile-screen-button"></i> شحن رصيد الموبايل</button><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-arrow-down"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-arrow-up"></i> مبلغ مستلم</button><button class="ghost-btn" onclick="openSalehFinanceTransfer()"><i class="fa-solid fa-right-left"></i> تحويل</button><button class="ghost-btn" onclick="openSalehLoan()"><i class="fa-solid fa-hand-holding-dollar"></i> سلفة جديدة</button><button class="ghost-btn" onclick="openSalehPeople()"><i class="fa-solid fa-users"></i> الأشخاص</button><button class="gold-btn saleh-donations-top-btn" onclick="toggleSalehDonations()"><i class="fa-solid fa-heart"></i> التبرعات</button><button class="gold-btn" onclick="openSalehOpeningBalance()"><i class="fa-solid fa-vault"></i> الرصيد الافتتاحي</button><button class="ghost-btn" onclick="salehFinanceExpenseCategoriesButton()"><i class="fa-solid fa-list"></i> بنود المصاريف</button><button class="ghost-btn" onclick="toggleSalehMovements()"><i class="fa-solid fa-list-ul"></i> الحركات</button><button class="ghost-btn" onclick="exportSalehFinanceCSV()"><i class="fa-solid fa-file-export"></i> تصدير الحركات</button></div></div>'+
    '<div class="finance-hero"><div><span>السيولة الحالية</span><strong>'+money(total)+' <small>'+esc(cur)+'</small></strong><p>إجمالي كل حساباتك الحالية</p></div><div class="finance-hero-side"><span>صافي الشهر</span><b>'+money(profit)+' '+esc(cur)+'</b><small>مقبوضات '+money(income)+' • مصروفات '+money(expense)+'</small></div></div>'+
    '<div class="grid stats finance-stat-grid">'+cards.map(x=>'<div class="stat '+x[3]+'"><div class="stat-icon"><i class="fa-solid '+x[2]+'"></i></div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-head"><div><h3><i class="fa-solid fa-gamepad"></i> شحن الألعاب ورصيد الموبايل</h3><span class="muted">إجماليات مسجلة من الحركات الحالية — بدون ملفات عملاء أو بطاقات طلبات.</span></div></div></div><div class="card-body"><div class="finance-kpis"><div class="finance-kpi"><span>المبالغ المستلمة</span><b>'+money(rechargeIncome)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>تكلفة الشحن</span><b>'+money(rechargeCost)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي المكسب</span><b>'+money(rechargeProfit)+' '+esc(cur)+'</b></div></div></div></div>' +
    '<div class="finance-kpis"><div class="finance-kpi"><span>مقبوضات الشهر</span><b>'+money(income)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>مصروفات الشهر</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي الربح / الحركة</span><b>'+money(profit)+' '+esc(cur)+'</b></div><div class="finance-kpi"><span>عدد الحركات</span><b>'+T.length+'</b></div></div>'+
    '<div class="finance-kpis" style="margin-top:10px"><div class="finance-kpi profit"><span>إجمالي السلف اللي ليا</span><b>'+money(lentStats.remaining)+' '+esc(cur)+'</b><small>المتبقي عند الأشخاص اللي أنت مسلفهم</small></div><div class="finance-kpi expense"><span>إجمالي السلف اللي عليا</span><b>'+money(borrowedStats.remaining)+' '+esc(cur)+'</b><small>المتبقي اللي أنت مستلفه من الأشخاص</small></div></div>'+
-   '<div class="finance-account-section"><div class="finance-section-header"><div><h3>حساباتك</h3><p>الرصيد الافتتاحي + كل الحركات المسجلة</p></div></div><div class="finance-account-grid">'+(accountCards||'<div class="empty">لا توجد حسابات</div>')+'</div></div>'+
+   
    '<div id="salehDigitalPlatforms" style="margin-top:16px">'+(typeof window.renderSalehPlatforms==='function'?window.renderSalehPlatforms():'<div class="card" style="padding:22px;text-align:center"><h3>منصات العملات</h3><p class="muted">Bybit Saleh • Bybit Mahmoud • Binance</p></div>')+'</div>'+
-   '<div id="salehMovementsSection" class="card" style="margin-top:16px;scroll-margin-top:18px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th><th>إجراءات</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
+   '<div id="salehMovementsSection" class="card" style="display:none;margin-top:16px;scroll-margin-top:18px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th><th>إجراءات</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
    '<div class="grid cols finance-main-grid" style="margin-top:16px"><div class="card"><div class="card-head"><div><h3>مؤشرات هذا الشهر</h3><span class="muted">الدخل والمصروف وصافي الحركة</span></div></div><div class="card-body"><div class="finance-mini-metrics"><div><span>المقبوضات</span><b>'+money(income)+' '+esc(cur)+'</b></div><div><span>المصروفات</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div><span>الصافي</span><b>'+money(profit)+' '+esc(cur)+'</b></div></div></div></div><div class="card"><div class="card-head"><div><h3>قاعدة النظام</h3><span class="muted">ممنوع تكرار تسجيل العملية</span></div></div><div class="card-body"><div class="muted" style="line-height:2">دفع العميل من السيستم الأساسي يدخل تلقائيًا في الحساب المختار. التحويل بين حساباتك لا يُحسب دخلًا. المصروف يقلل الرصيد. السلفة والرد عليها يتحركان من الحسابات تلقائيًا.</div></div></div></div>'+'<div class="card saleh-donations-card" style="margin-top:16px"><div class="card-head"><div><h3><i class="fa-solid fa-heart"></i> التبرعات</h3><span class="muted">التبرعات تخصم من الحساب المختار، لكنها لا تدخل ضمن المصروفات وصافي الربح.</span></div><div class="actions"><div class="finance-donation-total"><span>إجمالي التبرعات</span><b>'+money(donationTotal)+' '+esc(cur)+'</b></div><button class="gold-btn" onclick="openSalehDonation()">إضافة تبرع</button><button class="ghost-btn" onclick="toggleSalehDonations()">إخفاء</button></div></div><div class="card-body"><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان / البند</th><th>الحساب الذي تم الدفع منه</th><th>المبلغ</th></tr></thead><tbody>'+donationRows+'</tbody></table></div></div></div>'+'</div></div>';
   const salehFinanceHost=document.getElementById('content');
   if(salehFinanceHost && state.page==='personalFinance'){
@@ -11670,26 +11670,62 @@ async function saveSalehOpeningBalances(){
   {id:'salehOpenVodafone',type:'vodafone_cash',label:'Vodafone Cash'}
  ];
  const values=fields.map(f=>({ ...f, amount:Number(document.getElementById(f.id)?.value||0) }));
- if(values.some(x=>!Number.isFinite(x.amount))){showToast('تأكد من إدخال كل الأرصدة بشكل صحيح.',true);return;}
+ if(values.some(x=>!Number.isFinite(x.amount)||x.amount<0)){showToast('تأكد من إدخال أرصدة صحيحة وغير سالبة.',true);return;}
+ const platforms=typeof window.salehCryptoPlatforms==='function'?window.salehCryptoPlatforms():A.filter(a=>['bybit saleh','bybit mahmoud','binance'].includes(String(a.account_name||'').toLowerCase()));
+ const platformValues=platforms.map(a=>({account:a,amount:Number(document.getElementById('salehOpenPlatform_'+a.id)?.value||0)}));
+ if(platformValues.some(x=>!Number.isFinite(x.amount)||x.amount<0)){showToast('تأكد من إدخال أرصدة USDT صحيحة وغير سالبة.',true);return;}
  try{
+  if(!currentUser?.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
   for(const item of values){
    const account=A.find(a=>String(a.account_type||a.type||'').toLowerCase()===item.type);
    if(!account)continue;
-   const up=await db.from('personal_finance_accounts')
-    .update({opening_balance:item.amount,updated_at:new Date().toISOString()})
-    .eq('id',account.id).eq('user_id',currentUser.id);
+   const up=await db.from('personal_finance_accounts').update({opening_balance:item.amount,updated_at:new Date().toISOString()}).eq('id',account.id).eq('user_id',currentUser.id);
    if(up.error)throw up.error;
+  }
+  for(const item of platformValues){
+   const account=item.account,sourceId='platform_opening_'+String(account.id)+'_USDT';
+   const payload={user_id:currentUser.id,account_id:account.id,amount:item.amount,transaction_type:'adjustment',category:'الرصيد الافتتاحي للمنصة',description:'الرصيد الافتتاحي USDT - '+account.account_name,source_type:'platform_opening_balance',source_id:sourceId,transaction_date:isoDate(new Date()),notes:JSON.stringify({currency:'USDT',kind:'platform_opening_balance'})};
+   const existing=await db.from('personal_finance_transactions').select('id').eq('account_id',account.id).eq('source_type','platform_opening_balance').eq('source_id',sourceId).maybeSingle();
+   if(existing.error)throw existing.error;
+   const q=existing.data?await db.from('personal_finance_transactions').update(payload).eq('id',existing.data.id).eq('user_id',currentUser.id):await db.from('personal_finance_transactions').insert(payload);
+   if(q.error)throw q.error;
   }
   closeModal();
   await loadFinanceData();
-  render();
-  showToast('تم حفظ الأرصدة الافتتاحية للكاش وInstaPay وVodafone Cash');
+  await (typeof window.refresh==='function'?window.refresh():Promise.resolve());
+  if(typeof renderPersonalFinance==='function'&&state.page==='personalFinance')renderPersonalFinance();
+  showToast('تم حفظ الأرصدة الافتتاحية للكاش والمحافظ والمنصات الرقمية بـ USDT');
  }catch(e){
   console.error('OPENING BALANCES',e);
   showToast(e.message||'تعذر حفظ الأرصدة الافتتاحية.',true);
  }
 }
 function openSalehOpeningBalance(){
+ const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
+ const get=(type)=>A.find(a=>String(a.account_type||a.type||'').toLowerCase()===type);
+ const val=(type)=>{const a=get(type);return a?financeBalance(a.id):0;};
+ const platforms=typeof window.salehCryptoPlatforms==='function'?window.salehCryptoPlatforms():A.filter(a=>['bybit saleh','bybit mahmoud','binance'].includes(String(a.account_name||'').toLowerCase()));
+ const platformVal=(a)=>((state.financeTransactions||[]).filter(x=>String(x.account_id)===String(a.id)&&x.source_type==='platform_opening_balance'&&(()=>{try{return String(JSON.parse(x.notes||'{}').currency||'').toUpperCase()==='USDT'}catch(e){return false}})()).reduce((sum,x)=>sum+Number(x.amount||0),0));
+ const html='<div class="finance-modal-shell">'+
+  '<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-vault"></i></div><div><h4>الأرصدة الافتتاحية</h4><p>حدد الرصيد الموجود فعليًا في كل حساب. أرصدة المنصات بعملة USDT، منفصلة عن الجنيه ولا تُحسب دخلًا أو ربحًا.</p></div></div>'+
+  '<div class="form-grid">'+
+  '<div class="field finance-field finance-required"><label>الكاش / الجيب ('+esc(cur)+')</label><input id="salehOpenCash" type="number" step="0.01" value="'+val('cash')+'" placeholder="مثال: 5000"></div>'+
+  '<div class="field finance-field finance-required"><label>InstaPay ('+esc(cur)+')</label><input id="salehOpenInstapay" type="number" step="0.01" value="'+val('instapay')+'" placeholder="مثال: 3000"></div>'+
+  '<div class="field finance-field finance-required"><label>Vodafone Cash ('+esc(cur)+')</label><input id="salehOpenVodafone" type="number" step="0.01" value="'+val('vodafone_cash')+'" placeholder="مثال: 2000"></div>'+
+  '</div>'+
+  '<div style="margin-top:16px"><h4 style="margin:0 0 10px">منصات العملات الرقمية — USDT</h4><div class="form-grid">'+platforms.map((a,i)=>'<div class="field finance-field finance-required"><label>'+esc(a.account_name)+' (USDT)</label><input id="salehOpenPlatform_'+esc(a.id)+'" type="number" min="0" step="0.000001" value="'+platformVal(a)+'" placeholder="0.00"></div>').join('')+'</div></div>'+
+  '<div class="finance-reconcile-note" style="margin-top:12px">سيتم تحديث الأرصدة الافتتاحية فقط مع الحفاظ على الحركات السابقة. منصات العملات لن تخصم أو تضيف أي مبلغ للجنيه المصري.</div>'+
+  '</div>';
+ openModal('الأرصدة الافتتاحية',html,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehOpeningBalances()"><i class="fa-solid fa-check"></i> حفظ الأرصدة</button></div>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+}
+window.toggleSalehMovements=window.toggleSalehMovements||function(){
+ const el=document.getElementById('salehMovementsSection');
+ if(!el)return;
+ const opening=el.style.display==='none'||getComputedStyle(el).display==='none';
+ el.style.display=opening?'block':'none';
+ if(opening)el.scrollIntoView({behavior:'smooth',block:'start'});
+};
  const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
  const get=(type)=>A.find(a=>String(a.account_type||a.type||'').toLowerCase()===type);
  const val=(type)=>{const a=get(type);return a?financeBalance(a.id):0;};
