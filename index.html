@@ -13503,6 +13503,12 @@ window.saveSalehOpeningBalances=async function(){
 .saleh-brand-icon{vertical-align:middle}
 .saleh-instapay-mark{display:none!important}
 </style>
+<style id="saleh-cash-pocket-brand-marks">
+.finance-account-icon .saleh-cash-mark,.finance-account-icon .saleh-pocket-mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;font-size:19px}
+.finance-account-icon .saleh-cash-mark{color:#16845b;background:#e6f7ef}
+.finance-account-icon .saleh-pocket-mark{color:#b98542;background:#fff2df}
+.saleh-logo-img.instapay,.saleh-logo-img.vodafone{width:34px;height:34px;margin:0;object-fit:contain}
+</style>
 <script id="badgeify-official-service-logo-replacer">
 (function(){
  const logos={
@@ -13529,8 +13535,12 @@ window.saveSalehOpeningBalances=async function(){
   });
   document.querySelectorAll('.finance-account-card,.finance-account-top').forEach(card=>{
    const t=(card.textContent||'').trim();
-   if(t.includes('InstaPay')){const icon=card.querySelector('.finance-account-icon');if(icon){icon.querySelector('i')?.remove();addLogo(icon,'instapay','InstaPay','instapay');}}
-   if(t.includes('Vodafone Cash')){const icon=card.querySelector('.finance-account-icon');if(icon){icon.querySelector('i')?.remove();addLogo(icon,'vodafone','Vodafone Cash','vodafone');}}
+   const icon=card.querySelector('.finance-account-icon');
+   if(!icon)return;
+   if(t.includes('InstaPay')){icon.querySelector('i')?.remove();addLogo(icon,'instapay','InstaPay','instapay');}
+   else if(t.includes('Vodafone Cash')){icon.querySelector('i')?.remove();addLogo(icon,'vodafone','Vodafone Cash','vodafone');}
+   else if(t.includes('الكاش')||t.includes('Cash / Pocket')){icon.querySelector('i')?.remove();if(!icon.querySelector('.saleh-cash-mark'))icon.insertAdjacentHTML('afterbegin','<span class="saleh-cash-mark" role="img" aria-label="Cash"><i class="fa-solid fa-money-bill-wave"></i></span>');}
+   else if(t.includes('الجيب')||t.includes('جيبي')||t.toLowerCase().includes('pocket')){icon.querySelector('i')?.remove();if(!icon.querySelector('.saleh-pocket-mark'))icon.insertAdjacentHTML('afterbegin','<span class="saleh-pocket-mark" role="img" aria-label="Pocket"><i class="fa-solid fa-wallet"></i></span>');}
   });
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',replace,{once:true});else replace();
