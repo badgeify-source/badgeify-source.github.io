@@ -15,7 +15,7 @@
 <link rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;document.write('<script src=&quot;https://unpkg.com/@supabase/supabase-js@2&quot;><\\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 
@@ -13508,47 +13508,5 @@ window.saveSalehOpeningBalances=async function(){
 .saleh-vodafone-card .finance-account-icon,.saleh-vodafone-card .finance-account-icon i{color:#e60000}
 .saleh-instapay-card .finance-account-icon,.saleh-instapay-card .finance-account-icon i{color:#9b45d0}
 </style>
-
-<style id="badgeify-official-service-logos">
-.saleh-logo-img{display:inline-block;width:25px;height:25px;object-fit:contain;vertical-align:middle;margin-inline-end:7px;border-radius:5px}
-.saleh-logo-img.pubg{width:38px;height:27px;object-fit:contain;background:#171717;border-radius:4px;padding:2px}
-.saleh-logo-img.instapay{background:#fff;padding:2px}
-.saleh-logo-img.vodafone{width:25px;height:25px;object-fit:contain}
-.saleh-brand-icon{vertical-align:middle}
-.saleh-instapay-mark{display:none!important}
-</style>
-<script id="badgeify-official-service-logo-replacer">
-(function(){
- const logos={
-  instapay:'https://commons.wikimedia.org/wiki/Special:FilePath/InstaPay_Logo.png',
-  vodafone:'https://upload.wikimedia.org/wikipedia/commons/7/7a/Vodafone_icon.svg',
-  pubg:'https://www.pubgmobile.com/images/event/brandassets/down-logo1.png'
- };
- function addLogo(el,key,alt,cls){
-  if(!el||el.querySelector('img.saleh-logo-img'))return;
-  const img=document.createElement('img');img.className='saleh-logo-img '+cls;img.src=logos[key];img.alt=alt;img.loading='lazy';
-  img.onerror=function(){this.style.display='none';};
-  el.insertBefore(img,el.firstChild);
- }
- function replace(){
-  document.querySelectorAll('button').forEach(btn=>{
-   const t=(btn.textContent||'').trim();
-   if(t.includes('شحن ببجي')){const icon=btn.querySelector('i');if(icon)icon.style.display='none';addLogo(btn,'pubg','PUBG Mobile','pubg');}
-   if(t.includes('شحن رصيد الموبايل')){const icon=btn.querySelector('i');if(icon)icon.style.display='none';addLogo(btn,'vodafone','شحن رصيد الموبايل','vodafone');}
-  });
-  document.querySelectorAll('label').forEach(label=>{
-   const t=(label.textContent||'').trim();
-   if(t==='InstaPay'){label.querySelector('.saleh-instapay-mark')?.remove();addLogo(label,'instapay','InstaPay','instapay');}
-   if(t==='Vodafone Cash'){addLogo(label,'vodafone','Vodafone Cash','vodafone');}
-  });
-  document.querySelectorAll('.finance-account-card,.finance-account-top').forEach(card=>{
-   const t=(card.textContent||'').trim();
-   if(t.includes('InstaPay')){const icon=card.querySelector('.finance-account-icon');if(icon){icon.querySelector('i')?.remove();addLogo(icon,'instapay','InstaPay','instapay');}}
-   if(t.includes('Vodafone Cash')){const icon=card.querySelector('.finance-account-icon');if(icon){icon.querySelector('i')?.remove();addLogo(icon,'vodafone','Vodafone Cash','vodafone');}}
-  });
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',replace,{once:true});else replace();
-})();
-</script>
 </body>
 </html>
