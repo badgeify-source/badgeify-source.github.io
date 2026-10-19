@@ -13729,8 +13729,12 @@ window.renderSalehOpeningPerson=function(){
 window.saveSalehOpeningBalances=async function(){
  try{
   if(!currentUser?.id)throw new Error('سجّل الدخول مرة أخرى.');
-  const personId=document.getElementById('salehOpeningPerson')?.value,account=document.getElementById('salehOpeningAccount')?.value;
-  if(!personId||!account)throw new Error('اختار الشخص والحساب المرجعي.');
+  const personId=document.getElementById('salehOpeningPerson')?.value;
+  const selectedAccount=document.getElementById('salehOpeningAccount')?.value;
+  const existingRows=(window.salehOpeningRows||[]).filter(x=>String(x.person_id)===String(personId));
+  const account=selectedAccount||existingRows.find(x=>x.wallet_account_id)?.wallet_account_id||(state.financeAccounts||[]).find(x=>x.id!=null)?.id;
+  if(!personId)throw new Error('اختار الشخص المراد تعديل رصيده.');
+  if(!account)throw new Error('مفيش حساب مرجعي متاح. افتح قسم الحسابات وحدّث البيانات، ثم جرّب مرة أخرى.');
   const lent=Number(document.getElementById('salehOpeningLent')?.value||0),borrowed=Number(document.getElementById('salehOpeningBorrowed')?.value||0);
   if(!Number.isFinite(lent)||!Number.isFinite(borrowed)||lent<0||borrowed<0)throw new Error('تأكد أن الأرصدة أرقام موجبة أو صفر.');
   for(const [direction,amount] of [['lent',lent],['borrowed',borrowed]]){
