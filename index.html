@@ -8115,6 +8115,28 @@ function renderInvoices(){
 
             </button>
 
+
+            <button
+            class="gold-btn"
+            onclick="openCombinedInvoiceModal('all')">
+
+            <i class="fa-solid fa-file-invoice"></i>
+
+            فواتير مجمعة - كل الاشتراكات
+
+            </button>
+
+
+            <button
+            class="ghost-btn"
+            onclick="openCombinedInvoiceModal('overdue')">
+
+            <i class="fa-solid fa-file-circle-exclamation"></i>
+
+            فواتير مجمعة - المتأخرات
+
+            </button>
+
         </div>
 
     </div>
@@ -8256,6 +8278,273 @@ function renderInvoices(){
 
     `;
 
+}
+
+
+
+/* =========================================
+   COMBINED INVOICES: ALL SUBSCRIPTIONS / OVERDUE
+   فاتورة مجمعة للعميل أو التاجر
+========================================= */
+
+function openCombinedInvoiceModal(scope){
+
+    const isOverdue = scope === "overdue";
+    const title = isOverdue
+        ? "الفواتير المجمعة - المتأخرات"
+        : "الفواتير المجمعة - كل الاشتراكات";
+
+    openModal(
+        title,
+        `
+        <div class="form-grid">
+            <div class="field">
+                <label>نوع الحساب</label>
+                <select id="combinedInvoiceEntityType" onchange="loadCombinedInvoiceEntities()">
+                    <option value="customer">عميل</option>
+                    <option value="trader">تاجر</option>
+                </select>
+            </div>
+            <div class="field">
+                <label id="combinedInvoiceEntityLabel">اختار العميل</label>
+                <select id="combinedInvoiceEntity" onchange="loadCombinedInvoiceSubscriptions()">
+                    <option value="">اختار</option>
+                </select>
+            </div>
+        </div>
+        <div id="combinedInvoiceSubscriptions" style="margin-top:14px">
+            <div class="empty">اختار العميل أو التاجر لعرض الاشتراكات</div>
+        </div>
+        <div id="combinedInvoiceTotal" class="money" style="font-size:20px;margin-top:15px"></div>
+        `,
+        `
+        <button class="ghost-btn" onclick="closeModal()">إلغاء</button>
+        <button class="gold-btn" onclick="createCombinedInvoice('${scope}')">
+            <i class="fa-solid fa-file-pdf"></i>
+            إنشاء الفاتورة
+        </button>
+        `
+    );
+
+    loadCombinedInvoiceEntities();
+}
+
+function loadCombinedInvoiceEntities(){
+
+    const type = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const select = document.getElementById("combinedInvoiceEntity");
+    const label = document.getElementById("combinedInvoiceEntityLabel");
+    if(!select) return;
+
+    const rows = type === "trader" ? state.traders : state.customers;
+    if(label) label.textContent = type === "trader" ? "اختار التاجر" : "اختار العميل";
+
+    select.innerHTML = `
+        <option value="">اختار</option>
+        ${rows.map(function(row){
+            const id = row.id;
+            const name = type === "trader" ? row.trader_name : row.client_name;
+            return `<option value="${esc(id)}">${esc(name || "-")}</option>`;
+        }).join("")}
+    `;
+
+    loadCombinedInvoiceSubscriptions();
+}
+
+function getCombinedInvoiceRows(scope, entityType, entityId){
+
+    let customers = [];
+    if(entityType === "customer"){
+        const customer = getCustomer(entityId);
+        if(customer) customers = [customer];
+    }else{
+        customers = state.customers.filter(function(customer){
+            return Number(customer.trader_id) === Number(entityId);
+        });
+    }
+
+    const customerIds = customers.map(function(customer){ return Number(customer.id); });
+    const activeSubscriptions = state.subscriptions.filter(function(subscription){
+        return subscription.status !== "inactive"
+            && subscription.subscription_type !== "personal"
+            && customerIds.includes(Number(subscription.customer_id));
+    });
+
+    const rows = [];
+    activeSubscriptions.forEach(function(subscription){
+        const service = getService(subscription.app_service_id);
+        const customer = getCustomer(subscription.customer_id);
+        const amount = Math.max(0, Number(subscription.monthly_fee || 0));
+
+        if(scope === "overdue"){
+            getSubscriptionPeriods(subscription).filter(function(period){
+                return period.periodType === "overdue";
+            }).forEach(function(period){
+                rows.push({
+                    subscription: subscription,
+                    customer: customer,
+                    service: service,
+                    periodKey: period.periodKey,
+                    periodLabel: period.monthLabel || period.periodKey,
+                    amount: amount,
+                    overdue: true
+                });
+            });
+        }else{
+            rows.push({
+                subscription: subscription,
+                customer: customer,
+                service: service,
+                periodKey: "",
+                periodLabel: "",
+                amount: amount,
+                overdue: false
+            });
+        }
+    });
+
+    return rows;
+}
+
+function loadCombinedInvoiceSubscriptions(){
+
+    const type = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const entityId = Number(document.getElementById("combinedInvoiceEntity")?.value || 0);
+    const container = document.getElementById("combinedInvoiceSubscriptions");
+    const totalElement = document.getElementById("combinedInvoiceTotal");
+    if(!container || !totalElement) return;
+
+    if(!entityId){
+        container.innerHTML = '<div class="empty">اختار العميل أو التاجر لعرض الاشتراكات</div>';
+        totalElement.textContent = "";
+        return;
+    }
+
+    const scope = document.querySelector("#modal button[onclick*='createCombinedInvoice']")?.getAttribute("onclick")?.includes("'overdue'") ? "overdue" : "all";
+    const rows = getCombinedInvoiceRows(scope, type, entityId);
+
+    container.innerHTML = `
+        <div class="card"><div class="card-body">
+            <div class="muted" style="margin-bottom:10px">
+                ${scope === "overdue" ? "الاشتراكات المتأخرة فقط" : "كل الاشتراكات النشطة"}
+            </div>
+            ${rows.map(function(row,index){
+                const value = String(row.subscription.id) + "|" + row.periodKey;
+                const detail = [
+                    row.customer?.client_name || "-",
+                    row.service?.service_name || "اشتراك",
+                    row.subscription.platform || "",
+                    row.periodLabel
+                ].filter(Boolean).join(" — ");
+                return `
+                    <label class="list-item" style="cursor:pointer">
+                        <div>
+                            <b>${esc(row.customer?.client_name || "-")}</b>
+                            <div class="muted">${esc(row.service?.service_name || "اشتراك")}${row.subscription.platform ? " — " + esc(row.subscription.platform) : ""}${row.periodLabel ? " — " + esc(row.periodLabel) : ""}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <span class="money">${money(row.amount)} ${esc(row.subscription.currency || state.settings.currency || "EGP")}</span>
+                            <input type="checkbox" class="combinedInvoiceCheck" checked value="${esc(value)}" data-amount="${row.amount}" onchange="calculateCombinedInvoiceTotal()">
+                        </div>
+                    </label>
+                `;
+            }).join("") || '<div class="empty">لا توجد اشتراكات مطابقة لهذا الاختيار</div>'}
+        </div></div>
+    `;
+
+    calculateCombinedInvoiceTotal();
+}
+
+function calculateCombinedInvoiceTotal(){
+
+    const total = [...document.querySelectorAll(".combinedInvoiceCheck:checked")].reduce(function(sum,check){
+        return sum + Math.max(0, Number(check.dataset.amount || 0));
+    }, 0);
+
+    const totalElement = document.getElementById("combinedInvoiceTotal");
+    if(totalElement) totalElement.textContent = "الإجمالي: " + money(total) + " " + (state.settings.currency || "EGP");
+}
+
+async function createCombinedInvoice(scope){
+
+    const entityType = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const entityId = Number(document.getElementById("combinedInvoiceEntity")?.value || 0);
+    const checks = [...document.querySelectorAll(".combinedInvoiceCheck:checked")];
+
+    if(!entityId){
+        showToast(entityType === "trader" ? "اختار التاجر" : "اختار العميل", true);
+        return;
+    }
+    if(!checks.length){
+        showToast("اختار اشتراكًا واحدًا على الأقل", true);
+        return;
+    }
+
+    const rows = getCombinedInvoiceRows(scope, entityType, entityId);
+    const selectedKeys = new Set(checks.map(function(check){ return check.value; }));
+    const selectedRows = rows.filter(function(row){
+        return selectedKeys.has(String(row.subscription.id) + "|" + row.periodKey);
+    });
+
+    if(!selectedRows.length){
+        showToast("لم يتم العثور على الاشتراكات المحددة. حدّث الصفحة وحاول مرة أخرى.", true);
+        return;
+    }
+
+    const customer = entityType === "customer" ? getCustomer(entityId) : null;
+    const trader = entityType === "trader" ? getTrader(entityId) : null;
+    const total = selectedRows.reduce(function(sum,row){ return sum + row.amount; }, 0);
+    const currency = state.settings.currency || "EGP";
+    const invoiceNumber = generateInvoiceNumber(scope === "overdue" ? "LATE" : "COMB");
+    const notes = scope === "overdue"
+        ? "COMBINED:OVERDUE"
+        : "COMBINED:ALL";
+
+    try{
+        const invoiceResult = await db.from("invoices").insert({
+            invoice_number: invoiceNumber,
+            customer_id: customer ? customer.id : null,
+            trader_id: trader ? trader.id : null,
+            subscription_id: null,
+            invoice_type: entityType,
+            invoice_date: isoDate(new Date()),
+            subtotal: total,
+            discount: 0,
+            total: total,
+            currency: currency,
+            status: "unpaid",
+            notes: notes
+        }).select().single();
+
+        if(invoiceResult.error) throw invoiceResult.error;
+
+        const invoiceItems = selectedRows.map(function(row){
+            const descriptionParts = [];
+            if(entityType === "trader") descriptionParts.push(row.customer?.client_name || "");
+            if(row.periodLabel) descriptionParts.push(row.periodLabel);
+            return {
+                invoice_id: invoiceResult.data.id,
+                subscription_id: row.subscription.id,
+                service_name: row.service?.service_name || "اشتراك",
+                description: descriptionParts.filter(Boolean).join(" — "),
+                quantity: 1,
+                unit_price: row.amount,
+                discount: 0,
+                total: row.amount
+            };
+        });
+
+        const itemsResult = await db.from("invoice_items").insert(invoiceItems);
+        if(itemsResult.error) throw itemsResult.error;
+
+        await logActivity("CREATE", "combined_invoice", invoiceResult.data.id, invoiceNumber);
+        closeModal();
+        await refresh();
+        showToast("تم إنشاء الفاتورة المجمعة بنجاح");
+    }catch(error){
+        console.error("Combined invoice error:", error);
+        showToast("تعذر إنشاء الفاتورة: " + (error.message || "خطأ غير معروف"), true);
+    }
 }
 
 
@@ -9079,87 +9368,58 @@ function cleanInvoiceFileName(value){
 
 function getInvoiceFileName(invoice){
 
-    const trader =
-        getTrader(invoice.trader_id);
+    const trader = getTrader(invoice.trader_id);
+    const customer = getCustomer(invoice.customer_id);
+    const items = state.invoiceItems.filter(function(item){
+        return Number(item.invoice_id) === Number(invoice.id);
+    });
+    const totalPart = money(invoice.total) + " " + (invoice.currency || "EGP");
 
-    const customer =
-        getCustomer(invoice.customer_id);
-
-    const items =
-        state.invoiceItems.filter(
-            x => Number(x.invoice_id) === Number(invoice.id)
-        );
-
-    if(
-        invoice.invoice_type === "trader"
-        || trader
-    ){
-
-        const customerNames =
-            [...new Set(
-                items.map(function(item){
-
-                    return getCustomer(
-                        item.customer_id
-                    )?.client_name
-                    || getCustomer(
-                        getSubscription(
-                            item.subscription_id
-                        )?.customer_id
-                    )?.client_name
-                    || "";
-
-                }).filter(Boolean)
-            )];
-
-        const names =
-            customerNames.join(" - ")
-            || "عملاء";
-
-        return cleanInvoiceFileName(
-            [
-                trader?.trader_name || "تاجر",
-                names,
-                money(invoice.total),
-                invoice.currency || "EGP"
-            ].join(" - ")
-        ) || ("فاتورة-" + invoice.id);
-
+    if(String(invoice.notes || "").startsWith("COMBINED:")){
+        const scope = String(invoice.notes).includes("OVERDUE") ? "المتأخرات" : "كل الاشتراكات";
+        if(trader){
+            return cleanInvoiceFileName([
+                "فاتورة مجمعة",
+                scope,
+                trader.trader_name || "تاجر",
+                totalPart
+            ].join(" - ")) || ("فاتورة-" + invoice.id);
+        }
+        return cleanInvoiceFileName([
+            "فاتورة مجمعة",
+            scope,
+            customer?.client_name || "عميل",
+            totalPart
+        ].join(" - ")) || ("فاتورة-" + invoice.id);
     }
 
-    const subscription =
-        getSubscription(
-            invoice.subscription_id
-        );
+    if(invoice.invoice_type === "trader" || trader){
+        const customerNames = [...new Set(items.map(function(item){
+            return getCustomer(item.customer_id)?.client_name
+                || getCustomer(getSubscription(item.subscription_id)?.customer_id)?.client_name
+                || item.description
+                || "";
+        }).filter(Boolean))];
+        return cleanInvoiceFileName([
+            trader?.trader_name || "تاجر",
+            customerNames.join(" - ") || "عملاء",
+            totalPart
+        ].join(" - ")) || ("فاتورة-" + invoice.id);
+    }
 
-    const customerName =
-        customer?.client_name
-        || getCustomer(
-            subscription?.customer_id
-        )?.client_name
+    const subscription = getSubscription(invoice.subscription_id);
+    const customerName = customer?.client_name
+        || getCustomer(subscription?.customer_id)?.client_name
         || "عميل";
+    const serviceName = getService(subscription?.app_service_id)?.service_name || "";
+    const pageName = subscription?.page_name || "";
+    const detail = pageName || serviceName || "اشتراك";
 
-    const serviceName =
-        getService(
-            subscription?.app_service_id
-        )?.service_name
-        || "";
-
-    const pageName =
-        subscription?.page_name
-        || "";
-
-    const detail =
-        pageName
-        || serviceName
-        || "اشتراك";
-
-    return cleanInvoiceFileName(
-        [
-            customerName,
-            detail
-        ].filter(Boolean).join(" - ")
-    ) || ("فاتورة-" + invoice.id);
+    return cleanInvoiceFileName([
+        customerName,
+        detail,
+        totalPart
+    ].filter(Boolean).join(" - ")) || ("فاتورة-" + invoice.id);
 
 }
 
