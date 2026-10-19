@@ -13321,29 +13321,31 @@ applyTheme();
 <!-- SALEH FINANCE BUTTON BRIDGE -->
 <script id="saleh-finance-button-bridge">(function(){'use strict';
 function bind(){
- var map={
-  openSalehFinanceEntry:window.openSalehFinanceEntry,
-  openSalehFinanceTransfer:window.openSalehFinanceTransfer,
-  openSalehLoan:window.openSalehLoan,
-  salehFinancePeopleButton:window.salehFinancePeopleButton,
-  toggleSalehDonations:window.toggleSalehDonations,
-  openSalehOpeningBalance:window.openSalehOpeningBalance,
-  salehFinanceExpenseCategoriesButton:window.salehFinanceExpenseCategoriesButton,
-  exportSalehFinanceCSV:window.exportSalehFinanceCSV,
-  openSalehPeople:window.openSalehPeople
- };
  document.addEventListener('click',function(e){
   var b=e.target&&e.target.closest?e.target.closest('button[onclick]'):null;
   if(!b)return;
-  var s=b.getAttribute('onclick')||'';
-  var m=s.match(/^\s*([A-Za-z_$][\w$]*)\s*\((.*)\)\s*;?\s*$/);
-  if(!m||!map[m[1]])return;
+  var label=(b.textContent||'').replace(/\\s+/g,' ').trim();
+  var action=null;
+  if(label==='الأشخاص') action=window.openSalehPeople;
+  else if(label==='إضافة الأشخاص'||label==='إضافة شخص') action=window.openSalehPeopleManagement||window.salehPeopleDirect;
+  else if(label==='بنود المصاريف'||label==='إدارة البنود') action=window.salehExpenseCategoriesDirect;
+  if(action){
+   e.preventDefault();e.stopImmediatePropagation();
+   try{action.call(window);}catch(err){console.error('SALEH BUTTON',label,err);if(typeof showToast==='function')showToast('تعذر تشغيل الزر: '+(err.message||err),true);}
+   return;
+  }
+  var source=b.getAttribute('onclick')||'';
+  var m=source.match(/^\\s*([A-Za-z_$][\\w$]*)\\s*\\((.*)\\)\\s*;?\\s*$/);
+  if(!m)return;
+  var name=m[1],fn=window[name];
+  if(typeof fn!=='function')return;
+  if(['openSalehFinanceEntry','openSalehFinanceTransfer','openSalehLoan','toggleSalehDonations','openSalehOpeningBalance','exportSalehFinanceCSV'].indexOf(name)<0)return;
   e.preventDefault();e.stopImmediatePropagation();
   try{
    var raw=m[2].trim(),args=[];
-   if(raw)args=raw.split(',').map(function(x){x=x.trim();if((x[0]==='\''&&x[x.length-1]==='\'')||(x[0]==='"'&&x[x.length-1]==='"'))return x.slice(1,-1);return x;});
-   map[m[1]].apply(window,args);
-  }catch(err){console.error('SALEH BUTTON',m[1],err);if(typeof showToast==='function')showToast('تعذر تشغيل الزر: '+(err.message||err),true);}
+   if(raw)args=raw.split(',').map(function(x){x=x.trim();if((x[0]==="'"&&x[x.length-1]==="'")||(x[0]==='"'&&x[x.length-1]==='"'))return x.slice(1,-1);return x;});
+   fn.apply(window,args);
+  }catch(err){console.error('SALEH BUTTON',name,err);if(typeof showToast==='function')showToast('تعذر تشغيل الزر: '+(err.message||err),true);}
  },true);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
