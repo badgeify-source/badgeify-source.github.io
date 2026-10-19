@@ -6290,92 +6290,6 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 
 
 
-<script id="saleh-simple-konnash-v1">
-(function(){
-'use strict';
-const escx=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-function getPerson(id){return (state.loanPeople||[]).find(p=>String(p.id)===String(id));}
-function getAcc(id){return (state.financeAccounts||[]).find(a=>String(a.id)===String(id));}
-function phoneFor(p){let n=String(p.phone||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g,'');if(n.startsWith('00'))n=n.slice(2);if(n.startsWith('0'))n='20'+n.slice(1);return n;}
-window.openSalehQuickCashEntry=function(personId,kind){
- const p=getPerson(personId);if(!p)return showToast('الشخص غير موجود.',true);
- const A=state.financeAccounts||[];if(!A.length)return showToast('لا توجد حسابات مالية متاحة.',true);
- const isGive=kind==='given';
- const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-money-bill-transfer"></i></div><div><h4>'+(isGive?'أديته فلوس':'أخدت فلوس')+'</h4><p>تسجيل سريع في كناش '+escx(p.person_name)+' — من غير تفاصيل إضافية.</p></div></div><div class="form-grid"><div class="field full"><label>المبلغ</label><input id="salehQuickAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="اكتب المبلغ"></div><div class="field full"><label>'+(isGive?'الخصم من حساب':'إضافة المبلغ إلى حساب')+'</label><select id="salehQuickAccount">'+A.map(a=>'<option value="'+escx(a.id)+'">'+escx(a.account_name)+'</option>').join('')+'</select></div><div class="field full"><label>التاريخ</label><input id="salehQuickDate" type="date" value="'+isoDate(new Date())+'"></div></div>';
- openModal(isGive?'أديته فلوس — '+escx(p.person_name):'أخدت فلوس — '+escx(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehQuickCashEntry(\''+escx(personId)+'\',\''+kind+'\')">حفظ الحركة</button>');
- document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
-};
-window.saveSalehQuickCashEntry=async function(personId,kind){
- try{
-  if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
-  const p=getPerson(personId);if(!p)throw new Error('الشخص غير موجود.');
-  const amount=Number(document.getElementById('salehQuickAmount')?.value||0),account=document.getElementById('salehQuickAccount')?.value,date=document.getElementById('salehQuickDate')?.value||isoDate(new Date());
-  if(!Number.isFinite(amount)||amount<=0)throw new Error('اكتب مبلغًا صحيحًا أكبر من صفر.');
-  if(!account)throw new Error('اختار الحساب المالي.');
-  if(kind==='given'){
-   const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:'lent',loan_direction:'lent',amount,wallet_account_id:account,loan_date:date,purpose:'حركة كناش: أديته فلوس'}).select('*').single();
-   if(l.error)throw l.error;
-   const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:-Math.abs(amount),transaction_type:'adjustment',category:'إعطاء سلفة',description:'أديته فلوس — '+p.person_name,source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:'تسجيل سريع من كناش الشخص'});
-   if(tx.error){await db.from('personal_finance_loans').delete().eq('id',l.data.id).eq('user_id',currentUser.id);throw new Error('تعذر تسجيل أثر الحركة على الحساب: '+tx.error.message);}
-  }else{
-   let remaining=amount;
-   const loans=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled'&&loanDirection(l)==='lent'&&loanRemaining(l)>0).sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||'')));
-   for(const l of loans){
-    if(remaining<=0)break;
-    const part=Math.min(remaining,loanRemaining(l));
-    const pay=await db.from('personal_finance_loan_payments').insert({user_id:currentUser.id,loan_id:l.id,amount:part,wallet_account_id:account,payment_date:date,notes:'حركة كناش سريعة: أخدت فلوس'}).select('*').single();
-    if(pay.error)throw pay.error;
-    const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:Math.abs(part),transaction_type:'adjustment',category:'تحصيل سلفة',description:'أخدت فلوس من '+p.person_name,source_type:'loan_payment',source_id:String(pay.data.id),transaction_date:date,notes:'تسجيل سريع من كناش الشخص'});
-    if(tx.error)throw new Error('تم تسجيل جزء من الحركة لكن تعذر تحديث رصيد الحساب: '+tx.error.message);
-    remaining-=part;
-    const paid=Number(loanPaid(l.id)||0)+part;
-    const st=await db.from('personal_finance_loans').update({status:paid>=Number(l.amount||0)?'paid':'partially_paid'}).eq('id',l.id).eq('user_id',currentUser.id);
-    if(st.error)throw st.error;
-   }
-   if(remaining>0){
-    const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:'borrowed',loan_direction:'borrowed',amount:remaining,wallet_account_id:account,loan_date:date,purpose:'حركة كناش: مبلغ استلمته زيادة'}).select('*').single();
-    if(l.error)throw l.error;
-    const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:Math.abs(remaining),transaction_type:'adjustment',category:'استلام سلفة',description:'مبلغ استلمته من '+p.person_name,source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:'الجزء الزائد من حركة كناش سريعة'});
-    if(tx.error)throw new Error('تم تسجيل أصل الحركة لكن تعذر تحديث رصيد الحساب: '+tx.error.message);
-   }
-  }
-  closeModal();await refresh();showToast('تم تسجيل الحركة وتحديث الحساب.');window.openSalehPersonStatement(personId);
- }catch(e){console.error('saleh quick ledger',e);showToast(e.message||'تعذر تسجيل الحركة.',true);}
-};
-window.printSalehPersonStatementPDF=function(personId){
- const p=getPerson(personId);if(!p)return showToast('الشخص غير موجود.',true);
- const t=(function(){const ls=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled');const lent=ls.filter(l=>loanDirection(l)==='lent').reduce((s,l)=>s+loanRemaining(l),0);const borrowed=ls.filter(l=>loanDirection(l)==='borrowed').reduce((s,l)=>s+loanRemaining(l),0);return {ls,lent,borrowed,net:lent-borrowed};})();
- const c=escx(state.settings&&state.settings.currency||'EGP');
- let rows='';
- t.ls.sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||''))).forEach(l=>{
-  rows+='<tr><td>'+escx(l.loan_date||'-')+'</td><td>'+ (loanDirection(l)==='lent'?'أديته فلوس — ليا عنده':'أخدت منه فلوس — عليا له')+'</td><td>'+escx(money(Number(l.amount||0)))+' '+c+'</td><td>'+escx(money(loanPaid(l.id)))+' '+c+'</td><td>'+escx(money(loanRemaining(l)))+' '+c+'</td></tr>';
-  (state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)).forEach(x=>{rows+='<tr><td>'+escx(x.payment_date||'-')+'</td><td>حركة سداد/تحصيل</td><td>—</td><td>'+escx(money(Number(x.amount||0)))+' '+c+'</td><td>—</td></tr>';});
- });
- if(!rows)rows='<tr><td colspan="5">لا توجد حركات مسجلة</td></tr>';
- const w=window.open('','_blank');if(!w)return showToast('اسمح بالنوافذ المنبثقة لإنشاء كشف PDF.',true);
- w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف حساب - '+escx(p.person_name)+'</title><style>body{font-family:Tahoma,Arial,sans-serif;padding:28px;color:#172033}h1{font-size:22px}p{margin:7px 0}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd4df;border-radius:10px;padding:12px;flex:1}.green{color:#15803d}.red{color:#b91c1c}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #d5dbe3;padding:9px;text-align:right;font-size:12px}th{background:#eef2f7}.hint{margin-top:22px;color:#64748b;font-size:11px}@media print{button{display:none}}</style></head><body><h1>كشف حساب شخصي — '+escx(p.person_name)+'</h1><p>رقم الهاتف: '+escx(p.phone||'غير مسجل')+'</p><p>تاريخ الكشف: '+escx(isoDate(new Date()))+'</p><div class="summary"><div class="box green">فلوس ليا عنده<strong><br>'+escx(money(t.lent))+' '+c+'</strong></div><div class="box red">فلوس عليا له<strong><br>'+escx(money(t.borrowed))+' '+c+'</strong></div><div class="box">الصافي<strong><br>'+escx(money(Math.abs(t.net)))+' '+c+' ('+(t.net>0?'ليا عنده':t.net<0?'عليا له':'متساوي')+')</strong></div></div><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>أصل المبلغ</th><th>المسدد/المحصل</th><th>المتبقي</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint">لحفظ الكشف PDF: اختر طباعة ثم Save as PDF / حفظ كملف PDF.</p><button onclick="window.print()">طباعة / حفظ PDF</button></body></html>');
- w.document.close();w.focus();
- const phone=phoneFor(p);
- if(phone&&phone.length>=10&&phone.length<=15){const url='https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent('السلام عليكم '+p.person_name+'، مرفق كشف حسابك حتى تاريخ '+isoDate(new Date())+'.');window.open(url,'_blank','noopener');}
-};
-const oldStatement=window.openSalehPersonStatement;
-if(typeof oldStatement==='function'){
- window.openSalehPersonStatement=function(id){
-  oldStatement.apply(this,arguments);
-  const modal=document.getElementById('modal');if(!modal)return;
-  const body=modal.querySelector('.modal-body')||modal;
-  const buttons=body.querySelectorAll('button');
-  buttons.forEach(b=>{
-   const txt=(b.textContent||'').replace(/\s+/g,' ').trim();
-   if(txt.includes('أنا اديته فلوس')){b.textContent='أديته فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'given\')');}
-   else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')){b.textContent='أخدت فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'received\')');}
-   else if(txt.includes('إرسال كشف الحساب واتساب')){b.textContent='إرسال كشف الحساب PDF على واتساب ويب';b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');}
-  });
-  if(!body.querySelector('[data-saleh-pdf-button]')){const actions=body.querySelector('.actions');if(actions){const b=document.createElement('button');b.type='button';b.className='gold-btn';b.setAttribute('data-saleh-pdf-button','1');b.textContent='كشف PDF + واتساب ويب';b.onclick=()=>window.printSalehPersonStatementPDF(id);actions.appendChild(b);}}
- };
-}
-})();
-</script>
 
 </body>
 </html>`);
@@ -14082,6 +13996,93 @@ window.saveSalehOpeningBalances=async function(){
   const observer=new MutationObserver(scheduleReplace);
   observer.observe(document.body,{childList:true,subtree:true});
  }
+})();
+</script>
+
+<script id="saleh-simple-konnash-v1">
+(function(){
+'use strict';
+const escx=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function getPerson(id){return (state.loanPeople||[]).find(p=>String(p.id)===String(id));}
+function getAcc(id){return (state.financeAccounts||[]).find(a=>String(a.id)===String(id));}
+function phoneFor(p){let n=String(p.phone||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/\D/g,'');if(n.startsWith('00'))n=n.slice(2);if(n.startsWith('0'))n='20'+n.slice(1);return n;}
+window.openSalehQuickCashEntry=function(personId,kind){
+ const p=getPerson(personId);if(!p)return showToast('الشخص غير موجود.',true);
+ const A=state.financeAccounts||[];if(!A.length)return showToast('لا توجد حسابات مالية متاحة.',true);
+ const isGive=kind==='given';
+ const body='<div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-money-bill-transfer"></i></div><div><h4>'+(isGive?'أديته فلوس':'أخدت فلوس')+'</h4><p>تسجيل سريع في كناش '+escx(p.person_name)+' — من غير تفاصيل إضافية.</p></div></div><div class="form-grid"><div class="field full"><label>المبلغ</label><input id="salehQuickAmount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="اكتب المبلغ"></div><div class="field full"><label>'+(isGive?'الخصم من حساب':'إضافة المبلغ إلى حساب')+'</label><select id="salehQuickAccount">'+A.map(a=>'<option value="'+escx(a.id)+'">'+escx(a.account_name)+'</option>').join('')+'</select></div><div class="field full"><label>التاريخ</label><input id="salehQuickDate" type="date" value="'+isoDate(new Date())+'"></div></div>';
+ openModal(isGive?'أديته فلوس — '+escx(p.person_name):'أخدت فلوس — '+escx(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehQuickCashEntry(\''+escx(personId)+'\',\''+kind+'\')">حفظ الحركة</button>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+};
+window.saveSalehQuickCashEntry=async function(personId,kind){
+ try{
+  if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+  const p=getPerson(personId);if(!p)throw new Error('الشخص غير موجود.');
+  const amount=Number(document.getElementById('salehQuickAmount')?.value||0),account=document.getElementById('salehQuickAccount')?.value,date=document.getElementById('salehQuickDate')?.value||isoDate(new Date());
+  if(!Number.isFinite(amount)||amount<=0)throw new Error('اكتب مبلغًا صحيحًا أكبر من صفر.');
+  if(!account)throw new Error('اختار الحساب المالي.');
+  if(kind==='given'){
+   const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:'lent',loan_direction:'lent',amount,wallet_account_id:account,loan_date:date,purpose:'حركة كناش: أديته فلوس'}).select('*').single();
+   if(l.error)throw l.error;
+   const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:-Math.abs(amount),transaction_type:'adjustment',category:'إعطاء سلفة',description:'أديته فلوس — '+p.person_name,source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:'تسجيل سريع من كناش الشخص'});
+   if(tx.error){await db.from('personal_finance_loans').delete().eq('id',l.data.id).eq('user_id',currentUser.id);throw new Error('تعذر تسجيل أثر الحركة على الحساب: '+tx.error.message);}
+  }else{
+   let remaining=amount;
+   const loans=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled'&&loanDirection(l)==='lent'&&loanRemaining(l)>0).sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||'')));
+   for(const l of loans){
+    if(remaining<=0)break;
+    const part=Math.min(remaining,loanRemaining(l));
+    const pay=await db.from('personal_finance_loan_payments').insert({user_id:currentUser.id,loan_id:l.id,amount:part,wallet_account_id:account,payment_date:date,notes:'حركة كناش سريعة: أخدت فلوس'}).select('*').single();
+    if(pay.error)throw pay.error;
+    const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:Math.abs(part),transaction_type:'adjustment',category:'تحصيل سلفة',description:'أخدت فلوس من '+p.person_name,source_type:'loan_payment',source_id:String(pay.data.id),transaction_date:date,notes:'تسجيل سريع من كناش الشخص'});
+    if(tx.error)throw new Error('تم تسجيل جزء من الحركة لكن تعذر تحديث رصيد الحساب: '+tx.error.message);
+    remaining-=part;
+    const paid=Number(loanPaid(l.id)||0)+part;
+    const st=await db.from('personal_finance_loans').update({status:paid>=Number(l.amount||0)?'paid':'partially_paid'}).eq('id',l.id).eq('user_id',currentUser.id);
+    if(st.error)throw st.error;
+   }
+   if(remaining>0){
+    const l=await db.from('personal_finance_loans').insert({user_id:currentUser.id,person_id:personId,loan_type:'borrowed',loan_direction:'borrowed',amount:remaining,wallet_account_id:account,loan_date:date,purpose:'حركة كناش: مبلغ استلمته زيادة'}).select('*').single();
+    if(l.error)throw l.error;
+    const tx=await db.from('personal_finance_transactions').insert({user_id:currentUser.id,account_id:account,amount:Math.abs(remaining),transaction_type:'adjustment',category:'استلام سلفة',description:'مبلغ استلمته من '+p.person_name,source_type:'loan',source_id:String(l.data.id),transaction_date:date,notes:'الجزء الزائد من حركة كناش سريعة'});
+    if(tx.error)throw new Error('تم تسجيل أصل الحركة لكن تعذر تحديث رصيد الحساب: '+tx.error.message);
+   }
+  }
+  closeModal();await refresh();showToast('تم تسجيل الحركة وتحديث الحساب.');window.openSalehPersonStatement(personId);
+ }catch(e){console.error('saleh quick ledger',e);showToast(e.message||'تعذر تسجيل الحركة.',true);}
+};
+window.printSalehPersonStatementPDF=function(personId){
+ const p=getPerson(personId);if(!p)return showToast('الشخص غير موجود.',true);
+ const t=(function(){const ls=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled');const lent=ls.filter(l=>loanDirection(l)==='lent').reduce((s,l)=>s+loanRemaining(l),0);const borrowed=ls.filter(l=>loanDirection(l)==='borrowed').reduce((s,l)=>s+loanRemaining(l),0);return {ls,lent,borrowed,net:lent-borrowed};})();
+ const c=escx(state.settings&&state.settings.currency||'EGP');
+ let rows='';
+ t.ls.sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||''))).forEach(l=>{
+  rows+='<tr><td>'+escx(l.loan_date||'-')+'</td><td>'+ (loanDirection(l)==='lent'?'أديته فلوس — ليا عنده':'أخدت منه فلوس — عليا له')+'</td><td>'+escx(money(Number(l.amount||0)))+' '+c+'</td><td>'+escx(money(loanPaid(l.id)))+' '+c+'</td><td>'+escx(money(loanRemaining(l)))+' '+c+'</td></tr>';
+  (state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)).forEach(x=>{rows+='<tr><td>'+escx(x.payment_date||'-')+'</td><td>حركة سداد/تحصيل</td><td>—</td><td>'+escx(money(Number(x.amount||0)))+' '+c+'</td><td>—</td></tr>';});
+ });
+ if(!rows)rows='<tr><td colspan="5">لا توجد حركات مسجلة</td></tr>';
+ const w=window.open('','_blank');if(!w)return showToast('اسمح بالنوافذ المنبثقة لإنشاء كشف PDF.',true);
+ w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف حساب - '+escx(p.person_name)+'</title><style>body{font-family:Tahoma,Arial,sans-serif;padding:28px;color:#172033}h1{font-size:22px}p{margin:7px 0}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd4df;border-radius:10px;padding:12px;flex:1}.green{color:#15803d}.red{color:#b91c1c}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #d5dbe3;padding:9px;text-align:right;font-size:12px}th{background:#eef2f7}.hint{margin-top:22px;color:#64748b;font-size:11px}@media print{button{display:none}}</style></head><body><h1>كشف حساب شخصي — '+escx(p.person_name)+'</h1><p>رقم الهاتف: '+escx(p.phone||'غير مسجل')+'</p><p>تاريخ الكشف: '+escx(isoDate(new Date()))+'</p><div class="summary"><div class="box green">فلوس ليا عنده<strong><br>'+escx(money(t.lent))+' '+c+'</strong></div><div class="box red">فلوس عليا له<strong><br>'+escx(money(t.borrowed))+' '+c+'</strong></div><div class="box">الصافي<strong><br>'+escx(money(Math.abs(t.net)))+' '+c+' ('+(t.net>0?'ليا عنده':t.net<0?'عليا له':'متساوي')+')</strong></div></div><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>أصل المبلغ</th><th>المسدد/المحصل</th><th>المتبقي</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint">لحفظ الكشف PDF: اختر طباعة ثم Save as PDF / حفظ كملف PDF.</p><button onclick="window.print()">طباعة / حفظ PDF</button></body></html>');
+ w.document.close();w.focus();
+ const phone=phoneFor(p);
+ if(phone&&phone.length>=10&&phone.length<=15){const url='https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent('السلام عليكم '+p.person_name+'، مرفق كشف حسابك حتى تاريخ '+isoDate(new Date())+'.');window.open(url,'_blank','noopener');}
+};
+const oldStatement=window.openSalehPersonStatement;
+if(typeof oldStatement==='function'){
+ window.openSalehPersonStatement=function(id){
+  oldStatement.apply(this,arguments);
+  const modal=document.getElementById('modal');if(!modal)return;
+  const body=modal.querySelector('.modal-body')||modal;
+  const buttons=body.querySelectorAll('button');
+  buttons.forEach(b=>{
+   const txt=(b.textContent||'').replace(/\s+/g,' ').trim();
+   if(txt.includes('أنا اديته فلوس')){b.textContent='أديته فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'given\')');}
+   else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')){b.textContent='أخدت فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'received\')');}
+   else if(txt.includes('إرسال كشف الحساب واتساب')){b.textContent='إرسال كشف الحساب PDF على واتساب ويب';b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');}
+  });
+  if(!body.querySelector('[data-saleh-pdf-button]')){const actions=body.querySelector('.actions');if(actions){const b=document.createElement('button');b.type='button';b.className='gold-btn';b.setAttribute('data-saleh-pdf-button','1');b.textContent='كشف PDF + واتساب ويب';b.onclick=()=>window.printSalehPersonStatementPDF(id);actions.appendChild(b);}}
+ };
+}
 })();
 </script>
 </body>
