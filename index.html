@@ -13899,6 +13899,22 @@ window.saveSalehOpeningBalances=async function(){
 .finance-account-icon .saleh-cash-mark{color:#16845b;background:#e6f7ef}
 .finance-account-icon .saleh-pocket-mark{color:#b98542;background:#fff2df}
 .saleh-logo-img.instapay,.saleh-logo-img.vodafone{width:34px;height:34px;margin:0;object-fit:contain}
+
+/* Restore visibility of the cash-account balance reconciliation action */
+#salehFinanceRedesign .finance-account-card{
+  flex-wrap:wrap!important;
+  align-items:flex-start!important;
+}
+#salehFinanceRedesign .finance-account-card > button[onclick*="openSalehReconcile"]{
+  display:inline-flex!important;
+  flex:1 1 100%!important;
+  width:100%!important;
+  min-height:36px!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:relative!important;
+  z-index:2!important;
+}
 </style>
 <script id="badgeify-official-service-logo-replacer">
 (function(){
