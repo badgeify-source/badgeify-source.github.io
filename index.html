@@ -8425,7 +8425,9 @@ function getCombinedInvoiceRows(scope, entityType, entityId){
 
 function loadCombinedInvoiceSubscriptions(){
 
-    const type = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const type = document.getElementById("combinedInvoiceFixedEntityType")?.value
+        || document.getElementById("combinedInvoiceEntityType")?.value
+        || "customer";
     const entityId = Number(document.getElementById("combinedInvoiceEntity")?.value || 0);
     const container = document.getElementById("combinedInvoiceSubscriptions");
     const totalElement = document.getElementById("combinedInvoiceTotal");
