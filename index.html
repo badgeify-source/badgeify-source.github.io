@@ -14080,19 +14080,19 @@ if(typeof oldStatement==='function'){
   const buttons=[...body.querySelectorAll('button')];
   const seen={given:false,received:false,statement:false};
   buttons.forEach(b=>{
-   const txt=(b.textContent||'').replace(/\\s+/g,' ').trim();
+   const txt=(b.textContent||'').replace(/\s+/g,' ').trim();
    if(txt.includes('أنا اديته فلوس')||txt.includes('أديته فلوس')){
     if(seen.given){b.remove();return;}
     seen.given=true;b.textContent='أديته فلوس';
-    b.setAttribute('onclick','openSalehQuickCashEntry(\\''+String(id).replace(/'/g,'')+'\\',\\'given\\')');
+    b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'given\')');
    }else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')||txt==='أخدت فلوس'){
     if(seen.received){b.remove();return;}
     seen.received=true;b.textContent='أخدت فلوس';
-    b.setAttribute('onclick','openSalehQuickCashEntry(\\''+String(id).replace(/'/g,'')+'\\',\\'received\\')');
+    b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'received\')');
    }else if(txt.includes('إرسال كشف الحساب واتساب')||txt.includes('كشف PDF + واتساب')||txt.includes('كشف الحساب PDF على واتساب')){
     if(seen.statement){b.remove();return;}
     seen.statement=true;b.textContent='كشف PDF + واتساب الأعمال';
-    b.setAttribute('onclick','printSalehPersonStatementPDF(\\''+String(id).replace(/'/g,'')+'\\')');
+    b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');
    }
   });
  };
