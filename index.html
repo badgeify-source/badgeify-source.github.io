@@ -14065,7 +14065,11 @@ window.printSalehPersonStatementPDF=function(personId){
  w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف حساب - '+escx(p.person_name)+'</title><style>body{font-family:Tahoma,Arial,sans-serif;padding:28px;color:#172033}h1{font-size:22px}p{margin:7px 0}.summary{display:flex;gap:12px;margin:20px 0}.box{border:1px solid #ccd4df;border-radius:10px;padding:12px;flex:1}.green{color:#15803d}.red{color:#b91c1c}table{width:100%;border-collapse:collapse;margin-top:18px}th,td{border:1px solid #d5dbe3;padding:9px;text-align:right;font-size:12px}th{background:#eef2f7}.hint{margin-top:22px;color:#64748b;font-size:11px}@media print{button{display:none}}</style></head><body><h1>كشف حساب شخصي — '+escx(p.person_name)+'</h1><p>رقم الهاتف: '+escx(p.phone||'غير مسجل')+'</p><p>تاريخ الكشف: '+escx(isoDate(new Date()))+'</p><div class="summary"><div class="box green">فلوس ليا عنده<strong><br>'+escx(money(t.lent))+' '+c+'</strong></div><div class="box red">فلوس عليا له<strong><br>'+escx(money(t.borrowed))+' '+c+'</strong></div><div class="box">الصافي<strong><br>'+escx(money(Math.abs(t.net)))+' '+c+' ('+(t.net>0?'ليا عنده':t.net<0?'عليا له':'متساوي')+')</strong></div></div><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>أصل المبلغ</th><th>المسدد/المحصل</th><th>المتبقي</th></tr></thead><tbody>'+rows+'</tbody></table><p class="hint">لحفظ الكشف PDF: اختر طباعة ثم Save as PDF / حفظ كملف PDF.</p><button onclick="window.print()">طباعة / حفظ PDF</button></body></html>');
  w.document.close();w.focus();
  const phone=phoneFor(p);
- if(phone&&phone.length>=10&&phone.length<=15){const url='https://web.whatsapp.com/send?phone='+phone+'&text='+encodeURIComponent('السلام عليكم '+p.person_name+'، مرفق كشف حسابك حتى تاريخ '+isoDate(new Date())+'.');window.open(url,'_blank','noopener');}
+ if(phone&&phone.length>=10&&phone.length<=15){
+  const message='السلام عليكم '+p.person_name+'، مرفق كشف حسابك حتى تاريخ '+isoDate(new Date())+'.';
+  if(typeof window.openWhatsAppBusiness==='function')window.openWhatsAppBusiness(p.phone,message);
+  else showToast('تعذر فتح واتساب الأعمال من الموقع. احفظ ملف PDF ثم افتح واتساب الأعمال يدويًا.',true);
+ }
 };
 const oldStatement=window.openSalehPersonStatement;
 if(typeof oldStatement==='function'){
@@ -14078,9 +14082,9 @@ if(typeof oldStatement==='function'){
    const txt=(b.textContent||'').replace(/\s+/g,' ').trim();
    if(txt.includes('أنا اديته فلوس')){b.textContent='أديته فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'given\')');}
    else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')){b.textContent='أخدت فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'received\')');}
-   else if(txt.includes('إرسال كشف الحساب واتساب')){b.textContent='إرسال كشف الحساب PDF على واتساب ويب';b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');}
+   else if(txt.includes('إرسال كشف الحساب واتساب')){b.textContent='إرسال كشف الحساب PDF على واتساب الأعمال';b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');}
   });
-  if(!body.querySelector('[data-saleh-pdf-button]')){const actions=body.querySelector('.actions');if(actions){const b=document.createElement('button');b.type='button';b.className='gold-btn';b.setAttribute('data-saleh-pdf-button','1');b.textContent='كشف PDF + واتساب ويب';b.onclick=()=>window.printSalehPersonStatementPDF(id);actions.appendChild(b);}}
+  if(!body.querySelector('[data-saleh-pdf-button]')){const actions=body.querySelector('.actions');if(actions){const b=document.createElement('button');b.type='button';b.className='gold-btn';b.setAttribute('data-saleh-pdf-button','1');b.textContent='كشف PDF + واتساب الأعمال';b.onclick=()=>window.printSalehPersonStatementPDF(id);actions.appendChild(b);}}
  };
 }
 })();
