@@ -14077,14 +14077,24 @@ if(typeof oldStatement==='function'){
   oldStatement.apply(this,arguments);
   const modal=document.getElementById('modal');if(!modal)return;
   const body=modal.querySelector('.modal-body')||modal;
-  const buttons=body.querySelectorAll('button');
+  const buttons=[...body.querySelectorAll('button')];
+  const seen={given:false,received:false,statement:false};
   buttons.forEach(b=>{
-   const txt=(b.textContent||'').replace(/\s+/g,' ').trim();
-   if(txt.includes('أنا اديته فلوس')){b.textContent='أديته فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'given\')');}
-   else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')){b.textContent='أخدت فلوس';b.setAttribute('onclick','openSalehQuickCashEntry(\''+String(id).replace(/'/g,'')+'\',\'received\')');}
-   else if(txt.includes('إرسال كشف الحساب واتساب')){b.textContent='إرسال كشف الحساب PDF على واتساب الأعمال';b.setAttribute('onclick','printSalehPersonStatementPDF(\''+String(id).replace(/'/g,'')+'\')');}
+   const txt=(b.textContent||'').replace(/\\s+/g,' ').trim();
+   if(txt.includes('أنا اديته فلوس')||txt.includes('أديته فلوس')){
+    if(seen.given){b.remove();return;}
+    seen.given=true;b.textContent='أديته فلوس';
+    b.setAttribute('onclick','openSalehQuickCashEntry(\\''+String(id).replace(/'/g,'')+'\\',\\'given\\')');
+   }else if(txt.includes('استلمت منه فلوس')||txt.includes('أنا استلفت منه فلوس')||txt==='أخدت فلوس'){
+    if(seen.received){b.remove();return;}
+    seen.received=true;b.textContent='أخدت فلوس';
+    b.setAttribute('onclick','openSalehQuickCashEntry(\\''+String(id).replace(/'/g,'')+'\\',\\'received\\')');
+   }else if(txt.includes('إرسال كشف الحساب واتساب')||txt.includes('كشف PDF + واتساب')||txt.includes('كشف الحساب PDF على واتساب')){
+    if(seen.statement){b.remove();return;}
+    seen.statement=true;b.textContent='كشف PDF + واتساب الأعمال';
+    b.setAttribute('onclick','printSalehPersonStatementPDF(\\''+String(id).replace(/'/g,'')+'\\')');
+   }
   });
-  if(!body.querySelector('[data-saleh-pdf-button]')){const actions=body.querySelector('.actions');if(actions){const b=document.createElement('button');b.type='button';b.className='gold-btn';b.setAttribute('data-saleh-pdf-button','1');b.textContent='كشف PDF + واتساب الأعمال';b.onclick=()=>window.printSalehPersonStatementPDF(id);actions.appendChild(b);}}
  };
 }
 })();
