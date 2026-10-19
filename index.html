@@ -6332,10 +6332,11 @@ window.saveSalehPersonLoanEdit=async function(id){
   if(!account||!["lent","borrowed"].includes(direction))throw new Error("اختر نوع العملية والحساب.");
   const txs=await findLedgerTxPF("loan",id);
   if(!txs.length)throw new Error("لم يتم العثور على الحركة المرتبطة برصيد الحساب؛ لم يتم تعديل أي بيانات لتجنب اختلاف الرصيد.");
+  const personName=(state.loanPeople||[]).find(p=>String(p.id)===String(l.person_id))?.person_name||"شخص";
   const upd=await db.from("personal_finance_loans").update({amount,loan_direction:direction,loan_type:direction,wallet_account_id:account,loan_date:date,purpose,notes,status:statusPF(id,amount)}).eq("id",id).eq("user_id",currentUser.id);
   if(upd.error)throw upd.error;
   for(const tx of txs){
-   const t=await db.from("personal_finance_transactions").update({account_id:account,amount:direction==="borrowed"?Math.abs(amount):-Math.abs(amount),transaction_type:"adjustment",category:direction==="borrowed"?"استلام سلفة":"إعطاء سلفة",description:(direction==="borrowed"?"مبلغ مستلف من ":"مبلغ مسلف لـ ")+(state.loanPeople||[]).find(p=>String(p.id)===String(l.person_id))?.person_name||"شخص",transaction_date:date,notes,updated_at:new Date().toISOString()}).eq("id",tx.id).eq("user_id",currentUser.id);
+   const t=await db.from("personal_finance_transactions").update({account_id:account,amount:direction==="borrowed"?Math.abs(amount):-Math.abs(amount),transaction_type:"adjustment",category:direction==="borrowed"?"استلام سلفة":"إعطاء سلفة",description:(direction==="borrowed"?"مبلغ مستلف من ":"مبلغ مسلف لـ ")+personName,transaction_date:date,notes,updated_at:new Date().toISOString()}).eq("id",tx.id).eq("user_id",currentUser.id);
    if(t.error)throw t.error;
   }
   window.closeModal();await window.refresh();window.showToast("تم تعديل العملية وتحديث رصيد الحساب.");window.openSalehPersonStatement(l.person_id);
