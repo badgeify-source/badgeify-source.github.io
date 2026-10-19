@@ -8117,6 +8117,17 @@ function renderInvoices(){
 
 
             <button
+            class="ghost-btn"
+            onclick="openCombinedInvoiceModal('overdue','trader')">
+
+            <i class="fa-solid fa-file-circle-exclamation"></i>
+
+            فاتورة مجمعة للتاجر المتأخرة
+
+            </button>
+
+
+            <button
             class="gold-btn"
             onclick="openCombinedInvoiceModal('all')">
 
@@ -8287,19 +8298,22 @@ function renderInvoices(){
    فاتورة مجمعة للعميل أو التاجر
 ========================================= */
 
-function openCombinedInvoiceModal(scope){
+function openCombinedInvoiceModal(scope, fixedEntityType){
 
     const isOverdue = scope === "overdue";
-    const title = isOverdue
-        ? "الفواتير المجمعة - المتأخرات"
-        : "الفواتير المجمعة - كل الاشتراكات";
+    const title = fixedEntityType === "trader" && isOverdue
+        ? "فاتورة مجمعة للتاجر المتأخرة"
+        : (isOverdue
+            ? "الفواتير المجمعة - المتأخرات"
+            : "الفواتير المجمعة - كل الاشتراكات");
 
     openModal(
         title,
         `
         <input type="hidden" id="combinedInvoiceScope" value="${scope}">
+        <input type="hidden" id="combinedInvoiceFixedEntityType" value="${fixedEntityType || ""}">
         <div class="form-grid">
-            <div class="field">
+            <div class="field" ${fixedEntityType ? 'style="display:none"' : ""}>
                 <label>نوع الحساب</label>
                 <select id="combinedInvoiceEntityType" onchange="loadCombinedInvoiceEntities()">
                     <option value="customer">عميل</option>
@@ -8307,7 +8321,7 @@ function openCombinedInvoiceModal(scope){
                 </select>
             </div>
             <div class="field">
-                <label id="combinedInvoiceEntityLabel">اختار العميل</label>
+                <label id="combinedInvoiceEntityLabel">${fixedEntityType === "trader" ? "اختار التاجر" : "اختار العميل"}</label>
                 <select id="combinedInvoiceEntity" onchange="loadCombinedInvoiceSubscriptions()">
                     <option value="">اختار</option>
                 </select>
@@ -8332,7 +8346,9 @@ function openCombinedInvoiceModal(scope){
 
 function loadCombinedInvoiceEntities(){
 
-    const type = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const type = document.getElementById("combinedInvoiceFixedEntityType")?.value
+        || document.getElementById("combinedInvoiceEntityType")?.value
+        || "customer";
     const select = document.getElementById("combinedInvoiceEntity");
     const label = document.getElementById("combinedInvoiceEntityLabel");
     if(!select) return;
@@ -8468,7 +8484,9 @@ function calculateCombinedInvoiceTotal(){
 
 async function createCombinedInvoice(scope){
 
-    const entityType = document.getElementById("combinedInvoiceEntityType")?.value || "customer";
+    const entityType = document.getElementById("combinedInvoiceFixedEntityType")?.value
+        || document.getElementById("combinedInvoiceEntityType")?.value
+        || "customer";
     const entityId = Number(document.getElementById("combinedInvoiceEntity")?.value || 0);
     const checks = [...document.querySelectorAll(".combinedInvoiceCheck:checked")];
 
