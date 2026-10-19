@@ -13237,10 +13237,10 @@ document.addEventListener('click',function(e){
     let rows='';
     loans.forEach(l=>{
       const paid=loanPaid(l.id),rem=loanRemaining(l),lent=loanDirection(l)==='lent';
-      rows+='<tr><td>'+esc(formatDate(l.loan_date)||l.loan_date||'-')+'</td><td><b>'+(lent?'أعطيته فلوس — ليا عنده':'أخذت منه فلوس — عليا له')+'</b><br><small class="muted">'+esc(accountName(l.wallet_account_id))+'</small><br><small class="muted">'+esc(l.purpose||l.notes||'بدون تفاصيل')+'</small></td><td>'+money(Number(l.amount||0))+' '+esc(c)+'</td><td>'+money(paid)+' '+esc(c)+'</td><td><b>'+money(rem)+' '+esc(c)+'</b></td><td>'+(rem>0?'<button type="button" class="mini-btn" onclick="openLoanRepayment('+Number(l.id)+')">'+(lent?'تسجيل مبلغ رجع لي':'تسجيل مبلغ رجعته له')+'</button>':'<span class="badge paid">مسدد بالكامل</span>')+'</td></tr>';
+      rows+='<tr><td>'+esc(formatDate(l.loan_date)||l.loan_date||'-')+'</td><td><b>'+(lent?'أعطيته فلوس — ليا عنده':'أخذت منه فلوس — عليا له')+'</b><br><small class="muted">'+esc(accountName(l.wallet_account_id))+'</small><br><small class="muted">'+esc(l.purpose||l.notes||'بدون تفاصيل')+'</small></td><td>'+money(Number(l.amount||0))+' '+esc(c)+'</td><td>'+money(paid)+' '+esc(c)+'</td><td><b>'+money(rem)+' '+esc(c)+'</b></td><td>'+(rem>0?'<button type="button" class="mini-btn" onclick="openLoanRepayment('+Number(l.id)+')">'+(lent?'تسجيل مبلغ رجع لي':'تسجيل مبلغ رجعته له')+'</button>':'<span class="badge paid">مسدد بالكامل</span>')+'<div class="actions" style="margin-top:6px"><button type="button" class="mini-btn" onclick="editSalehPersonLoan(\''+esc(l.id)+'\')">تعديل</button><button type="button" class="mini-btn" onclick="deleteSalehPersonLoan(\''+esc(l.id)+'\')">إزالة</button></div></td></tr>';
       const pays=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)).sort((a,b)=>String(b.payment_date||'').localeCompare(String(a.payment_date||'')));
       pays.forEach(pay=>{
-        rows+='<tr><td>'+esc(formatDate(pay.payment_date)||pay.payment_date||'-')+'</td><td><span class="muted">تفصيل سداد / تحصيل</span><br>'+esc(lent?'مبلغ استلمته منه':'مبلغ سددته له')+'<br><small class="muted">'+esc(accountName(pay.wallet_account_id))+(pay.notes?' — '+esc(pay.notes):'')+'</small></td><td>—</td><td>'+money(Number(pay.amount||0))+' '+esc(c)+'</td><td>—</td><td>—</td></tr>';
+        rows+='<tr><td>'+esc(formatDate(pay.payment_date)||pay.payment_date||'-')+'</td><td><span class="muted">تفصيل سداد / تحصيل</span><br>'+esc(lent?'مبلغ استلمته منه':'مبلغ سددته له')+'<br><small class="muted">'+esc(accountName(pay.wallet_account_id))+(pay.notes?' — '+esc(pay.notes):'')+'</small></td><td>—</td><td>'+money(Number(pay.amount||0))+' '+esc(c)+'</td><td>—</td><td><div class="actions"><button type="button" class="mini-btn" onclick="editSalehPersonPayment(\''+esc(pay.id)+'\')">تعديل</button><button type="button" class="mini-btn" onclick="deleteSalehPersonPayment(\''+esc(pay.id)+'\')">إزالة</button></div></td></tr>';
       });
     });
     if(!loans.length)rows='<tr><td colspan="6"><div class="empty" style="padding:18px">لا توجد حركات مالية مسجلة لهذا الشخص حتى الآن.</div></td></tr>';
@@ -13251,6 +13251,109 @@ document.addEventListener('click',function(e){
       '<div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة والتفاصيل</th><th>أصل السلفة</th><th>المسدد / المحصل</th><th>المتبقي</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
     openModal('كشف حساب '+esc(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
   };
+
+  // SAFE PERSON STATEMENT EDIT/REMOVE ACTIONS — kept inside the existing Personal Finance script.
+  const personLedgerTx=async(type,id)=>{
+    const q=await db.from('personal_finance_transactions').select('*').eq('user_id',currentUser.id).eq('source_type',type).eq('source_id',String(id));
+    if(q.error)throw q.error;
+    return q.data||[];
+  };
+  const personLedgerToast=e=>showToast(e&&e.message?e.message:'تعذر تنفيذ العملية.',true);
+  window.editSalehPersonLoan=function(id){
+    const l=(state.loans||[]).find(x=>String(x.id)===String(id));
+    if(!l)return showToast('عملية السلفة غير موجودة. حدّث الصفحة وحاول مرة أخرى.',true);
+    const paid=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(id)).reduce((n,x)=>n+Number(x.amount||0),0);
+    const accounts=state.financeAccounts||[];
+    const body='<div class="finance-modal-shell"><div class="form-grid">'+
+      '<div class="field"><label>نوع العملية</label><select id="personLoanEditDirection"><option value="lent" '+(loanDirection(l)==='lent'?'selected':'')+'>أنا اديته فلوس</option><option value="borrowed" '+(loanDirection(l)==='borrowed'?'selected':'')+'>أنا أخذت منه فلوس</option></select></div>'+
+      '<div class="field"><label>المبلغ</label><input id="personLoanEditAmount" type="number" min="'+paid+'" step="0.01" value="'+Number(l.amount||0)+'"></div>'+
+      '<div class="field"><label>الحساب</label><select id="personLoanEditAccount">'+accounts.map(a=>'<option value="'+esc(a.id)+'" '+(String(a.id)===String(l.wallet_account_id)?'selected':'')+'>'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>التاريخ</label><input id="personLoanEditDate" type="date" value="'+esc(String(l.loan_date||isoDate(new Date())).slice(0,10))+'"></div>'+
+      '<div class="field full"><label>الغرض</label><input id="personLoanEditPurpose" value="'+esc(l.purpose||'')+'"></div>'+
+      '<div class="field full"><label>ملاحظات</label><textarea id="personLoanEditNotes">'+esc(l.notes||'')+'</textarea></div>'+
+      '</div><p class="muted">إجمالي المسدد/المحصل: '+money(paid)+'؛ لا يمكن تقليل أصل السلفة عن هذا المبلغ.</p></div>';
+    openModal('تعديل عملية الشخص',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehPersonLoanEdit(\''+esc(l.id)+'\')">حفظ التعديل</button>');
+  };
+  window.saveSalehPersonLoanEdit=async function(id){
+    try{
+      if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      const l=(state.loans||[]).find(x=>String(x.id)===String(id));if(!l)throw new Error('عملية السلفة غير موجودة.');
+      const amount=Number(document.getElementById('personLoanEditAmount')?.value||0);
+      const direction=document.getElementById('personLoanEditDirection')?.value;
+      const account=document.getElementById('personLoanEditAccount')?.value;
+      const date=document.getElementById('personLoanEditDate')?.value||isoDate(new Date());
+      const purpose=document.getElementById('personLoanEditPurpose')?.value.trim()||null;
+      const notes=document.getElementById('personLoanEditNotes')?.value||null;
+      const paid=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(id)).reduce((n,x)=>n+Number(x.amount||0),0);
+      if(!Number.isFinite(amount)||amount<=0||amount<paid)throw new Error('المبلغ يجب أن يكون موجبًا ولا يقل عن إجمالي المسدد/المحصل ('+money(paid)+').');
+      if(!['lent','borrowed'].includes(direction)||!account)throw new Error('اختر نوع العملية والحساب.');
+      const txs=await personLedgerTx('loan',id);if(!txs.length)throw new Error('لم يتم العثور على قيد رصيد الحساب المرتبط؛ لم يتم تعديل أي بيانات لتجنب اختلاف الرصيد.');
+      const person=loanPerson(l.person_id),borrowed=direction==='borrowed';
+      const txPatch={account_id:account,amount:borrowed?Math.abs(amount):-Math.abs(amount),transaction_type:'adjustment',category:borrowed?'استلام سلفة':'إعطاء سلفة',description:(borrowed?'مبلغ مستلف من ':'مبلغ مسلف لـ ')+(person?.person_name||'شخص'),transaction_date:date,notes,updated_at:new Date().toISOString()};
+      for(const tx of txs){const u=await db.from('personal_finance_transactions').update(txPatch).eq('id',tx.id).eq('user_id',currentUser.id);if(u.error)throw u.error;}
+      const status=paid>=amount?'paid':paid>0?'partially_paid':'open';
+      const u=await db.from('personal_finance_loans').update({amount,loan_type:direction,loan_direction:direction,wallet_account_id:account,loan_date:date,purpose,notes,status}).eq('id',id).eq('user_id',currentUser.id);
+      if(u.error)throw u.error;
+      closeModal();await refresh();showToast('تم تعديل العملية وتحديث رصيد الحساب.');window.openSalehPersonStatement(l.person_id);
+    }catch(e){personLedgerToast(e);}
+  };
+  window.deleteSalehPersonLoan=async function(id){
+    try{
+      if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      const l=(state.loans||[]).find(x=>String(x.id)===String(id));if(!l)throw new Error('عملية السلفة غير موجودة.');
+      if((state.loanPayments||[]).some(x=>String(x.loan_id)===String(id)))throw new Error('لا يمكن إزالة أصل السلفة قبل إزالة عمليات السداد/التحصيل المرتبطة بها من الكشف.');
+      if(!confirm('تأكيد إزالة أصل السلفة؟ سيتم حذف قيدها المرتبط برصيد الحساب أيضًا.'))return;
+      const txs=await personLedgerTx('loan',id);if(!txs.length)throw new Error('لم يتم العثور على قيد رصيد الحساب؛ لم يتم حذف أي شيء.');
+      for(const tx of txs){const d=await db.from('personal_finance_transactions').delete().eq('id',tx.id).eq('user_id',currentUser.id);if(d.error)throw d.error;}
+      const d=await db.from('personal_finance_loans').delete().eq('id',id).eq('user_id',currentUser.id);if(d.error)throw d.error;
+      await refresh();showToast('تمت إزالة العملية وتحديث الرصيد.');window.openSalehPersonStatement(l.person_id);
+    }catch(e){personLedgerToast(e);}
+  };
+  window.editSalehPersonPayment=function(id){
+    const p=(state.loanPayments||[]).find(x=>String(x.id)===String(id));if(!p)return showToast('عملية السداد/التحصيل غير موجودة.',true);
+    const l=(state.loans||[]).find(x=>String(x.id)===String(p.loan_id));if(!l)return showToast('السلفة المرتبطة غير موجودة.',true);
+    const max=Number(l.amount||0)-(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)&&String(x.id)!==String(id)).reduce((n,x)=>n+Number(x.amount||0),0);
+    const body='<div class="finance-modal-shell"><div class="form-grid">'+
+      '<div class="field"><label>المبلغ</label><input id="personPaymentEditAmount" type="number" min="0.01" max="'+max+'" step="0.01" value="'+Number(p.amount||0)+'"></div>'+
+      '<div class="field"><label>الحساب</label><select id="personPaymentEditAccount">'+(state.financeAccounts||[]).map(a=>'<option value="'+esc(a.id)+'" '+(String(a.id)===String(p.wallet_account_id)?'selected':'')+'>'+esc(a.account_name)+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>التاريخ</label><input id="personPaymentEditDate" type="date" value="'+esc(String(p.payment_date||isoDate(new Date())).slice(0,10))+'"></div>'+
+      '<div class="field full"><label>ملاحظات</label><textarea id="personPaymentEditNotes">'+esc(p.notes||'')+'</textarea></div>'+
+      '</div><p class="muted">المتاح لهذه العملية: '+money(max)+'</p></div>';
+    openModal('تعديل السداد / التحصيل',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="saveSalehPersonPaymentEdit(\''+esc(p.id)+'\')">حفظ التعديل</button>');
+  };
+  window.saveSalehPersonPaymentEdit=async function(id){
+    try{
+      if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      const p=(state.loanPayments||[]).find(x=>String(x.id)===String(id)),l=p&&(state.loans||[]).find(x=>String(x.id)===String(p.loan_id));if(!p||!l)throw new Error('عملية السداد/التحصيل أو السلفة المرتبطة غير موجودة.');
+      const amount=Number(document.getElementById('personPaymentEditAmount')?.value||0),account=document.getElementById('personPaymentEditAccount')?.value,date=document.getElementById('personPaymentEditDate')?.value||isoDate(new Date()),notes=document.getElementById('personPaymentEditNotes')?.value||null;
+      const paidOthers=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)&&String(x.id)!==String(id)).reduce((n,x)=>n+Number(x.amount||0),0),max=Number(l.amount||0)-paidOthers;
+      if(!Number.isFinite(amount)||amount<=0||amount>max)throw new Error('أدخل مبلغًا موجبًا لا يتجاوز المتاح ('+money(max)+').');
+      if(!account)throw new Error('اختر الحساب.');
+      const txs=await personLedgerTx('loan_payment',id);if(!txs.length)throw new Error('لم يتم العثور على قيد رصيد الحساب المرتبط؛ لم يتم تعديل أي بيانات.');
+      const borrowed=loanDirection(l)==='borrowed',person=loanPerson(l.person_id);
+      const txPatch={account_id:account,amount:borrowed?-Math.abs(amount):Math.abs(amount),transaction_type:'adjustment',category:borrowed?'سداد سلفة':'تحصيل سلفة',description:(borrowed?'سداد إلى ':'تحصيل من ')+(person?.person_name||'شخص'),transaction_date:date,notes,updated_at:new Date().toISOString()};
+      for(const tx of txs){const u=await db.from('personal_finance_transactions').update(txPatch).eq('id',tx.id).eq('user_id',currentUser.id);if(u.error)throw u.error;}
+      const u=await db.from('personal_finance_loan_payments').update({amount,wallet_account_id:account,payment_date:date,notes}).eq('id',id).eq('user_id',currentUser.id);if(u.error)throw u.error;
+      const paid=paidOthers+amount,status=paid>=Number(l.amount||0)?'paid':paid>0?'partially_paid':'open';
+      const su=await db.from('personal_finance_loans').update({status}).eq('id',l.id).eq('user_id',currentUser.id);if(su.error)throw su.error;
+      closeModal();await refresh();showToast('تم تعديل عملية السداد/التحصيل وتحديث رصيد الحساب.');window.openSalehPersonStatement(l.person_id);
+    }catch(e){personLedgerToast(e);}
+  };
+  window.deleteSalehPersonPayment=async function(id){
+    try{
+      if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      const p=(state.loanPayments||[]).find(x=>String(x.id)===String(id));if(!p)throw new Error('عملية السداد/التحصيل غير موجودة.');
+      const l=(state.loans||[]).find(x=>String(x.id)===String(p.loan_id));if(!l)throw new Error('السلفة المرتبطة غير موجودة.');
+      if(!confirm('تأكيد إزالة عملية السداد/التحصيل؟ سيتم تحديث المتبقي ورصيد الحساب.'))return;
+      const txs=await personLedgerTx('loan_payment',id);if(!txs.length)throw new Error('لم يتم العثور على قيد رصيد الحساب؛ لم يتم حذف أي شيء لتجنب اختلاف الرصيد.');
+      for(const tx of txs){const d=await db.from('personal_finance_transactions').delete().eq('id',tx.id).eq('user_id',currentUser.id);if(d.error)throw d.error;}
+      const d=await db.from('personal_finance_loan_payments').delete().eq('id',id).eq('user_id',currentUser.id);if(d.error)throw d.error;
+      const paid=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)&&String(x.id)!==String(id)).reduce((n,x)=>n+Number(x.amount||0),0),status=paid>=Number(l.amount||0)?'paid':paid>0?'partially_paid':'open';
+      const su=await db.from('personal_finance_loans').update({status}).eq('id',l.id).eq('user_id',currentUser.id);if(su.error)throw su.error;
+      await refresh();showToast('تمت إزالة العملية وتحديث المتبقي ورصيد الحساب.');window.openSalehPersonStatement(l.person_id);
+    }catch(e){personLedgerToast(e);}
+  };
+
   window.sendSalehPersonWhatsApp=function(personId){
     const p=loanPerson(personId);if(!p)return showToast('الشخص غير موجود.',true);
     const phone=digitsForWhatsApp(p.phone);
