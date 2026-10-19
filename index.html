@@ -13327,7 +13327,7 @@ function bind(){
   var label=(b.textContent||'').replace(/\\s+/g,' ').trim();
   var action=null;
   if(label==='الأشخاص') action=window.openSalehPeople;
-  else if(label==='إضافة الأشخاص'||label==='إضافة شخص') action=window.openSalehPeopleManagement||window.salehPeopleDirect;
+  else if(label==='إضافة الأشخاص'||label==='إضافة شخص') action=window.salehOpenPersonDirect||window.openSalehPeopleManagement;
   else if(label==='بنود المصاريف'||label==='إدارة البنود') action=window.salehExpenseCategoriesDirect;
   if(action){
    e.preventDefault();e.stopImmediatePropagation();
