@@ -8297,6 +8297,7 @@ function openCombinedInvoiceModal(scope){
     openModal(
         title,
         `
+        <input type="hidden" id="combinedInvoiceScope" value="${scope}">
         <div class="form-grid">
             <div class="field">
                 <label>نوع الحساب</label>
@@ -8420,7 +8421,7 @@ function loadCombinedInvoiceSubscriptions(){
         return;
     }
 
-    const scope = document.querySelector("#modal button[onclick*='createCombinedInvoice']")?.getAttribute("onclick")?.includes("'overdue'") ? "overdue" : "all";
+    const scope = document.getElementById("combinedInvoiceScope")?.value === "overdue" ? "overdue" : "all";
     const rows = getCombinedInvoiceRows(scope, type, entityId);
 
     container.innerHTML = `
