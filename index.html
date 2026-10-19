@@ -13247,7 +13247,7 @@ document.addEventListener('click',function(e){
     const netLabel=t.net>0?'ليا عنده':t.net<0?'عليا له':'الحساب متساوي';
     const body='<div class="finance-modal-shell"><div class="finance-person-summary"><div><b style="font-size:20px">'+esc(p.person_name||'')+'</b><small>'+esc(p.phone||'لا يوجد رقم محفوظ')+'</small></div><div class="finance-person-net"><span>'+netLabel+'</span><strong>'+money(Math.abs(t.net))+' '+esc(c)+'</strong></div></div>'+
       '<div class="finance-person-kpis"><div><span>إجمالي السلف اللي ليا</span><b>'+money(t.lent)+' '+esc(c)+'</b></div><div><span>إجمالي السلف اللي عليا</span><b>'+money(t.borrowed)+' '+esc(c)+'</b></div><div><span>الصافي</span><b>'+money(Math.abs(t.net))+' '+esc(c)+'</b></div></div>'+
-      '<div class="actions" style="margin:14px 0;display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')">أعطيته فلوس</button><button type="button" class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')">أخذت منه فلوس</button><button type="button" class="gold-btn" onclick="sendSalehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> إرسال كشف الحساب واتساب</button><button type="button" class="ghost-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف الشخص</button></div>'+
+      '<div class="actions" style="margin:14px 0;display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')">أنا اديته فلوس (سلفة جديدة)</button><button type="button" class="gold-btn" onclick="openPersonCollectPayment(\''+esc(p.id)+'\')">استلمت منه فلوس (تحصيل)</button><button type="button" class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')">أنا استلفت منه فلوس (سلفة جديدة)</button><button type="button" class="gold-btn" onclick="sendSalehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> إرسال كشف الحساب واتساب</button><button type="button" class="ghost-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف الشخص</button></div>'+
       '<div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة والتفاصيل</th><th>أصل السلفة</th><th>المسدد / المحصل</th><th>المتبقي</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
     openModal('كشف حساب '+esc(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
   };
@@ -13352,6 +13352,27 @@ document.addEventListener('click',function(e){
       const su=await db.from('personal_finance_loans').update({status}).eq('id',l.id).eq('user_id',currentUser.id);if(su.error)throw su.error;
       await refresh();showToast('تمت إزالة العملية وتحديث المتبقي ورصيد الحساب.');window.openSalehPersonStatement(l.person_id);
     }catch(e){personLedgerToast(e);}
+  };
+
+
+  // Make receiving a repayment distinct from borrowing new money from the same person.
+  window.openPersonCollectPayment=function(personId){
+    const outstanding=(state.loans||[]).filter(l=>String(l.person_id)===String(personId)&&l.status!=='cancelled'&&loanDirection(l)==='lent'&&loanRemaining(l)>0);
+    if(!outstanding.length){
+      showToast('لا توجد سلفة مسجلة لك عند هذا الشخص عليها مبلغ متبقٍ. لو دي فلوس جديدة استلفتها منه، اختر «أنا استلفت منه فلوس».',true);
+      return;
+    }
+    if(outstanding.length===1){openLoanRepayment(outstanding[0].id);return;}
+    const options=outstanding.map(l=>'<option value="'+esc(l.id)+'">'+esc(l.purpose||l.notes||'سلفة')+' — المتبقي '+money(loanRemaining(l))+' '+esc(cur())+' — '+esc(l.loan_date||'بدون تاريخ')+'</option>').join('');
+    const body='<div class="form-grid"><div class="field full"><label>اختار السلفة اللي رجّع منها فلوس</label><select id="personCollectLoanId">'+options+'</select></div><p class="muted">المبلغ اللي هتدخله هيتسجل تحصيلًا من السلفة المختارة، ويقلل المتبقي منها.</p></div>';
+    openModal('استلام مبلغ من الشخص',body,'<button type="button" class="ghost-btn" onclick="closeModal()">إلغاء</button><button type="button" class="gold-btn" onclick="continuePersonCollectPayment()">متابعة التحصيل</button>');
+  };
+  window.continuePersonCollectPayment=function(){
+    const id=document.getElementById('personCollectLoanId')?.value;
+    const loan=(state.loans||[]).find(l=>String(l.id)===String(id));
+    if(!loan||loanDirection(loan)!=='lent'||loanRemaining(loan)<=0){showToast('السلفة المختارة غير صالحة للتحصيل.',true);return;}
+    closeModal();
+    openLoanRepayment(loan.id);
   };
 
   window.sendSalehPersonWhatsApp=function(personId){
