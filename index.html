@@ -6286,6 +6286,149 @@ ${data.notes?"<div style='margin-top:20px;padding:14px;background:#f8fafc;border
 
 
 
+
+<script id="saleh-person-ledger-edit-delete">
+/* Safe person statement editing: loan entries and repayment/collection entries. */
+(function(){
+"use strict";
+const escPF=v=>typeof window.esc==="function"?window.esc(v==null?"":String(v)):String(v==null?"":v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+const moneyPF=v=>typeof window.money==="function"?window.money(Number(v||0)):Number(v||0).toFixed(2);
+const todayPF=()=>typeof window.isoDate==="function"?window.isoDate(new Date()):new Date().toISOString().slice(0,10);
+const getLoanPF=id=>(state.loans||[]).find(x=>String(x.id)===String(id));
+const getPayPF=id=>(state.loanPayments||[]).find(x=>String(x.id)===String(id));
+const paidExceptPF=(loanId,paymentId)=> (state.loanPayments||[]).filter(x=>String(x.loan_id)===String(loanId)&&String(x.id)!==String(paymentId)).reduce((n,x)=>n+Number(x.amount||0),0);
+const refreshStatementPF=async personId=>{await window.refresh();window.openSalehPersonStatement(personId);};
+function statusPF(loanId,amountOverride,paymentIdExclude){
+ const loan=getLoanPF(loanId);if(!loan)return "open";
+ const paid=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(loanId)&&String(x.id)!==String(paymentIdExclude)).reduce((n,x)=>n+Number(x.amount||0),0);
+ const amount=amountOverride==null?Number(loan.amount||0):Number(amountOverride||0);
+ return paid>=amount?"paid":paid>0?"partially_paid":"open";
+}
+async function findLedgerTxPF(type,id){
+ const r=await db.from("personal_finance_transactions").select("*").eq("user_id",currentUser.id).eq("source_type",type).eq("source_id",String(id));
+ if(r.error)throw r.error;
+ return r.data||[];
+}
+function openEditLoanPF(id){
+ const l=getLoanPF(id);if(!l)return window.showToast("العملية غير موجودة؛ حدّث الصفحة وحاول مرة أخرى.",true);
+ const paid=(state.loanPayments||[]).filter(p=>String(p.loan_id)===String(id)).reduce((n,p)=>n+Number(p.amount||0),0);
+ const accounts=state.financeAccounts||[];
+ const body='<div class="finance-modal-shell"><div class="form-grid">'+
+ '<div class="field"><label>نوع العملية</label><select id="pfPersonEditDirection"><option value="lent" '+(String(l.loan_direction||l.loan_type||"lent")!=="borrowed"?"selected":"")+'>أنا اديته فلوس</option><option value="borrowed" '+(String(l.loan_direction||l.loan_type)==="borrowed"?"selected":"")+'>أنا أخذت منه فلوس</option></select></div>'+
+ '<div class="field"><label>المبلغ</label><input id="pfPersonEditAmount" type="number" min="'+paid+'" step="0.01" value="'+Number(l.amount||0)+'"></div>'+
+ '<div class="field"><label>الحساب</label><select id="pfPersonEditAccount">'+accounts.map(a=>'<option value="'+escPF(a.id)+'" '+(String(a.id)===String(l.wallet_account_id)?"selected":"")+'>'+escPF(a.account_name)+'</option>').join("")+'</select></div>'+
+ '<div class="field"><label>التاريخ</label><input id="pfPersonEditDate" type="date" value="'+escPF(String(l.loan_date||todayPF()).slice(0,10))+'"></div>'+
+ '<div class="field full"><label>البيان / الغرض</label><input id="pfPersonEditPurpose" value="'+escPF(l.purpose||"")+'"></div>'+
+ '<div class="field full"><label>ملاحظات</label><textarea id="pfPersonEditNotes">'+escPF(l.notes||"")+'</textarea></div>'+
+ '</div><p class="muted">إجمالي المسدد حاليًا: '+moneyPF(paid)+'؛ لا يمكن جعل أصل السلفة أقل من المبالغ المسددة.</p></div>';
+ window.openModal("تعديل عملية الشخص",body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPersonLoanEdit(\''+escPF(id)+'\')">حفظ التعديل</button>');
+}
+window.saveSalehPersonLoanEdit=async function(id){
+ try{
+  const l=getLoanPF(id);if(!l)throw new Error("العملية غير موجودة.");
+  const amount=Number(document.getElementById("pfPersonEditAmount")?.value||0),direction=document.getElementById("pfPersonEditDirection")?.value,account=document.getElementById("pfPersonEditAccount")?.value,date=document.getElementById("pfPersonEditDate")?.value||todayPF(),purpose=document.getElementById("pfPersonEditPurpose")?.value.trim()||null,notes=document.getElementById("pfPersonEditNotes")?.value||null;
+  const paid=(state.loanPayments||[]).filter(p=>String(p.loan_id)===String(id)).reduce((n,p)=>n+Number(p.amount||0),0);
+  if(!Number.isFinite(amount)||amount<=0||amount<paid)throw new Error("المبلغ يجب أن يكون موجبًا ولا يقل عن إجمالي المسدد ("+moneyPF(paid)+").");
+  if(!account||!["lent","borrowed"].includes(direction))throw new Error("اختر نوع العملية والحساب.");
+  const txs=await findLedgerTxPF("loan",id);
+  if(!txs.length)throw new Error("لم يتم العثور على الحركة المرتبطة برصيد الحساب؛ لم يتم تعديل أي بيانات لتجنب اختلاف الرصيد.");
+  const upd=await db.from("personal_finance_loans").update({amount,loan_direction:direction,loan_type:direction,wallet_account_id:account,loan_date:date,purpose,notes,status:statusPF(id,amount)}).eq("id",id).eq("user_id",currentUser.id);
+  if(upd.error)throw upd.error;
+  for(const tx of txs){
+   const t=await db.from("personal_finance_transactions").update({account_id:account,amount:direction==="borrowed"?Math.abs(amount):-Math.abs(amount),transaction_type:"adjustment",category:direction==="borrowed"?"استلام سلفة":"إعطاء سلفة",description:(direction==="borrowed"?"مبلغ مستلف من ":"مبلغ مسلف لـ ")+(state.loanPeople||[]).find(p=>String(p.id)===String(l.person_id))?.person_name||"شخص",transaction_date:date,notes,updated_at:new Date().toISOString()}).eq("id",tx.id).eq("user_id",currentUser.id);
+   if(t.error)throw t.error;
+  }
+  window.closeModal();await window.refresh();window.showToast("تم تعديل العملية وتحديث رصيد الحساب.");window.openSalehPersonStatement(l.person_id);
+ }catch(e){window.showToast(e.message||"تعذر تعديل العملية.",true);}
+};
+window.deleteSalehPersonLoan=async function(id){
+ const l=getLoanPF(id);if(!l)return window.showToast("العملية غير موجودة.",true);
+ const payments=(state.loanPayments||[]).filter(p=>String(p.loan_id)===String(id));
+ if(payments.length)return window.showToast("لا يمكن حذف أصل السلفة قبل حذف عمليات السداد/التحصيل المرتبطة بها من الكشف أولًا.",true);
+ if(!window.confirm("تأكيد إزالة أصل السلفة؟ سيتم حذف قيدها المرتبط برصيد الحساب أيضًا."))return;
+ try{
+  const txs=await findLedgerTxPF("loan",id);
+  if(!txs.length)throw new Error("لم يتم العثور على الحركة المرتبطة برصيد الحساب؛ لم يتم حذف شيء.");
+  for(const tx of txs){const d=await db.from("personal_finance_transactions").delete().eq("id",tx.id).eq("user_id",currentUser.id);if(d.error)throw d.error;}
+  const d=await db.from("personal_finance_loans").delete().eq("id",id).eq("user_id",currentUser.id);if(d.error)throw d.error;
+  await window.refresh();window.showToast("تمت إزالة العملية وتحديث الرصيد.");window.openSalehPersonStatement(l.person_id);
+ }catch(e){window.showToast(e.message||"تعذر إزالة العملية.",true);}
+};
+function openEditPaymentPF(id){
+ const p=getPayPF(id);if(!p)return window.showToast("عملية السداد غير موجودة.",true);
+ const l=getLoanPF(p.loan_id);if(!l)return window.showToast("السلفة المرتبطة بالعملية غير موجودة.",true);
+ const borrowed=String(l.loan_direction||l.loan_type)==="borrowed";
+ const max=Number(l.amount||0)-paidExceptPF(l.id,id);
+ const body='<div class="finance-modal-shell"><div class="form-grid">'+
+ '<div class="field"><label>'+(borrowed?"المبلغ المسدد":"المبلغ المحصل")+'</label><input id="pfPersonPayEditAmount" type="number" min="0.01" max="'+max+'" step="0.01" value="'+Number(p.amount||0)+'"></div>'+
+ '<div class="field"><label>الحساب</label><select id="pfPersonPayEditAccount">'+(state.financeAccounts||[]).map(a=>'<option value="'+escPF(a.id)+'" '+(String(a.id)===String(p.wallet_account_id)?"selected":"")+'>'+escPF(a.account_name)+'</option>').join("")+'</select></div>'+
+ '<div class="field"><label>التاريخ</label><input id="pfPersonPayEditDate" type="date" value="'+escPF(String(p.payment_date||todayPF()).slice(0,10))+'"></div>'+
+ '<div class="field full"><label>ملاحظات</label><textarea id="pfPersonPayEditNotes">'+escPF(p.notes||"")+'</textarea></div>'+
+ '</div><p class="muted">المتاح لتسجيله في هذه العملية: '+moneyPF(max)+'</p></div>';
+ window.openModal(borrowed?"تعديل عملية السداد":"تعديل عملية التحصيل",body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPersonPaymentEdit(\''+escPF(id)+'\')">حفظ التعديل</button>');
+}
+window.saveSalehPersonPaymentEdit=async function(id){
+ try{
+  const p=getPayPF(id),l=p&&getLoanPF(p.loan_id);if(!p||!l)throw new Error("العملية أو السلفة المرتبطة بها غير موجودة.");
+  const amount=Number(document.getElementById("pfPersonPayEditAmount")?.value||0),account=document.getElementById("pfPersonPayEditAccount")?.value,date=document.getElementById("pfPersonPayEditDate")?.value||todayPF(),notes=document.getElementById("pfPersonPayEditNotes")?.value||null;
+  const max=Number(l.amount||0)-paidExceptPF(l.id,id);
+  if(!Number.isFinite(amount)||amount<=0||amount>max)throw new Error("أدخل مبلغًا موجبًا لا يتجاوز المتاح ("+moneyPF(max)+").");
+  if(!account)throw new Error("اختر الحساب.");
+  const txs=await findLedgerTxPF("loan_payment",id);
+  if(!txs.length)throw new Error("لم يتم العثور على الحركة المرتبطة برصيد الحساب؛ لم يتم تعديل أي بيانات.");
+  const borrowed=String(l.loan_direction||l.loan_type)==="borrowed";
+  const u=await db.from("personal_finance_loan_payments").update({amount,wallet_account_id:account,payment_date:date,notes}).eq("id",id).eq("user_id",currentUser.id);
+  if(u.error)throw u.error;
+  for(const tx of txs){const t=await db.from("personal_finance_transactions").update({account_id:account,amount:borrowed?-Math.abs(amount):Math.abs(amount),transaction_type:"adjustment",category:borrowed?"سداد سلفة":"تحصيل سلفة",description:(borrowed?"سداد إلى ":"تحصيل من ")+((state.loanPeople||[]).find(x=>String(x.id)===String(l.person_id))?.person_name||"شخص"),transaction_date:date,notes,updated_at:new Date().toISOString()}).eq("id",tx.id).eq("user_id",currentUser.id);if(t.error)throw t.error;}
+  const newPaid=paidExceptPF(l.id,id)+amount;
+  const su=await db.from("personal_finance_loans").update({status:newPaid>=Number(l.amount||0)?"paid":newPaid>0?"partially_paid":"open"}).eq("id",l.id).eq("user_id",currentUser.id);if(su.error)throw su.error;
+  window.closeModal();await window.refresh();window.showToast("تم تعديل عملية السداد/التحصيل وتحديث الرصيد.");window.openSalehPersonStatement(l.person_id);
+ }catch(e){window.showToast(e.message||"تعذر تعديل العملية.",true);}
+};
+window.deleteSalehPersonPayment=async function(id){
+ const p=getPayPF(id);if(!p)return window.showToast("العملية غير موجودة.",true);
+ const l=getLoanPF(p.loan_id);if(!l)return window.showToast("السلفة المرتبطة غير موجودة.",true);
+ if(!window.confirm("تأكيد إزالة عملية السداد/التحصيل؟ سيتم تحديث المتبقي ورصيد الحساب."))return;
+ try{
+  const txs=await findLedgerTxPF("loan_payment",id);
+  for(const tx of txs){const d=await db.from("personal_finance_transactions").delete().eq("id",tx.id).eq("user_id",currentUser.id);if(d.error)throw d.error;}
+  const d=await db.from("personal_finance_loan_payments").delete().eq("id",id).eq("user_id",currentUser.id);if(d.error)throw d.error;
+  const newPaid=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)&&String(x.id)!==String(id)).reduce((n,x)=>n+Number(x.amount||0),0);
+  const su=await db.from("personal_finance_loans").update({status:newPaid>=Number(l.amount||0)?"paid":newPaid>0?"partially_paid":"open"}).eq("id",l.id).eq("user_id",currentUser.id);if(su.error)throw su.error;
+  await window.refresh();window.showToast("تمت إزالة العملية وتحديث المتبقي ورصيد الحساب.");window.openSalehPersonStatement(l.person_id);
+ }catch(e){window.showToast(e.message||"تعذر إزالة العملية.",true);}
+};
+window.openSalehPersonStatement=function(personId){
+ const person=(state.loanPeople||[]).find(x=>String(x.id)===String(personId));if(!person)return;
+ const loans=(state.loans||[]).filter(x=>x.status!=="cancelled"&&String(x.person_id)===String(personId));
+ const payments=(state.loanPayments||[]).filter(p=>loans.some(l=>String(l.id)===String(p.loan_id)));
+ const cur=(state.settings&&state.settings.currency)||"EGP";
+ let lent=0,borrowed=0;
+ const rows=[];
+ loans.forEach(l=>{
+  const paid=(state.loanPayments||[]).filter(p=>String(p.loan_id)===String(l.id)).reduce((n,p)=>n+Number(p.amount||0),0);
+  const rem=Math.max(0,Number(l.amount||0)-paid),dir=String(l.loan_direction||l.loan_type||"lent")==="borrowed"?"borrowed":"lent";
+  if(dir==="borrowed")borrowed+=rem;else lent+=rem;
+  rows.push({date:String(l.loan_date||""),created:String(l.created_at||""),html:'<tr><td>'+escPF(l.loan_date||"-")+'</td><td>'+(dir==="borrowed"?"أنا أخذت فلوس":"أنا اديته فلوس")+'</td><td>'+moneyPF(l.amount)+' '+escPF(cur)+'</td><td>'+moneyPF(paid)+' '+escPF(cur)+'</td><td>'+moneyPF(rem)+' '+escPF(cur)+'</td><td>'+escPF(l.purpose||"-")+'</td><td><div class="actions"><button class="mini-btn" onclick="openSalehPersonLoanEdit(\''+escPF(l.id)+'\')">تعديل</button><button class="mini-btn" onclick="deleteSalehPersonLoan(\''+escPF(l.id)+'\')">إزالة</button></div></td></tr>'});
+ });
+ payments.forEach(p=>{
+  const l=loans.find(x=>String(x.id)===String(p.loan_id));if(!l)return;
+  const dir=String(l.loan_direction||l.loan_type||"lent")==="borrowed"?"borrowed":"lent";
+  rows.push({date:String(p.payment_date||""),created:String(p.created_at||""),html:'<tr><td>'+escPF(p.payment_date||"-")+'</td><td>'+(dir==="borrowed"?"سداد مني":"تحصيل منه")+'</td><td>'+moneyPF(p.amount)+' '+escPF(cur)+'</td><td>—</td><td>—</td><td>'+escPF(p.notes||"عملية سداد/تحصيل")+'</td><td><div class="actions"><button class="mini-btn" onclick="openSalehPersonPaymentEdit(\''+escPF(p.id)+'\')">تعديل</button><button class="mini-btn" onclick="deleteSalehPersonPayment(\''+escPF(p.id)+'\')">إزالة</button></div></td></tr>'});
+ });
+ rows.sort((a,b)=>b.date.localeCompare(a.date)||b.created.localeCompare(a.created));
+ const net=lent-borrowed;
+ const body='<div class="finance-person-summary"><div><b>'+escPF(person.person_name)+'</b><small>'+escPF(person.phone||"لا يوجد واتساب")+'</small></div><div class="finance-person-net"><span>'+escPF(net>0?"لي عنده":net<0?"عليّ له":"متساوي")+'</span><strong>'+moneyPF(Math.abs(net))+" "+escPF(cur)+'</strong></div></div>'+
+ '<div class="finance-person-kpis"><div><span>لي عنده</span><b>'+moneyPF(lent)+" "+escPF(cur)+'</b></div><div><span>عليّ له</span><b>'+moneyPF(borrowed)+" "+escPF(cur)+'</b></div><div><span>صافي الحساب</span><b>'+moneyPF(Math.abs(net))+" "+escPF(cur)+'</b></div></div>'+
+ '<div class="actions" style="margin:12px 0"><button class="gold-btn" onclick="openSalehLoanForPerson(\''+escPF(person.id)+'\',\'lent\')">أنا اديته فلوس</button><button class="ghost-btn" onclick="openSalehLoanForPerson(\''+escPF(person.id)+'\',\'borrowed\')">أنا استلفت منه</button>'+(person.phone?'<button class="ghost-btn" onclick="salehPersonWhatsApp(\''+escPF(person.id)+'\')">واتساب الكشف</button>':"")+'</div>'+
+ '<div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة</th><th>المبلغ</th><th>المسدد</th><th>المتبقي</th><th>البيان</th><th>الإجراءات</th></tr></thead><tbody>'+rows.map(x=>x.html).join("")+'</tbody></table></div>';
+ window.openModal("كشف حساب "+escPF(person.person_name),body,'<button class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+};
+window.openSalehPersonLoanEdit=openEditLoanPF;
+window.openSalehPersonPaymentEdit=openEditPaymentPF;
+})();
+</script>
+
 </body>
 </html>`);
 
