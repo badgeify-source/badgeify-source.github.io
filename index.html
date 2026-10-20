@@ -1997,8 +1997,7 @@ function formatDate(value){
 
     if(!d) return "-";
 
-    return new Intl.DateTimeFormat(
-        state.lang==="ar"?"ar-EG":"en-GB",
+    return new Intl.DateTimeFormat(        state.lang==="ar"?"ar-EG":"en-GB",
         {
             year:"numeric",
             month:"short",
@@ -3997,8 +3996,7 @@ function sendCustomerWhatsApp(customerId){
         .replace(/[٠-٩]/g,function(d){return String("٠١٢٣٤٥٦٧٨٩".indexOf(d));})
         .replace(/\D/g,"");
 
-    if(number.startsWith("0")){
-        number = "20" + number.substring(1);
+    if(number.startsWith("0")){        number = "20" + number.substring(1);
     }
 
     if(!number){
@@ -4387,6 +4385,7 @@ function renderSubscriptions(){
     }
     const selectedService=document.getElementById("subscriptionServiceFilter")?.value||"";
     const selectedStatus=state.subscriptionFilterStatus||"all";
+    const selectedVisaSearch=String(state.subscriptionVisaSearch||"").replace(/\D/g,"").slice(0,4);
 
     let filteredRows=selectedService?rows.filter(function(subscription){
         return servicesForSubscription(subscription).some(function(service){
@@ -4397,6 +4396,13 @@ function renderSubscriptions(){
     if(selectedStatus!=="all"){
         filteredRows=filteredRows.filter(function(subscription){
             return subscription._periodType===selectedStatus;
+        });
+    }
+
+    if(selectedVisaSearch){
+        filteredRows=filteredRows.filter(function(subscription){
+            const last4=String(subscription.visa_last4||getVisaCard(subscription.visa_card_id)?.last4||"").replace(/\D/g,"");
+            return last4.endsWith(selectedVisaSearch);
         });
     }
 
@@ -4560,6 +4566,8 @@ function renderSubscriptions(){
             </div>
 
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+                <label for="subscriptionVisaSearch" style="font-weight:700">بحث بآخر ٤ أرقام من الفيزا</label>
+                <input id="subscriptionVisaSearch" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="آخر ٤ أرقام" value="${esc(selectedVisaSearch)}" oninput="updateSubscriptionVisaSearch(this.value)" style="width:150px;min-width:130px;">
                 <label style="font-weight:700">فلترة حسب الخدمة</label>
                 <select id="subscriptionServiceFilter" onchange="renderSubscriptions()" style="min-width:220px">
                     <option value="">كل الخدمات</option>
@@ -4654,6 +4662,18 @@ function renderSubscriptions(){
             </tbody></table></div>
         </div>
     </div>`;
+}
+
+function updateSubscriptionVisaSearch(value){
+    state.subscriptionVisaSearch=String(value||"").replace(/\D/g,"").slice(0,4);
+    const input=document.getElementById("subscriptionVisaSearch");
+    const cursor=input?input.selectionStart:null;
+    renderSubscriptions();
+    const next=document.getElementById("subscriptionVisaSearch");
+    if(next){
+        next.focus();
+        if(cursor!==null&&typeof next.setSelectionRange==="function") next.setSelectionRange(cursor,cursor);
+    }
 }
 
 function setSubscriptionStatusFilter(status){
@@ -5997,8 +6017,7 @@ function openPaymentModal(subscriptionId,periodKey){
                 ${t("amount")}
                 </label>
 
-                <input
-                id="paymentAmount"
+                <input                id="paymentAmount"
                 type="number"
                 step="0.01"
                 value="${esc(s.monthly_fee||0)}"
@@ -7997,8 +8016,7 @@ async function saveService(id){
         ).value,
 
         description:
-        document.getElementById(
-            "serviceDescription"
+        document.getElementById(            "serviceDescription"
         ).value
 
     };
@@ -9998,7 +10016,6 @@ function openFollowupModal(){
                 <label>
                 ${t("title")}
                 </label>
-
                 <input
                 id="followTitle"
                 >
@@ -11997,8 +12014,7 @@ window.toggleSalehMovements=window.toggleSalehMovements||function(){
  const el=document.getElementById('salehMovementsSection');
  if(!el)return;
  const opening=el.style.display==='none'||getComputedStyle(el).display==='none';
- el.style.display=opening?'block':'none';
- if(opening)el.scrollIntoView({behavior:'smooth',block:'start'});
+ el.style.display=opening?'block':'none'; if(opening)el.scrollIntoView({behavior:'smooth',block:'start'});
 };
 
 async function openSalehLoan(personId,direction){
@@ -13998,7 +14014,6 @@ window.saveSalehOpeningBalances=async function(){
  }
 })();
 </script>
-
 <script id="saleh-simple-konnash-v1">
 (function(){
 'use strict';
