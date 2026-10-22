@@ -11756,6 +11756,7 @@ window.saveSalehTransactionEdit=async function(){
   const notes=document.getElementById('salehEditTxNotes')?.value||'';
   if(!Number.isFinite(amount)||amount<=0||!account||!date)throw new Error('أدخل مبلغًا صحيحًا واختر الحساب والتاريخ.');
   const base={transaction_date:date,category,description,notes};
+  if(row.source_type==='maksab_tax')throw new Error('لتعديل إيداع مكسب، افتح طرف التحويل المرتبط به؛ لا تعدّل سطر الضريبة منفردًا.');
   if(row.transaction_type==='transfer'&&row.source_id){
    const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',userId).eq('source_id',row.source_id);
    if(q.error)throw q.error;
@@ -11773,7 +11774,8 @@ window.saveSalehTransactionEdit=async function(){
     if(upd.error)throw upd.error;
    }
    if(taxRow){
-    const taxUpdate=await db.from('personal_finance_transactions').update({account_id:account,amount:-tax,transaction_date:date,category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:amount,tax_amount:tax,net_amount:net,related_transfer_id:row.source_id}),updated_at:new Date().toISOString()}).eq('id',taxRow.id).eq('user_id',userId);
+    const sourcePart=transferRows.find(part=>Number(part.amount)<0);
+    const taxUpdate=await db.from('personal_finance_transactions').update({account_id:sourcePart?.account_id||taxRow.account_id,amount:-tax,transaction_date:date,category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:amount,tax_amount:tax,net_amount:net,related_transfer_id:row.source_id}),updated_at:new Date().toISOString()}).eq('id',taxRow.id).eq('user_id',userId);
     if(taxUpdate.error)throw taxUpdate.error;
    }
   }else{
@@ -11798,7 +11800,7 @@ window.deleteSalehTransaction=async function(transactionId){
    row=lookup.data||null;
   }
   if(!row)throw new Error('الحركة غير موجودة. حدّث سجل الحركات وافتحه مرة أخرى.');
-  const linked=String(row.transaction_type||'')==='transfer'&&row.source_id;
+  const linked=(String(row.transaction_type||'')==='transfer'||row.source_type==='maksab_tax')&&row.source_id;
   const detail=linked?'سيتم حذف طرفي التحويل المرتبطين معًا حتى يرجع الرصيد في الحسابين.':'سيتم حذف سجل الحركة المحدد وتحديث الرصيد.';
   if(!confirm('هل تريد حذف الحركة «'+String(row.description||row.category||'حركة مالية')+'»؟\n'+detail+'\nلا يمكن التراجع عن الحذف.'))return;
   let q;
