@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>كشف حساب مباشر</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{color-scheme:light;--bg:#f4f6fa;--card:#fff;--ink:#172033;--muted:#667085;--line:#e4e7ec;--green:#067647;--red:#b42318;--gold:#b98a32}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,Arial,sans-serif;line-height:1.6}.wrap{max-width:760px;margin:24px auto;padding:0 14px}.top,.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px;box-shadow:0 5px 20px #1018280a}.brand{font-size:12px;letter-spacing:1.5px;color:var(--gold);font-weight:700}.muted{color:var(--muted);font-size:13px}.title{font-size:23px;font-weight:800;margin:8px 0 2px}.balances{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.balance{border-radius:14px;padding:15px;background:#ecfdf3;color:var(--green)}.balance.red{background:#fef3f2;color:var(--red)}.balance small{display:block;font-size:13px}.balance strong{font-size:23px;display:block;margin-top:3px}.net{margin-top:12px;padding:14px;border-radius:12px;background:#f9fafb;display:flex;justify-content:space-between;gap:12px;font-weight:700}.entry{border:1px solid var(--line);border-radius:14px;padding:15px;margin-top:10px}.entryhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.pill{font-size:12px;padding:4px 9px;border-radius:99px;background:#ecfdf3;color:var(--green);white-space:nowrap}.pill.red{background:#fef3f2;color:var(--red)}.amount{font-size:20px;font-weight:800;white-space:nowrap}.details{font-size:13px;color:var(--muted);margin:6px 0}.numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.numbers div{background:#f9fafb;padding:9px;border-radius:10px;font-size:12px;color:var(--muted)}.numbers b{display:block;color:var(--ink);font-size:14px}.payment{font-size:12px;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;color:var(--muted)}button{border:0;border-radius:10px;padding:10px 14px;background:#172033;color:white;font-weight:700;cursor:pointer}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.error{background:#fef3f2;color:var(--red);padding:14px;border-radius:12px}.empty{text-align:center;color:var(--muted);padding:20px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 0 24px}@media(max-width:480px){.wrap{margin:12px auto}.top,.card{padding:15px}.title{font-size:20px}.balance strong{font-size:19px}.amount{font-size:17px}.numbers{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body><main class="wrap">
+<section class="top"><div class="brand">PERSONAL FINANCE</div><div class="title" id="personName">كشف حساب مباشر</div><div class="muted">كشف قراءة فقط — يتحدث عند إعادة تحميل البيانات</div><div id="updated" class="muted" style="margin-top:5px"></div>
+<div class="balances"><div class="balance"><small>ليك عنده</small><strong id="lent">—</strong></div><div class="balance red"><small>عليك له</small><strong id="borrowed">—</strong></div></div><div class="net"><span>صافي الحساب</span><span id="net">—</span></div>
+<div class="actions"><button onclick="loadStatement()">تحديث الكشف</button><button onclick="window.print()">طباعة</button></div></section>
+<section class="card"><h3 style="margin:0">الحركات بالتفصيل</h3><div id="entries" class="empty">جاري تحميل كشف الحساب...</div></section>
+<div class="footer">كشف حساب إلكتروني مباشر • لا يمكن تعديل الحركات من هذا الرابط</div>
+</main>
+<script>
+const SUPABASE_URL="https://rsvzachgbqsucqgrwguv.supabase.co";
+const SUPABASE_KEY="sb_publishable_jn8QNpKQ8v7awUj2wYANdw_wcliO986";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const token=new URLSearchParams(location.search).get('token');
+const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:2}).format(Number(n||0))+' ج.م';
+const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const date=v=>v?new Date(v+'T00:00:00').toLocaleDateString('ar-EG'):'—';
+async function loadStatement(){
+ const host=document.getElementById('entries');host.innerHTML='<div class="empty">جاري تحديث البيانات...</div>';
+ if(!token){host.innerHTML='<div class="error">رابط كشف الحساب غير مكتمل.</div>';return;}
+ const {data,error}=await db.rpc('get_person_loan_statement_share',{p_token:token});
+ if(error||!data){host.innerHTML='<div class="error">الرابط غير صالح أو تم إيقافه. تواصل مع صاحب الحساب.</div>';return;}
+ const lent=Number(data.lent_total||0),borrowed=Number(data.borrowed_total||0),net=lent-borrowed;
+ document.getElementById('personName').textContent='كشف حساب — '+(data.person_name||'العميل');
+ document.getElementById('lent').textContent=fmt(lent);document.getElementById('borrowed').textContent=fmt(borrowed);
+ const netEl=document.getElementById('net');netEl.textContent=(net>0?'ليك '+fmt(net):net<0?'عليك '+fmt(-net):'الحساب متساوي');netEl.style.color=net<0?'#b42318':'#067647';
+ document.getElementById('updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-EG');
+ const loans=Array.isArray(data.loans)?data.loans:[];
+ if(!loans.length){host.innerHTML='<div class="empty">لا توجد حركات مسجلة حتى الآن.</div>';return;}
+ host.innerHTML=loans.map(l=>{
+  const lent=String(l.direction||'lent')==='lent',paid=Number(l.paid||0),remaining=Number(l.remaining||0);
+  const pays=(Array.isArray(l.payments)?l.payments:[]).map(p=>'<div class="payment">دفعة بتاريخ '+safe(date(p.date))+' — '+safe(fmt(p.amount))+(p.notes?' — '+safe(p.notes):'')+'</div>').join('');
+  return '<article class="entry"><div class="entryhead"><div><span class="pill '+(lent?'':'red')+'">'+(lent?'أعطيته فلوس — ليك عنده':'أخذت منه فلوس — عليك له')+'</span><div class="details">'+safe(date(l.loan_date))+' • '+safe(l.account_name||'حساب مالي')+'</div></div><div class="amount">'+safe(fmt(l.amount))+'</div></div><div class="details">'+safe([l.purpose,l.notes].filter(Boolean).join(' — ')||'بدون تفاصيل إضافية')+'</div><div class="numbers"><div>أصل المبلغ<b>'+safe(fmt(l.amount))+'</b></div><div>'+(lent?'المحصل':'المسدد')+'<b>'+safe(fmt(paid))+'</b></div><div>المتبقي<b>'+safe(fmt(remaining))+'</b></div></div>'+pays+'</article>';
+ }).join('');
+}
+loadStatement();
+</script></body></html>
