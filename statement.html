@@ -30,11 +30,15 @@ button:hover{filter:brightness(1.08)}
 .pill.red{background:#fee2e2;color:#991b1b}
 .amount{font-size:20px;font-weight:800;white-space:nowrap;color:#172033}
 .details{font-size:13px;color:var(--muted);margin:7px 0;overflow-wrap:anywhere}
-.numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
-.numbers div{background:#f1f5f9;border:1px solid #e2e8f0;padding:10px;border-radius:11px;font-size:12px;color:#475569}
-.numbers div:nth-child(2){background:#ecfdf5;border-color:#bbf7d0;color:#166534}
-.numbers div:nth-child(3){background:#fffbeb;border-color:#fde68a;color:#92400e}
-.numbers b{display:block;color:#172033;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+.numbers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.numbers div{background:#e5e7eb;border:1px solid #cbd5e1;padding:10px;border-radius:11px;font-size:12px;font-weight:700;color:#1f2937!important;min-width:0}
+.numbers div:nth-child(2){background:#d1fae5;border-color:#6ee7b7;color:#065f46!important}
+.numbers div:nth-child(3){background:#fef3c7;border-color:#fcd34d;color:#92400e!important}
+.numbers div.running-balance.positive{background:#dbeafe;border-color:#93c5fd;color:#1e40af!important}
+.numbers div.running-balance.negative{background:#fee2e2;border-color:#fca5a5;color:#991b1b!important}
+.numbers b{display:block;color:inherit!important;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+.entry{color:#111827!important}.entry .details{color:#374151!important}.entry.lent-entry{background:#f0fdf4;border-right-color:#16a34a}.entry.borrowed-entry{background:#fff1f2;border-right-color:#e11d48}
+.numbers small{color:inherit!important}
 .payment{font-size:12px;border-top:1px dashed #cbd5e1;padding-top:9px;margin-top:9px;color:#475569;overflow-wrap:anywhere}
 .error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:14px;border-radius:12px}
 .empty{text-align:center;color:var(--muted);padding:22px}
@@ -70,10 +74,11 @@ async function loadStatement(){
  document.getElementById('updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-EG');
  const loans=Array.isArray(data.loans)?data.loans:[];
  if(!loans.length){host.innerHTML='<div class="empty">لا توجد حركات مسجلة حتى الآن.</div>';return;}
+ let running=0;const runningAfter={};loans.slice().sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||''))||Number(a.id)-Number(b.id)).forEach(item=>{running+=String(item.direction||'lent')==='lent'?Number(item.amount||0):-Number(item.amount||0);runningAfter[String(item.id)]=running;});
  host.innerHTML=loans.map(l=>{
-  const lent=String(l.direction||'lent')==='lent',paid=Number(l.paid||0),remaining=Number(l.remaining||0);
+  const lent=String(l.direction||'lent')==='lent',paid=Number(l.paid||0),remaining=Number(l.remaining||0),balance=Number(runningAfter[String(l.id)]||0);
   const pays=(Array.isArray(l.payments)?l.payments:[]).map(p=>'<div class="payment">دفعة بتاريخ '+safe(date(p.date))+' — '+safe(fmt(p.amount))+(p.notes?' — '+safe(p.notes):'')+'</div>').join('');
-  return '<article class="entry"><div class="entryhead"><div><span class="pill '+(lent?'':'red')+'">'+(lent?'أعطيته فلوس — ليك عنده':'أخذت منه فلوس — عليك له')+'</span><div class="details">'+safe(date(l.loan_date))+' • '+safe(l.account_name||'حساب مالي')+'</div></div><div class="amount">'+safe(fmt(l.amount))+'</div></div><div class="details">'+safe([l.purpose,l.notes].filter(Boolean).join(' — ')||'بدون تفاصيل إضافية')+'</div><div class="numbers"><div>أصل المبلغ<b>'+safe(fmt(l.amount))+'</b></div><div>'+(lent?'المحصل':'المسدد')+'<b>'+safe(fmt(paid))+'</b></div><div>المتبقي<b>'+safe(fmt(remaining))+'</b></div></div>'+pays+'</article>';
+  return '<article class="entry '+(lent?'lent-entry':'borrowed-entry')+'"><div class="entryhead"><div><span class="pill '+(lent?'':'red')+'">'+(lent?'أعطيته فلوس — ليك عنده':'أخذت منه فلوس — عليك له')+'</span><div class="details">'+safe(date(l.loan_date))+' • '+safe(l.account_name||'حساب مالي')+'</div></div><div class="amount">'+safe(fmt(l.amount))+'</div></div><div class="details">'+safe([l.purpose,l.notes].filter(Boolean).join(' — ')||'بدون تفاصيل إضافية')+'</div><div class="numbers"><div>أصل المبلغ<b>'+safe(fmt(l.amount))+'</b></div><div>'+(lent?'المحصل':'المسدد')+'<b>'+safe(fmt(paid))+'</b></div><div>المتبقي<b>'+safe(fmt(remaining))+'</b></div><div class="running-balance '+(balance<0?'negative':'positive')+'">الإجمالي بعد الحركة<b>'+(balance<0?'عليك ':'ليك ')+safe(fmt(Math.abs(balance)))+'</b></div></div>'+pays+'</article>';
  }).join('');
 }
 loadStatement();
