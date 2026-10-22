@@ -13498,9 +13498,12 @@ document.addEventListener('click',function(e){
   const activeLoans=()=>Array.isArray(state.loans)?state.loans.filter(l=>l.status!=='cancelled'):[];
   function totals(id){
     const ls=activeLoans().filter(l=>String(l.person_id)===String(id));
-    const lent=ls.filter(l=>loanDirection(l)==='lent').reduce((n,l)=>n+loanRemaining(l),0);
-    const borrowed=ls.filter(l=>loanDirection(l)==='borrowed').reduce((n,l)=>n+loanRemaining(l),0);
-    return {lent,borrowed,net:lent-borrowed,loans:ls};
+    const grossLent=ls.filter(l=>loanDirection(l)==='lent').reduce((n,l)=>n+loanRemaining(l),0);
+    const grossBorrowed=ls.filter(l=>loanDirection(l)==='borrowed').reduce((n,l)=>n+loanRemaining(l),0);
+    // كناش صافي: أي مبلغ لي عند الشخص يخصم من المبلغ اللي عليّ له والعكس.
+    const net=grossLent-grossBorrowed;
+    const lent=Math.max(0,net),borrowed=Math.max(0,-net);
+    return {lent,borrowed,net,loans:ls,grossLent,grossBorrowed};
   }
   function accountName(id){
     const a=(state.financeAccounts||[]).find(x=>String(x.id)===String(id));
