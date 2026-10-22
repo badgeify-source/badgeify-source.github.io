@@ -14157,5 +14157,111 @@ if(typeof oldStatement==='function'){
 }
 })();
 </script>
+
+<script id="saleh-mobile-recharge-person-ledger">
+(function(){
+'use strict';
+const escv=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+let saving=false;
+window.toggleSalehMobilePaymentFields=function(){
+ const isMobile=(document.getElementById('salehRechargeService')?.value||'mobile')==='mobile';
+ const kind=document.getElementById('rechargeKind')?.value||'income';
+ const wrap=document.getElementById('salehMobileCustomerFields');
+ if(wrap)wrap.style.display=isMobile&&kind==='income'?'':'none';
+ const status=document.getElementById('salehMobilePaymentStatus')?.value||'paid';
+ const partial=document.getElementById('salehMobilePartialWrap');
+ if(partial)partial.style.display=isMobile&&kind==='income'&&status==='partial'?'':'none';
+};
+window.openSalehRecharge=async function(service){
+ const isPubg=service==='pubg';
+ const label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل';
+ const A=state.financeAccounts||[];
+ let people=[];
+ if(!isPubg){
+  try{
+   if(!currentUser?.id)throw new Error('سجّل الدخول أولًا.');
+   const pr=await db.from('personal_finance_loan_people').select('id,person_name,phone').eq('user_id',currentUser.id).order('person_name');
+   if(pr.error)throw pr.error;
+   people=pr.data||[];
+  }catch(e){showToast(e.message||'تعذر تحميل قائمة الأشخاص.',true);return;}
+ }
+ const accountOptions='<option value="">اختر الحساب</option>'+A.filter(a=>!['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(a.account_name||''))).map(a=>'<option value="'+escv(a.id)+'">'+escv(a.account_name)+'</option>').join('');
+ const peopleOptions='<option value="">اختار الشخص من قسم الأشخاص</option>'+people.map(p=>'<option value="'+escv(p.id)+'">'+escv(p.person_name)+(p.phone?' — '+escv(p.phone):'')+'</option>').join('');
+ const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid '+(isPubg?'fa-gamepad':'fa-mobile-screen-button')+'"></i></div><div><h4>'+label+'</h4><p>'+(isPubg?'سجّل المبلغ المستلم أو تكلفة الشحن.':'اختار الشخص، وسجّل المدفوع فعلًا؛ أي مبلغ غير مدفوع يُضاف لكناش الشخص من غير ما يتخصم من رصيد الحساب مرتين.')+'</p></div></div><div class="form-grid">'+
+ '<div class="field finance-field finance-required"><label>نوع الحركة</label><select id="rechargeKind" onchange="toggleSalehMobilePaymentFields()"><option value="income">فلوس مستلمة من الشحن</option><option value="expense">تكلفة الشحن اللي دفعتها</option></select></div>'+
+ '<div class="field finance-field finance-required"><label>'+(isPubg?'المبلغ بالجنيه':'قيمة الشحن المستحقة من العميل (جنيه)')+'</label><input id="rechargeAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div>'+
+ '<div class="field finance-field finance-required"><label>الحساب</label><select id="rechargeAccount">'+accountOptions+'</select></div>'+
+ (isPubg?'':'<div id="salehMobileCustomerFields" class="field finance-field finance-required"><label>اسم العميل — لازم يكون مسجل في الأشخاص</label><select id="salehRechargePerson">'+peopleOptions+'</select><div class="muted" style="font-size:10px;margin-top:5px">'+(people.length?'اختار العميل من القائمة. لو مش موجود، أضفه أولًا من قسم الأشخاص.':'لا يوجد أشخاص مسجلون. أغلق النافذة وأضف العميل من قسم الأشخاص أولًا.')+'</div><div class="field finance-field" style="margin-top:12px"><label>حالة الدفع</label><select id="salehMobilePaymentStatus" onchange="toggleSalehMobilePaymentFields()"><option value="paid">دفع المبلغ بالكامل</option><option value="later">مدفعش — المبلغ كله عليه</option><option value="partial">دفع جزء والباقي عليه</option></select></div><div id="salehMobilePartialWrap" class="field finance-field" style="display:none;margin-top:10px"><label>المبلغ اللي دفعه فعلًا (جنيه)</label><input id="salehMobilePaidAmount" type="number" min="0" step="0.01" placeholder="مثال: 20"></div></div>')+
+ '<div class="field finance-field"><label>التاريخ</label><input id="rechargeDate" type="date" value="'+isoDate(new Date())+'"></div>'+
+ '<div class="field finance-field full"><label>بيان مختصر (اختياري)</label><input id="rechargeDesc" placeholder="'+(isPubg?'مثال: شحن ببجي':'مثال: شحن رصيد موبايل')+'"></div>'+
+ '</div></div>';
+ openModal(label,body,'<div class="finance-modal-actions"><button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehRecharge(\''+service+'\')"><i class="fa-solid fa-check"></i> حفظ الحركة</button></div>');
+ document.getElementById('modal')?.querySelector('.modal-box')?.classList.add('finance-modal');
+ window.toggleSalehMobilePaymentFields();
+};
+window.saveSalehRecharge=async function(service){
+ if(saving){showToast('جاري حفظ الحركة، انتظر لحظة.',true);return;}
+ saving=true;
+ try{
+  const kind=document.getElementById('rechargeKind')?.value;
+  const amount=Number(document.getElementById('rechargeAmount')?.value||0);
+  const account=document.getElementById('rechargeAccount')?.value;
+  const date=document.getElementById('rechargeDate')?.value;
+  const desc=(document.getElementById('rechargeDesc')?.value||'').trim();
+  const isPubg=service==='pubg',label=isPubg?'شحن ببجي موبايل':'شحن رصيد الموبايل',sourceType=isPubg?'pubg_recharge':'mobile_recharge';
+  if(!['income','expense'].includes(kind)||!Number.isFinite(amount)||amount<=0||!account||!date)throw new Error('اختار نوع الحركة والحساب واكتب مبلغًا وتاريخًا صحيحين.');
+  const {data:authData,error:authError}=await db.auth.getSession();
+  if(authError)throw authError;
+  const session=authData?.session,userId=session?.user?.id;
+  if(!session?.access_token||!userId)throw new Error('جلسة الدخول غير موجودة أو انتهت. سجّل الدخول مرة أخرى.');
+  const aq=await db.from('personal_finance_accounts').select('id,account_name,user_id').eq('id',account).eq('user_id',userId).maybeSingle();
+  if(aq.error)throw aq.error;
+  const accountObj=aq.data;
+  if(!accountObj)throw new Error('الحساب المحدد غير تابع للمستخدم الحالي.');
+  if(['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(accountObj.account_name||'')))throw new Error('اختار حسابًا نقديًا بالجنيه، وليس حساب منصة USDT.');
+  const sourceId=crypto.randomUUID();
+  const description=desc||(kind==='income'?'مبلغ مستلم من '+label:'تكلفة '+label);
+  if(kind==='expense'){
+   const result=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:-Math.abs(amount),transaction_type:'expense',category:label,description,source_type:sourceType,source_id:sourceId,transaction_date:date,notes:'تكلفة '+label+' — تسجل مرة واحدة.'});
+   if(result.error)throw result.error;
+   closeModal();await refresh();showToast('تم تسجيل تكلفة '+label);return;
+  }
+  let paidAmount=amount,personId=null,person=null,status='paid';
+  if(!isPubg){
+   personId=document.getElementById('salehRechargePerson')?.value||'';
+   status=document.getElementById('salehMobilePaymentStatus')?.value||'paid';
+   if(!personId)throw new Error('اختار اسم العميل من قسم الأشخاص قبل حفظ شحن الرصيد.');
+   const pq=await db.from('personal_finance_loan_people').select('id,person_name,phone').eq('id',personId).eq('user_id',userId).maybeSingle();
+   if(pq.error)throw pq.error;
+   person=pq.data;
+   if(!person)throw new Error('الشخص المحدد غير موجود في حسابك. حدّث القائمة واختاره مرة أخرى.');
+   if(!['paid','later','partial'].includes(status))throw new Error('اختار حالة الدفع.');
+   paidAmount=status==='paid'?amount:status==='later'?0:Number(document.getElementById('salehMobilePaidAmount')?.value||0);
+   if(!Number.isFinite(paidAmount)||paidAmount<0||paidAmount>amount)throw new Error('المبلغ المدفوع لازم يكون من صفر إلى قيمة الشحن.');
+   if(status==='partial'&&paidAmount>=amount)throw new Error('لو العميل دفع المبلغ بالكامل، اختار «دفع المبلغ بالكامل».');
+  }
+  const dueAmount=isPubg?0:Math.max(0,amount-paidAmount);
+  let loanId=null;
+  if(dueAmount>0){
+   const loan=await db.from('personal_finance_loans').insert({user_id:userId,person_id:personId,loan_type:'lent',loan_direction:'lent',amount:dueAmount,wallet_account_id:accountObj.id,loan_date:date,purpose:'شحن رصيد موبايل للعميل [شحن آجل]',notes:'قيمة الشحن: '+amount.toFixed(2)+' جنيه؛ المدفوع: '+paidAmount.toFixed(2)+' جنيه؛ المتبقي على العميل: '+dueAmount.toFixed(2)+' جنيه. '+(desc||'')}).select('id').single();
+   if(loan.error)throw loan.error;
+   loanId=loan.data.id;
+  }
+  if(paidAmount>0){
+   const incomeTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:Math.abs(paidAmount),transaction_type:'income',category:label,description:description+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:!isPubg?'قيمة الشحن: '+amount.toFixed(2)+'؛ المحصل فعليًا: '+paidAmount.toFixed(2)+'؛ المتبقي على العميل: '+dueAmount.toFixed(2)+'؛ سجل المديونية: '+(loanId||'لا يوجد'):'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'});
+   if(incomeTx.error){
+    if(loanId)await db.from('personal_finance_loans').delete().eq('id',loanId).eq('user_id',userId);
+    throw incomeTx.error;
+   }
+  }
+  closeModal();await refresh();
+  if(!isPubg&&dueAmount>0)showToast('تم تسجيل الشحن على حساب '+person.person_name+'؛ المدفوع '+paidAmount.toFixed(2)+' ج.م والمتبقي عليه '+dueAmount.toFixed(2)+' ج.م.');
+  else showToast('تم تسجيل المبلغ المستلم من '+label);
+ }catch(e){console.error('save Saleh recharge transaction',e);showToast(e?.message||'تعذر تسجيل حركة الشحن.',true);}
+ finally{saving=false;}
+};
+})();
+</script>
+
 </body>
 </html>
