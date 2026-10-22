@@ -11463,9 +11463,15 @@ async function loadFinanceData(){
   const t=await db.from('personal_finance_transactions').select('*').order('transaction_date',{ascending:false}).order('created_at',{ascending:false});
   if(a.error)throw a.error;if(t.error)throw t.error;
   state.financeAccounts=a.data||[];state.financeTransactions=t.data||[];
-  if(!state.financeAccounts.length&&currentUser?.id){
-   const d=[{account_name:'الكاش / الجيب',account_type:'cash',opening_balance:0},{account_name:'Vodafone Cash',account_type:'vodafone_cash',opening_balance:0},{account_name:'InstaPay',account_type:'instapay',opening_balance:0}].map(x=>({...x,user_id:currentUser.id}));
-   const r=await db.from('personal_finance_accounts').insert(d).select('*');if(!r.error)state.financeAccounts=r.data||[];
+  if(currentUser?.id){
+   if(!state.financeAccounts.length){
+    const d=[{account_name:'الكاش / الجيب',account_type:'cash',opening_balance:0},{account_name:'Vodafone Cash',account_type:'vodafone_cash',opening_balance:0},{account_name:'InstaPay',account_type:'instapay',opening_balance:0}].map(x=>({...x,user_id:currentUser.id}));
+    const created=await db.from('personal_finance_accounts').insert(d).select('*');if(!created.error)state.financeAccounts=created.data||[];
+   }
+   if(!state.financeAccounts.some(x=>String(x.account_name||'').trim().toLowerCase()==='مكسب')){
+    const created=await db.from('personal_finance_accounts').insert({user_id:currentUser.id,account_name:'مكسب',account_type:'other',opening_balance:0}).select('*').single();
+    if(!created.error&&created.data)state.financeAccounts.push(created.data);
+   }
   }
  }catch(e){state.financeAccounts=[];state.financeTransactions=[];console.warn('Saleh Finance not ready:',e.message);}
 }
@@ -11806,7 +11812,7 @@ function renderPersonalFinance(){
   const A=state.financeAccounts||[],T=state.financeTransactions||[],cur=(state.settings&&state.settings.currency)||'EGP';
   const bal=id=>financeBalance(id);
   const accountBal=type=>{const a=financeAccount(type);return a?bal(a.id):0;};
-  const cash=accountBal('cash'),vod=accountBal('vodafone_cash'),insta=accountBal('instapay');
+  const cash=accountBal('cash'),vod=accountBal('vodafone_cash'),insta=accountBal('instapay'),maksabAccount=A.find(a=>String(a.account_name||'').trim().toLowerCase()==='مكسب'),maksab=maksabAccount?bal(maksabAccount.id):0;
   // إجمالي الأموال بالجنيه يضم الحسابات المصرية فقط؛ أرصدة المنصات منفصلة بعملة USDT.
   const platformAccountNames=['Bybit Saleh','Bybit Mahmoud','Binance'];
   const fiatAccounts=A.filter(a=>!platformAccountNames.includes(String(a.account_name||''))&&!(typeof window.isSalehPlatformAccount==='function'&&window.isSalehPlatformAccount(a)));
@@ -11835,7 +11841,8 @@ function renderPersonalFinance(){
    ['إجمالي أموالي',total,'fa-wallet','finance-main'],
    ['🎒 الكاش / الجيب',cash,'fa-bag-shopping','saleh-pocket-card'],
    ['🔴 Vodafone Cash',vod,'fa-mobile-screen-button','saleh-vodafone-card'],
-   ['🟣 InstaPay',insta,'fa-building-columns','saleh-instapay-card']
+   ['🟣 InstaPay',insta,'fa-building-columns','saleh-instapay-card'],
+   ['🟠 مكسب',maksab,'fa-wallet','saleh-maksab-card']
   ];
 
   const accountCards=fiatAccounts.map(a=>'<div class="finance-account-card" style="display:flex;flex-wrap:wrap;align-items:flex-start"><div class="finance-account-top" style="flex:1 1 65%;min-width:160px"><div class="finance-account-icon">'+(a.account_type==='instapay'?'<img class="saleh-logo-img instapay" src="https://commons.wikimedia.org/wiki/Special:FilePath/InstaPay_Logo.png" alt="InstaPay" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'"><i class="fa-solid fa-building-columns" style="display:none"></i>':a.account_type==='vodafone_cash'?'<img class="saleh-logo-img vodafone" src="https://upload.wikimedia.org/wikipedia/commons/7/7a/Vodafone_icon.svg" alt="Vodafone Cash" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'"><i class="fa-solid fa-mobile-screen-button" style="display:none"></i>':'<i class="fa-solid '+(a.account_type==='cash'?'fa-money-bill-wave':'fa-wallet')+'"></i>')+'</div><div><b>'+esc(a.account_name)+'</b><small>الرصيد الافتتاحي: '+money(Number(a.opening_balance||0))+' '+esc(cur)+'</small></div></div><strong>'+money(bal(a.id))+' <small>'+esc(cur)+'</small></strong><button type="button" class="mini-btn" style="margin-top:8px;display:block;width:100%;flex:0 0 100%;min-height:38px;visibility:visible;opacity:1" onclick="openSalehReconcile('+a.id+')">مطابقة الرصيد وتسوية الفرق</button></div>').join('');
@@ -11958,7 +11965,8 @@ async function saveSalehOpeningBalances(){
  const fields=[
   {id:'salehOpenCash',type:'cash',label:'🎒 الكاش / الجيب'},
   {id:'salehOpenInstapay',type:'instapay',label:'🟣 InstaPay'},
-  {id:'salehOpenVodafone',type:'vodafone_cash',label:'🔴 Vodafone Cash'}
+  {id:'salehOpenVodafone',type:'vodafone_cash',label:'🔴 Vodafone Cash'},
+  {id:'salehOpenMaksab',type:'other',accountName:'مكسب',label:'مكسب'}
  ];
  const values=fields.map(f=>({ ...f, amount:Number(document.getElementById(f.id)?.value||0) }));
  if(values.some(x=>!Number.isFinite(x.amount)||x.amount<0)){showToast('تأكد من إدخال أرصدة صحيحة وغير سالبة.',true);return;}
@@ -11968,7 +11976,7 @@ async function saveSalehOpeningBalances(){
  try{
   if(!currentUser?.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
   for(const item of values){
-   const account=A.find(a=>String(a.account_type||a.type||'').toLowerCase()===item.type);
+   const account=item.accountName?A.find(a=>String(a.account_name||'').trim().toLowerCase()===item.accountName.toLowerCase()):A.find(a=>String(a.account_type||a.type||'').toLowerCase()===item.type);
    if(!account)continue;
    const up=await db.from('personal_finance_accounts').update({opening_balance:item.amount,updated_at:new Date().toISOString()}).eq('id',account.id).eq('user_id',currentUser.id);
    if(up.error)throw up.error;
@@ -11995,6 +12003,7 @@ function openSalehOpeningBalance(){
  const A=state.financeAccounts||[],cur=(state.settings&&state.settings.currency)||'EGP';
  const get=(type)=>A.find(a=>String(a.account_type||a.type||'').toLowerCase()===type);
  const val=(type)=>{const a=get(type);return a?financeBalance(a.id):0;};
+ const maksab=A.find(a=>String(a.account_name||'').trim().toLowerCase()==='مكسب');
  const platforms=typeof window.salehCryptoPlatforms==='function'?window.salehCryptoPlatforms():A.filter(a=>['bybit saleh','bybit mahmoud','binance'].includes(String(a.account_name||'').toLowerCase()));
  const platformVal=(a)=>((state.financeTransactions||[]).filter(x=>String(x.account_id)===String(a.id)&&x.source_type==='platform_opening_balance'&&(()=>{try{return String(JSON.parse(x.notes||'{}').currency||'').toUpperCase()==='USDT'}catch(e){return false}})()).reduce((sum,x)=>sum+Number(x.amount||0),0));
  const html='<div class="finance-modal-shell">'+
@@ -12003,6 +12012,7 @@ function openSalehOpeningBalance(){
   '<div class="field finance-field finance-required"><label>الكاش / الجيب ('+esc(cur)+')</label><input id="salehOpenCash" type="number" step="0.01" value="'+val('cash')+'" placeholder="مثال: 5000"></div>'+
   '<div class="field finance-field finance-required"><label>InstaPay ('+esc(cur)+')</label><input id="salehOpenInstapay" type="number" step="0.01" value="'+val('instapay')+'" placeholder="مثال: 3000"></div>'+
   '<div class="field finance-field finance-required"><label>Vodafone Cash ('+esc(cur)+')</label><input id="salehOpenVodafone" type="number" step="0.01" value="'+val('vodafone_cash')+'" placeholder="مثال: 2000"></div>'+
+  '<div class="field finance-field finance-required"><label>مكسب ('+esc(cur)+')</label><input id="salehOpenMaksab" type="number" min="0" step="0.01" value="'+(maksab?financeBalance(maksab.id):0)+'" placeholder="رصيد مكسب الحالي"></div>'+ 
   '</div>'+
   '<div style="margin-top:16px"><h4 style="margin:0 0 10px">منصات العملات الرقمية — USDT</h4><div class="form-grid">'+platforms.map((a,i)=>'<div class="field finance-field finance-required"><label>'+esc(a.account_name)+' (USDT)</label><input id="salehOpenPlatform_'+esc(a.id)+'" type="number" min="0" step="0.000001" value="'+platformVal(a)+'" placeholder="0.00"></div>').join('')+'</div></div>'+
   '<div class="finance-reconcile-note" style="margin-top:12px">سيتم تحديث الأرصدة الافتتاحية فقط مع الحفاظ على الحركات السابقة. منصات العملات لن تخصم أو تضيف أي مبلغ للجنيه المصري.</div>'+
