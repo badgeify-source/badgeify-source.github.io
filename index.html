@@ -13592,17 +13592,17 @@ document.addEventListener('click',function(e){
       const pays=(state.loanPayments||[]).filter(x=>String(x.loan_id)===String(l.id)).sort((a,b)=>String(b.payment_date||'').localeCompare(String(a.payment_date||''))).map(pay=>
         '<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px dashed var(--border-color,#ddd);font-size:13px"><span>'+esc(lent?'استلمت منه دفعة':'سددت له دفعة')+' — '+esc(formatDate(pay.payment_date)||pay.payment_date||'')+(pay.notes?' · '+esc(pay.notes):'')+'</span><b>'+money(Number(pay.amount||0))+' '+esc(c)+'</b></div>'
       ).join('');
-      return '<article style="border:1px solid var(--border-color,#ddd);border-radius:14px;padding:14px;margin:10px 0;background:var(--card-bg,transparent)">'+
-        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><b style="font-size:15px">'+(lent?'أعطيته فلوس — ليك عنده':'أخذت منه فلوس — عليك له')+'</b><div class="muted" style="font-size:12px;margin-top:4px">'+esc(formatDate(l.loan_date)||l.loan_date||'—')+' · '+esc(accountName(l.wallet_account_id))+'</div></div><strong style="font-size:18px">'+money(Number(l.amount||0))+' '+esc(c)+'</strong></div>'+
-        '<div style="margin:8px 0;color:var(--text-muted,#777);font-size:13px">'+esc([l.purpose,l.notes].filter(Boolean).join(' — ')||'بدون تفاصيل إضافية')+'</div>'+
-        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0"><div style="padding:9px;border-radius:9px;background:var(--surface-secondary,#f5f5f5)"><small>أصل المبلغ</small><b style="display:block">'+money(Number(l.amount||0))+'</b></div><div style="padding:9px;border-radius:9px;background:var(--surface-secondary,#f5f5f5)"><small>'+(lent?'المحصل':'المسدد')+'</small><b style="display:block">'+money(paid)+'</b></div><div style="padding:9px;border-radius:9px;background:var(--surface-secondary,#f5f5f5)"><small>المتبقي</small><b style="display:block">'+money(rem)+'</b></div></div>'+
+      return '<article style="border:1px solid '+(lent?'#a7f3d0':'#fecaca')+';border-radius:14px;padding:14px;margin:10px 0;background:var(--bg-card,#fff);color:var(--text-primary,#172033);box-shadow:0 3px 12px rgba(16,24,40,.07)">'+
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><span style="display:inline-block;padding:4px 9px;border-radius:99px;background:'+(lent?'#dcfce7':'#fee2e2')+';color:'+(lent?'#166534':'#991b1b')+';font-weight:700;font-size:12px">'+(lent?'أعطيته فلوس — ليك عنده':'أخذت منه فلوس — عليك له')+'</span><div style="font-size:12px;color:var(--text-muted,#667085);margin-top:7px">'+esc(formatDate(l.loan_date)||l.loan_date||'—')+' · '+esc(accountName(l.wallet_account_id))+'</div></div><strong style="font-size:18px;color:'+(lent?'#15803d':'#b91c1c')+'">'+money(Number(l.amount||0))+' '+esc(c)+'</strong></div>'+
+        '<div style="margin:9px 0;color:var(--text-muted,#667085);font-size:13px">'+esc([l.purpose,l.notes].filter(Boolean).join(' — ')||'بدون تفاصيل إضافية')+'</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0"><div style="padding:9px;border-radius:9px;background:#f3f4f6;color:#374151"><small>أصل المبلغ</small><b style="display:block;color:#111827">'+money(Number(l.amount||0))+'</b></div><div style="padding:9px;border-radius:9px;background:#ecfdf5;color:#166534"><small>'+(lent?'المحصل':'المسدد')+'</small><b style="display:block;color:#166534">'+money(paid)+'</b></div><div style="padding:9px;border-radius:9px;background:'+(rem>0?'#fffbeb':'#f3f4f6')+';color:'+(rem>0?'#92400e':'#374151')+'"><small>المتبقي</small><b style="display:block;color:'+(rem>0?'#92400e':'#111827')+'">'+money(rem)+'</b></div></div>'+
         '<div style="display:flex;gap:7px;flex-wrap:wrap">'+(rem>0?'<button type="button" class="mini-btn" onclick="openLoanRepayment('+Number(l.id)+')">'+(lent?'تسجيل فلوس رجعت لي':'تسجيل فلوس رجعتها له')+'</button>':'<span class="badge paid">اتقفل بالكامل</span>')+'<button type="button" class="mini-btn" onclick="editSalehPersonLoan(\''+esc(l.id)+'\')">تعديل</button><button type="button" class="mini-btn" onclick="deleteSalehPersonLoan(\''+esc(l.id)+'\')">حذف</button></div>'+pays+'</article>';
     }).join('');
     const netLabel=t.net>0?'ليك عنده':t.net<0?'عليك له':'الحساب متساوي';
     const netColor=t.net<0?'#b42318':'#067647';
     const body='<div class="finance-modal-shell">'+
-      '<div class="finance-person-summary"><div><b style="font-size:20px">'+esc(p.person_name||'')+'</b><small>'+esc(p.phone||'لا يوجد رقم محفوظ')+'</small></div><div class="finance-person-net"><span>'+netLabel+'</span><strong style="color:'+netColor+'">'+money(Math.abs(t.net))+' '+esc(c)+'</strong></div></div>'+
-      '<div class="finance-person-kpis"><div><span>ليك عنده</span><b style="color:#067647">'+money(t.lent)+' '+esc(c)+'</b></div><div><span>عليك له</span><b style="color:#b42318">'+money(t.borrowed)+' '+esc(c)+'</b></div><div><span>صافي الحساب</span><b>'+money(Math.abs(t.net))+' '+esc(c)+'</b></div></div>'+
+      '<div class="finance-person-summary" style="border:1px solid #dbeafe;border-radius:15px;padding:15px;background:linear-gradient(135deg,#eff6ff,#ffffff);color:#172033"><div><b style="font-size:20px;color:#172033">'+esc(p.person_name||'')+'</b><small style="display:block;color:#64748b;margin-top:4px">'+esc(p.phone||'لا يوجد رقم محفوظ')+'</small></div><div class="finance-person-net" style="background:#f8fafc;border-radius:12px;padding:10px"><span style="color:#475569">'+netLabel+'</span><strong style="display:block;color:'+netColor+'">'+money(Math.abs(t.net))+' '+esc(c)+'</strong></div></div>'+
+      '<div class="finance-person-kpis" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px"><div style="padding:12px;border-radius:12px;background:#dcfce7;color:#166534"><span>ليك عنده</span><b style="display:block;color:#166534;margin-top:4px">'+money(t.lent)+' '+esc(c)+'</b></div><div style="padding:12px;border-radius:12px;background:#fee2e2;color:#991b1b"><span>عليك له</span><b style="display:block;color:#991b1b;margin-top:4px">'+money(t.borrowed)+' '+esc(c)+'</b></div><div style="padding:12px;border-radius:12px;background:#fef3c7;color:#92400e"><span>صافي الحساب</span><b style="display:block;color:#92400e;margin-top:4px">'+money(Math.abs(t.net))+' '+esc(c)+'</b></div></div>'+
       '<div class="actions" style="margin:14px 0;display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')">+ أعطيته فلوس</button><button type="button" class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')">+ أخذت منه فلوس</button><button type="button" class="gold-btn" onclick="openPersonCollectPayment(\''+esc(p.id)+'\')">تسجيل تحصيل</button><button type="button" class="gold-btn" onclick="sendSalehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> واتساب</button></div>'+
       (entries||'<div class="empty" style="padding:18px">مفيش حركات مسجلة للشخص ده لحد دلوقتي.</div>')+'</div>';
     openModal('كشف حساب '+esc(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button><button type="button" class="gold-btn" onclick="createSalehStatementShare(\''+esc(p.id)+'\')"><i class="fa-solid fa-link"></i> رابط مباشر للعميل</button>');
@@ -14270,15 +14270,17 @@ window.saveSalehRecharge=async function(service){
 <script id="saleh-live-statement-share">
 window.createSalehStatementShare=async function(personId){
  try{
-  if(!window.currentUser?.id && typeof currentUser!=='undefined' && !currentUser?.id) throw new Error('سجّل الدخول أولًا.');
-  const uid=(typeof currentUser!=='undefined'&&currentUser?.id)||window.currentUser?.id;
-  if(!uid)throw new Error('سجّل الدخول أولًا.');
+  const uid=(typeof currentUser!=='undefined'&&currentUser&&currentUser.id)||(window.currentUser&&window.currentUser.id);
+  if(!uid)throw new Error('انتهت جلسة الدخول. سجّل الدخول ثم افتح كشف الحساب مرة أخرى.');
   const result=await db.from('personal_finance_loan_statement_shares').insert({user_id:uid,person_id:Number(personId)}).select('token').single();
   if(result.error)throw result.error;
-  const url=location.origin+location.pathname.replace(/[^/]*$/,'')+'statement.html?token='+encodeURIComponent(result.data.token);
-  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);showToast('تم إنشاء الرابط المباشر ونسخه.');}
-  else {window.prompt('انسخ رابط كشف الحساب المباشر:',url);}
- }catch(e){console.error('statement share',e);showToast((e.message||'تعذر إنشاء الرابط.')+' إذا كانت هذه أول مرة، شغّل ملف SQL الخاص بروابط كشف الحساب في Supabase.',true);}
+  const url=new URL('statement.html',location.href);url.searchParams.set('token',result.data.token);
+  const link=url.toString();
+  try{
+   if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(link);showToast('تم إنشاء رابط كشف الحساب ونسخه. ابعته للعميل على واتساب.');}
+   else {window.prompt('انسخ رابط كشف الحساب المباشر وابعته للعميل:',link);}
+  }catch(copyError){window.prompt('الرابط اتعمل. انسخه وابعته للعميل:',link);}
+ }catch(e){console.error('statement share',e);showToast((e.message||'تعذر إنشاء الرابط.')+' لو لسه ما فعلتش الميزة، شغّل ملف supabase_live_person_statement.sql في SQL Editor مرة واحدة.',true);}
 };
 </script>
 </body>
