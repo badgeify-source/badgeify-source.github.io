@@ -11726,10 +11726,12 @@ window.openSalehTransactionEdit=async function(transactionId){
   if(!row)throw new Error('الحركة غير موجودة في البيانات الحالية. حدّث الصفحة وحاول مرة أخرى.');
   const accounts=state.financeAccounts||[];
   const accountOptions=accounts.map(a=>'<option value="'+esc(a.id)+'" '+(String(a.id)===String(row.account_id)?'selected':'')+'>'+esc(a.account_name)+'</option>').join('');
-  const meta={id:row.id,source_type:row.source_type||'',source_id:row.source_id||'',transaction_type:row.transaction_type||'',amount:Number(row.amount||0)};
+  let editNotes={};try{editNotes=JSON.parse(row.notes||'{}')}catch(_e){}
+  const editAmount=editNotes.kind==='maksab_deposit'&&Number(editNotes.gross_amount)>0?Number(editNotes.gross_amount):Math.abs(Number(row.amount||0));
+  const meta={id:row.id,source_type:row.source_type||'',source_id:row.source_id||'',transaction_type:row.transaction_type||'',amount:Number(row.amount||0),maksabGross:editAmount};
   window.salehEditingTransaction=meta;
   const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-pen-to-square"></i></div><div><h4>تعديل الحركة المالية</h4><p>عدّل بيانات الحركة الحالية؛ لن يتم إنشاء حركة جديدة.</p></div></div><div class="form-grid">'+
-   '<div class="field finance-required"><label>المبلغ</label><input id="salehEditTxAmount" type="number" min="0" step="0.01" value="'+Math.abs(Number(row.amount||0))+'"></div>'+
+   '<div class="field finance-required"><label>المبلغ'+(editNotes.kind==='maksab_deposit'?' (إجمالي الإيداع قبل ضريبة 5 جنيه)':'')+'</label><input id="salehEditTxAmount" type="number" min="0" step="0.01" value="'+editAmount+'"></div>'+
    '<div class="field finance-required"><label>الحساب</label><select id="salehEditTxAccount">'+accountOptions+'</select></div>'+
    '<div class="field"><label>البند / التصنيف</label><input id="salehEditTxCategory" value="'+esc(row.category||'')+'"></div>'+
    '<div class="field"><label>التاريخ</label><input id="salehEditTxDate" type="date" value="'+esc(String(row.transaction_date||'').slice(0,10))+'"></div>'+
@@ -11758,7 +11760,7 @@ window.saveSalehTransactionEdit=async function(){
   const base={transaction_date:date,category,description,notes};
   if(row.source_type==='maksab_tax')throw new Error('لتعديل إيداع مكسب، افتح طرف التحويل المرتبط به؛ لا تعدّل سطر الضريبة منفردًا.');
   if(row.transaction_type==='transfer'&&row.source_id){
-   const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',userId).eq('source_id',row.source_id);
+   const q=await db.from('personal_finance_transactions').select('id,amount,account_id,source_type,notes').eq('user_id',userId).eq('source_id',row.source_id);
    if(q.error)throw q.error;
    if((q.data||[]).length<2)throw new Error('لم يتم العثور على طرفي التحويل؛ لم يتم حفظ أي تغيير.');
    const rows=q.data||[],taxRow=rows.find(part=>part.source_type==='maksab_tax'),transferRows=rows.filter(part=>part.source_type==='transfer');
@@ -11775,7 +11777,8 @@ window.saveSalehTransactionEdit=async function(){
    }
    if(taxRow){
     const sourcePart=transferRows.find(part=>Number(part.amount)<0);
-    const taxUpdate=await db.from('personal_finance_transactions').update({account_id:sourcePart?.account_id||taxRow.account_id,amount:-tax,transaction_date:date,category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:amount,tax_amount:tax,net_amount:net,related_transfer_id:row.source_id}),updated_at:new Date().toISOString()}).eq('id',taxRow.id).eq('user_id',userId);
+    const sourceAccountId=String(row.id)===String(sourcePart?.id)?account:(sourcePart?.account_id||taxRow.account_id);
+    const taxUpdate=await db.from('personal_finance_transactions').update({account_id:sourceAccountId,amount:-tax,transaction_date:date,category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:amount,tax_amount:tax,net_amount:net,related_transfer_id:row.source_id}),updated_at:new Date().toISOString()}).eq('id',taxRow.id).eq('user_id',userId);
     if(taxUpdate.error)throw taxUpdate.error;
    }
   }else{
