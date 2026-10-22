@@ -29,19 +29,19 @@ begin
       select sum(greatest(l.amount - coalesce((select sum(lp.amount) from public.personal_finance_loan_payments lp where lp.loan_id=l.id and lp.user_id=s.user_id),0),0))
       from public.personal_finance_loans l
       where l.user_id=s.user_id and l.person_id=p.id and l.status <> 'cancelled'
-        and coalesce(l.loan_direction,l.loan_type,'lent')='lent'
+        and coalesce(l.loan_type,l.loan_direction,'lent')='lent'
     ),0),
     'borrowed_total', coalesce((
       select sum(greatest(l.amount - coalesce((select sum(lp.amount) from public.personal_finance_loan_payments lp where lp.loan_id=l.id and lp.user_id=s.user_id),0),0))
       from public.personal_finance_loans l
       where l.user_id=s.user_id and l.person_id=p.id and l.status <> 'cancelled'
-        and coalesce(l.loan_direction,l.loan_type,'lent')='borrowed'
+        and coalesce(l.loan_type,l.loan_direction,'lent')='borrowed'
     ),0),
     'loans', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', l.id,
         'loan_date', l.loan_date,
-        'direction', coalesce(l.loan_direction,l.loan_type,'lent'),
+        'direction', coalesce(l.loan_type,l.loan_direction,'lent'),
         'amount', l.amount,
         'purpose', l.purpose,
         'notes', l.notes,
