@@ -14284,7 +14284,7 @@ window.sendSalehStatementLinkWhatsApp=async function(personId){
   if(result.error)throw result.error;
   const url=new URL('statement.html',location.href);url.searchParams.set('token',result.data.token);
   const link=url.toString();
-  const message='السلام عليكم '+(p.person_name||'')+'، ده رابط كشف حسابك تقدر تفتحه في أي وقت:\\n'+link;
+  const message='السلام عليكم '+(p.person_name||'')+'، ده رابط كشف حسابك تقدر تفتحه في أي وقت:\n'+link;
   const encodedMessage=encodeURIComponent(message);
   const wa='https://wa.me/'+phone+'?text='+encodedMessage;
   // Android: اطلب فتح WhatsApp Business تحديدًا. على الكمبيوتر لا توجد وصلة ويب عامة مضمونة تميّز Business عن الشخصي.
