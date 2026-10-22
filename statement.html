@@ -5,8 +5,42 @@
 <title>كشف حساب مباشر</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{color-scheme:light;--bg:#f4f6fa;--card:#fff;--ink:#172033;--muted:#667085;--line:#e4e7ec;--green:#067647;--red:#b42318;--gold:#b98a32}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Tahoma,Arial,sans-serif;line-height:1.6}.wrap{max-width:760px;margin:24px auto;padding:0 14px}.top,.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px;box-shadow:0 5px 20px #1018280a}.brand{font-size:12px;letter-spacing:1.5px;color:var(--gold);font-weight:700}.muted{color:var(--muted);font-size:13px}.title{font-size:23px;font-weight:800;margin:8px 0 2px}.balances{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.balance{border-radius:14px;padding:15px;background:#ecfdf3;color:var(--green)}.balance.red{background:#fef3f2;color:var(--red)}.balance small{display:block;font-size:13px}.balance strong{font-size:23px;display:block;margin-top:3px}.net{margin-top:12px;padding:14px;border-radius:12px;background:#f9fafb;display:flex;justify-content:space-between;gap:12px;font-weight:700}.entry{border:1px solid var(--line);border-radius:14px;padding:15px;margin-top:10px}.entryhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.pill{font-size:12px;padding:4px 9px;border-radius:99px;background:#ecfdf3;color:var(--green);white-space:nowrap}.pill.red{background:#fef3f2;color:var(--red)}.amount{font-size:20px;font-weight:800;white-space:nowrap}.details{font-size:13px;color:var(--muted);margin:6px 0}.numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.numbers div{background:#f9fafb;padding:9px;border-radius:10px;font-size:12px;color:var(--muted)}.numbers b{display:block;color:var(--ink);font-size:14px}.payment{font-size:12px;border-top:1px dashed var(--line);padding-top:8px;margin-top:8px;color:var(--muted)}button{border:0;border-radius:10px;padding:10px 14px;background:#172033;color:white;font-weight:700;cursor:pointer}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.error{background:#fef3f2;color:var(--red);padding:14px;border-radius:12px}.empty{text-align:center;color:var(--muted);padding:20px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 0 24px}@media(max-width:480px){.wrap{margin:12px auto}.top,.card{padding:15px}.title{font-size:20px}.balance strong{font-size:19px}.amount{font-size:17px}.numbers{grid-template-columns:1fr 1fr}}
+:root{color-scheme:light;--bg:#f1f5f9;--card:#fff;--ink:#172033;--muted:#64748b;--line:#dbe3ee;--green:#166534;--red:#991b1b;--gold:#a16207}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,#eaf2ff 0,#f8fafc 240px,var(--bg) 100%);color:var(--ink);font-family:Tahoma,Arial,sans-serif;line-height:1.7}
+.wrap{max-width:780px;margin:24px auto;padding:0 14px}
+.top,.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 8px 26px rgba(15,23,42,.07)}
+.top{border-top:4px solid #c59a3d}
+.brand{display:inline-block;font-size:12px;letter-spacing:1.5px;color:var(--gold);font-weight:800;background:#fffbeb;padding:5px 9px;border-radius:7px}
+.muted{color:var(--muted);font-size:13px}
+.title{font-size:24px;font-weight:800;margin:10px 0 2px;color:#172033}
+.balances{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.balance{border:1px solid #bbf7d0;border-radius:15px;padding:15px;background:#dcfce7;color:var(--green)}
+.balance.red{border-color:#fecaca;background:#fee2e2;color:var(--red)}
+.balance small{display:block;font-size:13px;font-weight:700}
+.balance strong{font-size:22px;display:block;margin-top:3px;overflow-wrap:anywhere}
+.net{margin-top:12px;padding:14px;border:1px solid #fde68a;border-radius:13px;background:#fffbeb;color:#92400e;display:flex;justify-content:space-between;gap:12px;align-items:center;font-weight:800}
+button{border:0;border-radius:11px;padding:10px 15px;background:#1e293b;color:#fff;font-weight:700;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.card h3{color:#172033}
+.entry{border:1px solid #dbe3ee;border-right:4px solid #16a34a;border-radius:15px;padding:15px;margin-top:11px;background:#fff;box-shadow:0 3px 10px rgba(15,23,42,.04)}
+.entryhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.pill{display:inline-block;font-size:12px;padding:5px 10px;border-radius:99px;background:#dcfce7;color:#166534;font-weight:800;white-space:normal}
+.pill.red{background:#fee2e2;color:#991b1b}
+.amount{font-size:20px;font-weight:800;white-space:nowrap;color:#172033}
+.details{font-size:13px;color:var(--muted);margin:7px 0;overflow-wrap:anywhere}
+.numbers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.numbers div{background:#f1f5f9;border:1px solid #e2e8f0;padding:10px;border-radius:11px;font-size:12px;color:#475569}
+.numbers div:nth-child(2){background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+.numbers div:nth-child(3){background:#fffbeb;border-color:#fde68a;color:#92400e}
+.numbers b{display:block;color:#172033;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+.payment{font-size:12px;border-top:1px dashed #cbd5e1;padding-top:9px;margin-top:9px;color:#475569;overflow-wrap:anywhere}
+.error{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:14px;border-radius:12px}
+.empty{text-align:center;color:var(--muted);padding:22px}
+.footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 0 24px}
+@media(max-width:520px){.wrap{margin:12px auto}.top,.card{padding:14px;border-radius:16px}.title{font-size:20px}.balance{padding:12px}.balance strong{font-size:18px}.amount{font-size:17px}.entry{padding:12px}.numbers{grid-template-columns:1fr 1fr}.numbers div:last-child{grid-column:1/-1}.entryhead{gap:7px}}
+@media print{body{background:#fff}.wrap{max-width:none;margin:0;padding:0}.top,.card,.entry{box-shadow:none;break-inside:avoid}.actions{display:none}.top,.card{border-color:#cbd5e1}}
 </style>
 </head>
 <body><main class="wrap">
