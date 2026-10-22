@@ -74,7 +74,7 @@ async function loadStatement(){
  document.getElementById('updated').textContent='آخر تحديث: '+new Date().toLocaleString('ar-EG');
  const loans=Array.isArray(data.loans)?data.loans:[];
  if(!loans.length){host.innerHTML='<div class="empty">لا توجد حركات مسجلة حتى الآن.</div>';return;}
- let running=0;const runningAfter={};loans.slice().sort((a,b)=>String(a.loan_date||'').localeCompare(String(b.loan_date||''))||Number(a.id)-Number(b.id)).forEach(item=>{running+=String(item.direction||'lent')==='lent'?Number(item.amount||0):-Number(item.amount||0);runningAfter[String(item.id)]=running;});
+ let running=0;const runningAfter={};const events=[];loans.forEach(item=>{events.push({date:String(item.loan_date||''),kind:'loan',loan:item});(Array.isArray(item.payments)?item.payments:[]).forEach(pay=>events.push({date:String(pay.date||item.loan_date||''),kind:'payment',loan:item,payment:pay}));});events.sort((a,b)=>a.date.localeCompare(b.date)||(a.kind==='loan'?-1:1));events.forEach(ev=>{const isLent=String(ev.loan.direction||'lent')==='lent';if(ev.kind==='loan'){running+=isLent?Number(ev.loan.amount||0):-Number(ev.loan.amount||0);runningAfter[String(ev.loan.id)]=running;}else{running+=isLent?-Number(ev.payment.amount||0):Number(ev.payment.amount||0);}});
  host.innerHTML=loans.map(l=>{
   const lent=String(l.direction||'lent')==='lent',paid=Number(l.paid||0),remaining=Number(l.remaining||0),balance=Number(runningAfter[String(l.id)]||0);
   const pays=(Array.isArray(l.payments)?l.payments:[]).map(p=>'<div class="payment">دفعة بتاريخ '+safe(date(p.date))+' — '+safe(fmt(p.amount))+(p.notes?' — '+safe(p.notes):'')+'</div>').join('');
