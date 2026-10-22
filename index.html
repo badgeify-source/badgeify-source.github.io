@@ -14274,7 +14274,9 @@ window.saveSalehRecharge=async function(service){
 window.sendSalehStatementLinkWhatsApp=async function(personId){
  try{
   const p=loanPerson(personId);if(!p)throw new Error('الشخص غير موجود.');
-  const phone=digitsForWhatsApp(p.phone);
+  let phone=String(p.phone||'').replace(/\\D/g,'');
+  if(phone.startsWith('00'))phone=phone.slice(2);
+  if(phone.startsWith('0'))phone='20'+phone.slice(1);
   if(!phone||phone.length<10||phone.length>15)throw new Error('أضف رقم موبايل صحيح للشخص أولًا.');
   const uid=(typeof currentUser!=='undefined'&&currentUser&&currentUser.id)||(window.currentUser&&window.currentUser.id);
   if(!uid)throw new Error('انتهت جلسة الدخول. سجّل الدخول مرة أخرى.');
