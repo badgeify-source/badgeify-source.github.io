@@ -14,7 +14,7 @@ const pfAccount0 = id => (state?.financeAccounts||[]).find(a=>String(a.id)===Str
 const pfLoans0 = personId => (state?.loans||[]).filter(l=>l.status!=="cancelled" && String(l.person_id)===String(personId));
 const pfPaid0 = loanId => (state?.loanPayments||[]).filter(p=>String(p.loan_id)===String(loanId)).reduce((s,p)=>s+Number(p.amount||0),0);
 const pfRemaining0 = loan => Math.max(0,Number(loan?.amount||0)-pfPaid0(loan?.id));
-const pfDir0 = loan => String(loan?.loan_direction||"lent")==="borrowed" ? "borrowed" : "lent";
+const pfDir0 = loan => String(loan?.loan_direction||loan?.loan_type||"lent")==="borrowed" ? "borrowed" : "lent";
 const uuid0 = () => (window.crypto?.randomUUID ? crypto.randomUUID() : "pf_"+Date.now()+"_"+Math.random().toString(36).slice(2));
 
 /* ---------- Expense categories: persist in app_settings, with local cache fallback ---------- */
