@@ -11504,7 +11504,7 @@ async function loadLoanData(){
   }
 }
 function loanPerson(id){return (state.loanPeople||[]).find(x=>String(x.id)===String(id))||null;}
-function loanDirection(loan){return String(loan?.loan_direction||loan?.loan_type||'lent')==='borrowed'?'borrowed':'lent';}
+function loanDirection(loan){return String(loan?.loan_type||loan?.loan_direction||'lent')==='borrowed'?'borrowed':'lent';}
 function loanDirectionLabel(loan){return loanDirection(loan)==='borrowed'?'فلوس مستلفها':'فلوس مسلفها';}
 function loanPaid(loanId){return (state.loanPayments||[]).filter(x=>String(x.loan_id)===String(loanId)).reduce((s,x)=>s+Number(x.amount||0),0);}
 function loanRemaining(loan){return Math.max(0,Number(loan?.amount||0)-loanPaid(loan?.id));}
