@@ -11760,12 +11760,21 @@ window.saveSalehTransactionEdit=async function(){
    const q=await db.from('personal_finance_transactions').select('id,amount,account_id').eq('user_id',userId).eq('source_id',row.source_id);
    if(q.error)throw q.error;
    if((q.data||[]).length<2)throw new Error('لم يتم العثور على طرفي التحويل؛ لم يتم حفظ أي تغيير.');
-   const rows=q.data||[];
-   for(const part of rows){
-    const payload={...base,amount:Number(part.amount)<0?-Math.abs(amount):Math.abs(amount)};
+   const rows=q.data||[],taxRow=rows.find(part=>part.source_type==='maksab_tax'),transferRows=rows.filter(part=>part.source_type==='transfer');
+   if(transferRows.length<2)throw new Error('لم يتم العثور على طرفي التحويل؛ لم يتم حفظ أي تغيير.');
+   const isMaksabDeposit=!!taxRow||rows.some(part=>{try{return JSON.parse(part.notes||'{}').kind==='maksab_deposit';}catch(_e){return false;}});
+   const tax=isMaksabDeposit?5:0,net=amount-tax;
+   if(isMaksabDeposit&&net<=0)throw new Error('مبلغ إيداع مكسب يجب أن يكون أكبر من 5 جنيه.');
+   for(const part of transferRows){
+    const payload={...base,amount:Number(part.amount)<0?-Math.abs(isMaksabDeposit?net:amount):Math.abs(isMaksabDeposit?net:amount)};
     if(String(part.id)===String(row.id))payload.account_id=account;
+    if(isMaksabDeposit)payload.notes=JSON.stringify({kind:'maksab_deposit',gross_amount:amount,tax_amount:tax,net_amount:net,detail:notes||''});
     const upd=await db.from('personal_finance_transactions').update(payload).eq('id',part.id).eq('user_id',userId);
     if(upd.error)throw upd.error;
+   }
+   if(taxRow){
+    const taxUpdate=await db.from('personal_finance_transactions').update({account_id:account,amount:-tax,transaction_date:date,category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:amount,tax_amount:tax,net_amount:net,related_transfer_id:row.source_id}),updated_at:new Date().toISOString()}).eq('id',taxRow.id).eq('user_id',userId);
+    if(taxUpdate.error)throw taxUpdate.error;
    }
   }else{
    const signedAmount=row.transaction_type==='expense'?-Math.abs(amount):Number(row.amount)<0?-Math.abs(amount):Math.abs(amount);
@@ -11794,7 +11803,7 @@ window.deleteSalehTransaction=async function(transactionId){
   if(!confirm('هل تريد حذف الحركة «'+String(row.description||row.category||'حركة مالية')+'»؟\n'+detail+'\nلا يمكن التراجع عن الحذف.'))return;
   let q;
   if(linked){
-   q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_type','transfer').eq('source_id',row.source_id);
+   q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_id',row.source_id).in('source_type',['transfer','maksab_tax']);
   }else if(row.source_type==='platform_deduction'&&row.source_id){
    q=await db.from('personal_finance_transactions').delete().eq('user_id',userId).eq('source_type','platform_deduction').eq('source_id',row.source_id);
   }else{
@@ -12221,13 +12230,19 @@ async function saveSalehFinanceTransfer(){
  desc=document.getElementById('ptDesc').value.trim()||'تحويل إلى حساب آخر',
  notes=document.getElementById('ptNotes').value||'';
  if(n<=0||!f||!t||f===t){showToast('راجع المبلغ والحسابات',true);return;}
- const id=crypto.randomUUID();
- const r=await db.from('personal_finance_transactions').insert([
-  {user_id:currentUser?.id,account_id:f,amount:-Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes},
-  {user_id:currentUser?.id,account_id:t,amount:Math.abs(n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes}
- ]);
+ const A=state.financeAccounts||[],to=A.find(a=>String(a.id)===String(t)),from=A.find(a=>String(a.id)===String(f));
+ const isMaksab=String(to?.account_name||'').trim().toLowerCase()==='مكسب';
+ const tax=isMaksab?5:0,net=n-tax;
+ if(isMaksab&&net<=0){showToast('إيداع مكسب يجب أن يكون أكبر من ضريبة العملية الثابتة 5 جنيه.',true);return;}
+ const id=crypto.randomUUID(),uid=currentUser?.id;
+ const rows=[
+  {user_id:uid,account_id:f,amount:-Math.abs(isMaksab?net:n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes:isMaksab?JSON.stringify({kind:'maksab_deposit',gross_amount:n,tax_amount:tax,net_amount:net,detail:notes||''}):notes},
+  {user_id:uid,account_id:t,amount:Math.abs(isMaksab?net:n),transaction_type:'transfer',category:'تحويل',description:desc,source_type:'transfer',source_id:id,transaction_date:d,notes:isMaksab?JSON.stringify({kind:'maksab_deposit',gross_amount:n,tax_amount:tax,net_amount:net,detail:notes||''}):notes}
+ ];
+ if(isMaksab)rows.push({user_id:uid,account_id:f,amount:-tax,transaction_type:'expense',category:'ضريبة مكسب',description:'ضريبة إيداع مكسب (ثابتة 5 جنيه)',source_type:'maksab_tax',source_id:id,transaction_date:d,notes:JSON.stringify({kind:'maksab_fixed_tax',gross_amount:n,tax_amount:tax,net_amount:net,related_transfer_id:id})});
+ const r=await db.from('personal_finance_transactions').insert(rows);
  if(r.error){showToast(r.error.message,true);return;}
- closeModal();await refresh();showToast('تم التحويل بنجاح');
+ closeModal();await refresh();showToast(isMaksab?'تم إيداع '+net.toFixed(2)+' جنيه في مكسب وخصم ضريبة 5 جنيه.':'تم التحويل بنجاح');
 }
 
 /* =========================================
