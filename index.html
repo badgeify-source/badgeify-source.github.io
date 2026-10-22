@@ -13602,7 +13602,7 @@ document.addEventListener('click',function(e){
       '<div class="finance-person-kpis"><div><span>إجمالي السلف اللي ليا</span><b>'+money(t.lent)+' '+esc(c)+'</b></div><div><span>إجمالي السلف اللي عليا</span><b>'+money(t.borrowed)+' '+esc(c)+'</b></div><div><span>الصافي</span><b>'+money(Math.abs(t.net))+' '+esc(c)+'</b></div></div>'+
       '<div class="actions" style="margin:14px 0;display:flex;flex-wrap:wrap;gap:8px"><button type="button" class="gold-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'lent\')">أنا اديته فلوس (سلفة جديدة)</button><button type="button" class="gold-btn" onclick="openPersonCollectPayment(\''+esc(p.id)+'\')">استلمت منه فلوس (تحصيل)</button><button type="button" class="ghost-btn" onclick="openSalehLoanForPerson(\''+esc(p.id)+'\',\'borrowed\')">أنا استلفت منه فلوس (سلفة جديدة)</button><button type="button" class="gold-btn" onclick="sendSalehPersonWhatsApp(\''+esc(p.id)+'\')"><i class="fa-brands fa-whatsapp"></i> إرسال كشف الحساب واتساب</button><button type="button" class="ghost-btn" onclick="deleteSalehPerson(\''+esc(p.id)+'\')">حذف الشخص</button></div>'+
       '<div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>الحركة والتفاصيل</th><th>أصل السلفة</th><th>المسدد / المحصل</th><th>المتبقي</th><th>إجراء</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-    openModal('كشف حساب '+esc(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button>');
+    openModal('كشف حساب '+esc(p.person_name),body,'<button type="button" class="ghost-btn" onclick="closeModal()">إغلاق</button><button type="button" class="gold-btn" onclick="createSalehStatementShare(\''+esc(p.id)+'\')"><i class="fa-solid fa-link"></i> رابط مباشر للعميل</button>');
   };
 
   // SAFE PERSON STATEMENT EDIT/REMOVE ACTIONS — kept inside the existing Personal Finance script.
@@ -14263,5 +14263,20 @@ window.saveSalehRecharge=async function(service){
 })();
 </script>
 
+
+<script id="saleh-live-statement-share">
+window.createSalehStatementShare=async function(personId){
+ try{
+  if(!window.currentUser?.id && typeof currentUser!=='undefined' && !currentUser?.id) throw new Error('سجّل الدخول أولًا.');
+  const uid=(typeof currentUser!=='undefined'&&currentUser?.id)||window.currentUser?.id;
+  if(!uid)throw new Error('سجّل الدخول أولًا.');
+  const result=await db.from('personal_finance_loan_statement_shares').insert({user_id:uid,person_id:Number(personId)}).select('token').single();
+  if(result.error)throw result.error;
+  const url=location.origin+location.pathname.replace(/[^/]*$/,'')+'statement.html?token='+encodeURIComponent(result.data.token);
+  if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(url);showToast('تم إنشاء الرابط المباشر ونسخه.');}
+  else {window.prompt('انسخ رابط كشف الحساب المباشر:',url);}
+ }catch(e){console.error('statement share',e);showToast((e.message||'تعذر إنشاء الرابط.')+' إذا كانت هذه أول مرة، شغّل ملف SQL الخاص بروابط كشف الحساب في Supabase.',true);}
+};
+</script>
 </body>
 </html>
