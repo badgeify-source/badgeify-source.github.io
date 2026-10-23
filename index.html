@@ -13663,11 +13663,23 @@ document.addEventListener('click',function(e){
       if(!currentUser||!currentUser.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
       const l=(state.loans||[]).find(x=>String(x.id)===String(id));if(!l)throw new Error('عملية السلفة غير موجودة.');
       if((state.loanPayments||[]).some(x=>String(x.loan_id)===String(id)))throw new Error('لا يمكن إزالة أصل السلفة قبل إزالة عمليات السداد/التحصيل المرتبطة بها من الكشف.');
-      if(!confirm('تأكيد إزالة أصل السلفة؟ سيتم حذف قيدها المرتبط برصيد الحساب أيضًا.'))return;
-      const txs=await personLedgerTx('loan',id);if(!txs.length)throw new Error('لم يتم العثور على قيد رصيد الحساب؛ لم يتم حذف أي شيء.');
+      const isRecharge=String(l.purpose||'').includes('شحن رصيد موبايل للعميل [شحن آجل]');
+      if(!confirm(isRecharge?'تأكيد حذف مديونية شحن الرصيد؟ سيتم حذف قيد المديونية، مع محاولة حذف حركات الشحن المرتبطة بها.':'تأكيد إزالة أصل السلفة؟ سيتم حذف قيدها المرتبط برصيد الحساب أيضًا.'))return;
+      const txs=await personLedgerTx('loan',id);
+      if(!txs.length&&!isRecharge)throw new Error('لم يتم العثور على قيد رصيد الحساب؛ لم يتم حذف أي شيء.');
       for(const tx of txs){const d=await db.from('personal_finance_transactions').delete().eq('id',tx.id).eq('user_id',currentUser.id);if(d.error)throw d.error;}
+      // Recharge debts do not use the normal loan ledger entry. Find any matching collected-income row that records this loan ID, then remove both transaction rows by their shared source ID.
+      if(isRecharge){
+        const linked=await db.from('personal_finance_transactions').select('id,source_id,source_type').eq('user_id',currentUser.id).eq('source_type','mobile_recharge').ilike('notes','%'+String(id)+'%');
+        if(linked.error)throw linked.error;
+        const sourceIds=[...new Set((linked.data||[]).map(x=>x.source_id).filter(Boolean))];
+        for(const sid of sourceIds){
+          const del=await db.from('personal_finance_transactions').delete().eq('user_id',currentUser.id).eq('source_type','mobile_recharge').eq('source_id',sid);
+          if(del.error)throw del.error;
+        }
+      }
       const d=await db.from('personal_finance_loans').delete().eq('id',id).eq('user_id',currentUser.id);if(d.error)throw d.error;
-      await refresh();showToast('تمت إزالة العملية وتحديث الرصيد.');window.openSalehPersonStatement(l.person_id);
+      await refresh();showToast('تم حذف العملية وتحديث الرصيد.');window.openSalehPersonStatement(l.person_id);
     }catch(e){personLedgerToast(e);}
   };
   window.editSalehPersonPayment=function(id){
