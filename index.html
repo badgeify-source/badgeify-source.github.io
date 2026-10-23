@@ -14281,6 +14281,13 @@ window.saveSalehRecharge=async function(service){
    const loan=await db.from('personal_finance_loans').insert({user_id:userId,person_id:personId,loan_type:'lent',loan_direction:'lent',amount:dueAmount,wallet_account_id:accountObj.id,loan_date:date,purpose:'شحن رصيد موبايل للعميل [شحن آجل]',notes:'قيمة الشحن: '+amount.toFixed(2)+' جنيه؛ المدفوع: '+paidAmount.toFixed(2)+' جنيه؛ المتبقي على العميل: '+dueAmount.toFixed(2)+' جنيه. '+(desc||'')}).select('id').single();
    if(loan.error){if(rechargeCostTxId)await db.from('personal_finance_transactions').delete().eq('id',rechargeCostTxId).eq('user_id',userId);throw loan.error;}
    loanId=loan.data.id;
+   if(rechargeCostTxId){
+    const costNote=await db.from('personal_finance_transactions').select('notes').eq('id',rechargeCostTxId).eq('user_id',userId).maybeSingle();
+    if(costNote.error)throw costNote.error;
+    const noteText=String(costNote.data?.notes||'')+'؛ سجل مديونية العميل: '+loanId;
+    const noteUpdate=await db.from('personal_finance_transactions').update({notes:noteText}).eq('id',rechargeCostTxId).eq('user_id',userId);
+    if(noteUpdate.error)throw noteUpdate.error;
+   }
   }
   if(paidAmount>0){
    const incomeTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:Math.abs(paidAmount),transaction_type:'income',category:label,description:description+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:!isPubg?'قيمة الشحن: '+amount.toFixed(2)+'؛ المحصل فعليًا: '+paidAmount.toFixed(2)+'؛ المتبقي على العميل: '+dueAmount.toFixed(2)+'؛ سجل المديونية: '+(loanId||'لا يوجد'):'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'});
