@@ -14247,16 +14247,24 @@ window.saveSalehRecharge=async function(service){
    if(status==='partial'&&paidAmount>=amount)throw new Error('لو العميل دفع المبلغ بالكامل، اختار «دفع المبلغ بالكامل».');
   }
   const dueAmount=isPubg?0:Math.max(0,amount-paidAmount);
+  // Mobile recharge is a real cost even when the customer pays later. Record the outgoing recharge cost separately from any cash actually collected.
+  let rechargeCostTxId=null;
+  if(!isPubg){
+   const costTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:-Math.abs(amount),transaction_type:'expense',category:'تكلفة شحن رصيد الموبايل',description:'تكلفة شحن رصيد الموبايل'+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:'تكلفة الشحن الفعلية؛ قيمة العميل '+amount.toFixed(2)+' ج.م؛ المحصل فعليًا '+paidAmount.toFixed(2)+' ج.م؛ لا تعتمد على حالة سداد العميل.'}).select('id').single();
+   if(costTx.error)throw costTx.error;
+   rechargeCostTxId=costTx.data?.id||null;
+  }
   let loanId=null;
   if(dueAmount>0){
    const loan=await db.from('personal_finance_loans').insert({user_id:userId,person_id:personId,loan_type:'lent',loan_direction:'lent',amount:dueAmount,wallet_account_id:accountObj.id,loan_date:date,purpose:'شحن رصيد موبايل للعميل [شحن آجل]',notes:'قيمة الشحن: '+amount.toFixed(2)+' جنيه؛ المدفوع: '+paidAmount.toFixed(2)+' جنيه؛ المتبقي على العميل: '+dueAmount.toFixed(2)+' جنيه. '+(desc||'')}).select('id').single();
-   if(loan.error)throw loan.error;
+   if(loan.error){if(rechargeCostTxId)await db.from('personal_finance_transactions').delete().eq('id',rechargeCostTxId).eq('user_id',userId);throw loan.error;}
    loanId=loan.data.id;
   }
   if(paidAmount>0){
    const incomeTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:Math.abs(paidAmount),transaction_type:'income',category:label,description:description+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:!isPubg?'قيمة الشحن: '+amount.toFixed(2)+'؛ المحصل فعليًا: '+paidAmount.toFixed(2)+'؛ المتبقي على العميل: '+dueAmount.toFixed(2)+'؛ سجل المديونية: '+(loanId||'لا يوجد'):'حركة '+label+' — تسجل مرة واحدة ضمن الحساب الرئيسي.'});
    if(incomeTx.error){
     if(loanId)await db.from('personal_finance_loans').delete().eq('id',loanId).eq('user_id',userId);
+    if(rechargeCostTxId)await db.from('personal_finance_transactions').delete().eq('id',rechargeCostTxId).eq('user_id',userId);
     throw incomeTx.error;
    }
   }
