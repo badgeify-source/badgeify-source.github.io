@@ -14175,6 +14175,10 @@ window.toggleSalehMobilePaymentFields=function(){
  const wrap=document.getElementById('salehMobileCustomerFields');
  if(wrap)wrap.style.display=isMobile&&kind==='income'?'':'none';
  const status=document.getElementById('salehMobilePaymentStatus')?.value||'paid';
+ const accountSelect=document.getElementById('rechargeAccount');
+ const selectedAccountName=accountSelect?.selectedOptions?.[0]?.textContent?.trim()||'';
+ const costWrap=document.getElementById('salehMaksabCostWrap');
+ if(costWrap)costWrap.style.display=isMobile&&kind==='income'&&selectedAccountName==='مكسب'?'':'none';
  const partial=document.getElementById('salehMobilePartialWrap');
  if(partial)partial.style.display=isMobile&&kind==='income'&&status==='partial'?'':'none';
 };
@@ -14196,7 +14200,7 @@ window.openSalehRecharge=async function(service){
  const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid '+(isPubg?'fa-gamepad':'fa-mobile-screen-button')+'"></i></div><div><h4>'+label+'</h4><p>'+(isPubg?'سجّل المبلغ المستلم أو تكلفة الشحن.':'اختار الشخص، وسجّل المدفوع فعلًا؛ أي مبلغ غير مدفوع يُضاف لكناش الشخص من غير ما يتخصم من رصيد الحساب مرتين.')+'</p></div></div><div class="form-grid">'+
  '<div class="field finance-field finance-required"><label>نوع الحركة</label><select id="rechargeKind" onchange="toggleSalehMobilePaymentFields()"><option value="income">فلوس مستلمة من الشحن</option><option value="expense">تكلفة الشحن اللي دفعتها</option></select></div>'+
  '<div class="field finance-field finance-required"><label>'+(isPubg?'المبلغ بالجنيه':'قيمة الشحن المستحقة من العميل (جنيه)')+'</label><input id="rechargeAmount" type="number" min="0.01" step="0.01" placeholder="0.00"></div>'+
- '<div class="field finance-field finance-required"><label>الحساب</label><select id="rechargeAccount">'+accountOptions+'</select></div>'+
+ '<div class="field finance-field finance-required"><label>الحساب</label><select id="rechargeAccount" onchange="toggleSalehMobilePaymentFields()">'+accountOptions+'</select></div>'+ '<div id="salehMaksabCostWrap" class="field finance-field finance-required" style="display:none"><label>اللي اتخصم من مكسب (تكلفة الشحن الفعلية — جنيه)</label><input id="salehMaksabCost" type="number" min="0.01" step="0.01" placeholder="مثال: 45"><small class="muted">اكتب تكلفة الشحن اللي خرجت من مكسب، بشكل مستقل عن سعر البيع للعميل.</small></div>' +
  (isPubg?'':'<div id="salehMobileCustomerFields" class="field finance-field finance-required"><label>اسم العميل — لازم يكون مسجل في الأشخاص</label><select id="salehRechargePerson">'+peopleOptions+'</select><div class="muted" style="font-size:10px;margin-top:5px">'+(people.length?'اختار العميل من القائمة. لو مش موجود، أضفه أولًا من قسم الأشخاص.':'لا يوجد أشخاص مسجلون. أغلق النافذة وأضف العميل من قسم الأشخاص أولًا.')+'</div><div class="field finance-field" style="margin-top:12px"><label>حالة الدفع</label><select id="salehMobilePaymentStatus" onchange="toggleSalehMobilePaymentFields()"><option value="paid">دفع المبلغ بالكامل</option><option value="later">مدفعش — المبلغ كله عليه</option><option value="partial">دفع جزء والباقي عليه</option></select></div><div id="salehMobilePartialWrap" class="field finance-field" style="display:none;margin-top:10px"><label>المبلغ اللي دفعه فعلًا (جنيه)</label><input id="salehMobilePaidAmount" type="number" min="0" step="0.01" placeholder="مثال: 20"></div></div>')+
  '<div class="field finance-field"><label>التاريخ</label><input id="rechargeDate" type="date" value="'+isoDate(new Date())+'"></div>'+
  '<div class="field finance-field full"><label>بيان مختصر (اختياري)</label><input id="rechargeDesc" placeholder="'+(isPubg?'مثال: شحن ببجي':'مثال: شحن رصيد موبايل')+'"></div>'+
@@ -14211,6 +14215,7 @@ window.saveSalehRecharge=async function(service){
  try{
   const kind=document.getElementById('rechargeKind')?.value;
   const amount=Number(document.getElementById('rechargeAmount')?.value||0);
+  const maksabCostInput=Number(document.getElementById('salehMaksabCost')?.value||0);
   const account=document.getElementById('rechargeAccount')?.value;
   const date=document.getElementById('rechargeDate')?.value;
   const desc=(document.getElementById('rechargeDesc')?.value||'').trim();
@@ -14225,6 +14230,9 @@ window.saveSalehRecharge=async function(service){
   const accountObj=aq.data;
   if(!accountObj)throw new Error('الحساب المحدد غير تابع للمستخدم الحالي.');
   if(['Bybit Saleh','Bybit Mahmoud','Binance'].includes(String(accountObj.account_name||'')))throw new Error('اختار حسابًا نقديًا بالجنيه، وليس حساب منصة USDT.');
+  const isMaksab=String(accountObj.account_name||'').trim()==='مكسب';
+  const rechargeCost=(!isPubg&&kind==='income'&&isMaksab)?maksabCostInput:amount;
+  if(!isPubg&&kind==='income'&&isMaksab&&(!Number.isFinite(rechargeCost)||rechargeCost<=0))throw new Error('اكتب المبلغ اللي اتخصم فعليًا من مكسب.');
   const sourceId=crypto.randomUUID();
   const description=desc||(kind==='income'?'مبلغ مستلم من '+label:'تكلفة '+label);
   if(kind==='expense'){
@@ -14250,7 +14258,7 @@ window.saveSalehRecharge=async function(service){
   // Mobile recharge is a real cost even when the customer pays later. Record the outgoing recharge cost separately from any cash actually collected.
   let rechargeCostTxId=null;
   if(!isPubg){
-   const costTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:-Math.abs(amount),transaction_type:'expense',category:'تكلفة شحن رصيد الموبايل',description:'تكلفة شحن رصيد الموبايل'+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:'تكلفة الشحن الفعلية؛ قيمة العميل '+amount.toFixed(2)+' ج.م؛ المحصل فعليًا '+paidAmount.toFixed(2)+' ج.م؛ لا تعتمد على حالة سداد العميل.'}).select('id').single();
+   const costTx=await db.from('personal_finance_transactions').insert({user_id:userId,account_id:accountObj.id,amount:-Math.abs(rechargeCost),transaction_type:'expense',category:'تكلفة شحن رصيد الموبايل',description:'تكلفة شحن رصيد الموبايل'+(person?' — العميل: '+person.person_name:''),source_type:sourceType,source_id:sourceId,transaction_date:date,notes:'تكلفة الشحن الفعلية: '+rechargeCost.toFixed(2)+' ج.م؛ قيمة العميل '+amount.toFixed(2)+' ج.م؛ المحصل فعليًا '+paidAmount.toFixed(2)+' ج.م؛ لا تعتمد على حالة سداد العميل.'}).select('id').single();
    if(costTx.error)throw costTx.error;
    rechargeCostTxId=costTx.data?.id||null;
   }
