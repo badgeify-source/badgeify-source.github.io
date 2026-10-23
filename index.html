@@ -14367,5 +14367,81 @@ window.createSalehStatementShare=async function(personId){
  }catch(e){console.error('statement share',e);showToast((e.message||'تعذر إنشاء الرابط.')+' لو لسه ما فعلتش الميزة، شغّل ملف supabase_live_person_statement.sql في SQL Editor مرة واحدة.',true);}
 };
 </script>
+
+<script id="badgeifyContactPicker">
+(function(){
+  'use strict';
+  const selector = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"])';
+  const phoneHint = /phone|mobile|whatsapp|tel|رقم.?الهاتف|رقم.?الموبايل|رقم.?الواتس|واتساب|موبايل|الهاتف|تليفون|تلفون/i;
+  const styledParents = new WeakSet();
+  function isPhoneField(input){
+    if(!input || input.disabled || input.readOnly || input.dataset.badgeifyContactReady === '1') return false;
+    const attrs = [input.type,input.name,input.id,input.placeholder,input.getAttribute('aria-label'),input.autocomplete].filter(Boolean).join(' ');
+    if(input.type === 'tel' || phoneHint.test(attrs)) return true;
+    const label = input.labels && Array.from(input.labels).map(x=>x.textContent||'').join(' ');
+    return !!(label && phoneHint.test(label));
+  }
+  function addPicker(input){
+    if(!isPhoneField(input)) return;
+    input.dataset.badgeifyContactReady = '1';
+    const parent = input.parentElement;
+    if(!parent) return;
+    if(!styledParents.has(parent)){
+      const computed = window.getComputedStyle(parent);
+      if(computed.position === 'static') parent.style.position = 'relative';
+      styledParents.add(parent);
+    }
+    input.style.paddingInlineEnd = '46px';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'badgeify-contact-picker';
+    button.title = 'اختيار رقم من جهات الاتصال';
+    button.setAttribute('aria-label','اختيار رقم واتساب من جهات الاتصال');
+    button.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M3 20v-1.5A5.5 5.5 0 0 1 8.5 13h1"></path><path d="M16 13v8m-4-4h8"></path><path d="M16 3.5a4 4 0 0 1 0 8"></path></svg>';
+    button.style.cssText = 'position:absolute;inset-inline-end:7px;top:50%;transform:translateY(-50%);z-index:5;width:34px;height:34px;border:1px solid #64748b55;border-radius:9px;background:var(--card-bg,#fff);color:var(--text-color,#334155);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;box-shadow:0 1px 4px #00000012;';
+    button.addEventListener('click', async function(){
+      if(!navigator.contacts || typeof navigator.contacts.select !== 'function'){
+        alert('اختيار جهة الاتصال متاح حاليًا على الأجهزة والمتصفحات الداعمة، وأفضلها Chrome على أندرويد. تقدر تكتب الرقم يدويًا في الخانة.');
+        return;
+      }
+      try{
+        const contacts = await navigator.contacts.select(['name','tel'], {multiple:false});
+        const contact = contacts && contacts[0];
+        const numbers = contact && contact.tel;
+        if(!numbers || !numbers.length) { alert('جهة الاتصال المختارة لا تحتوي على رقم هاتف.'); return; }
+        input.value = numbers[0];
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        input.focus();
+      }catch(error){
+        if(error && error.name !== 'AbortError') console.warn('BADGEIFY contact picker:',error);
+      }
+    });
+    parent.appendChild(button);
+  }
+  function scan(root){
+    if(root && root.matches && root.matches(selector)) addPicker(root);
+    if(root && root.querySelectorAll) root.querySelectorAll(selector).forEach(addPicker);
+  }
+  function start(){
+    scan(document);
+    const observer = new MutationObserver(function(records){
+      records.forEach(function(record){
+        record.addedNodes.forEach(function(node){
+          if(node.nodeType === 1) scan(node);
+        });
+      });
+    });
+    observer.observe(document.documentElement,{childList:true,subtree:true});
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
+</script>
+<style id="badgeifyContactPickerStyles">
+.badgeify-contact-picker:focus-visible{outline:2px solid #22c55e;outline-offset:2px}
+.badgeify-contact-picker:hover{filter:brightness(.96)}
+</style>
+
 </body>
 </html>
