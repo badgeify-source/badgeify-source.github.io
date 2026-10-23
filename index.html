@@ -13515,6 +13515,8 @@ document.addEventListener('click',function(e){
     if(n.startsWith('0'))n='20'+n.slice(1);
     return n;
   }
+  // Expose the phone normalizer for handlers defined by later scripts; keep the local name for existing callers.
+  window.digitsForWhatsApp=digitsForWhatsApp;
   window.renderSalehPeople=function(){
     const host=document.querySelector('.saleh-people-section-body');
     if(!host)return;
