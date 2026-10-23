@@ -6056,6 +6056,12 @@ function openPaymentModal(subscriptionId,periodKey){
                 </select>
             </div>
 
+            <div class="field" id="platformDeductionAmountWrap" style="display:none">
+                <label>المبلغ المخصوم من المنصة (USDT)</label>
+                <input id="platformDeductionAmount" type="number" min="0.000001" step="0.000001" placeholder="مثال: 5">
+                <small class="muted">قيمة الاشتراك تظل بالجنيه في سجل الاشتراكات، وهذا المبلغ يُخصم من رصيد المنصة بالدولار.</small>
+            </div>
+
             <div class="field" id="paymentMethodDetailsWrap" style="display:none">
                 <label id="paymentMethodDetailsLabel">رقم الحساب / المحفظة</label>
                 <input id="paymentMethodDetails" type="text">
@@ -6381,6 +6387,7 @@ async function confirmPayment(subscriptionId,periodKey){
 
     const paymentMethod=document.getElementById("paymentMethod")?.value||"cash";
     const isPlatformPayment=String(paymentMethod).startsWith("platform_");
+    const platformDeductionAmount=Number(document.getElementById("platformDeductionAmount")?.value||0);
     const methodDetails=document.getElementById("paymentMethodDetails")?.value.trim()||"";
     const payerName=document.getElementById("payerName")?.value.trim()||customer?.client_name||"";
     const payerRelation=document.getElementById("payerRelation")?.value||"subscriber";
@@ -6394,9 +6401,9 @@ async function confirmPayment(subscriptionId,periodKey){
             const platformQuery=await db.from('personal_finance_accounts').select('*').eq('user_id',currentUser.id).eq('account_name',platformName).maybeSingle();
             if(platformQuery.error)throw platformQuery.error;
             if(!platformQuery.data)throw new Error('حساب المنصة '+platformName+' غير موجود في لوحة صالح.');
-            if(Number(amount)<=0)throw new Error('اكتب مبلغ الاشتراك بعملة USDT.');
+            if(!Number.isFinite(platformDeductionAmount)||platformDeductionAmount<=0)throw new Error('اكتب المبلغ اللي هيتخصم من المنصة بالدولار USDT.');
             const platformBalance=window.pfPlatformBalance?Number(window.pfPlatformBalance(platformQuery.data.id)||0):0;
-            if(platformBalance+0.0000001<Number(amount))throw new Error('رصيد '+platformName+' من USDT غير كافٍ.');
+            if(platformBalance+0.0000001<platformDeductionAmount)throw new Error('رصيد '+platformName+' من USDT غير كافٍ.');
         }
 
         const result=
@@ -6409,7 +6416,7 @@ async function confirmPayment(subscriptionId,periodKey){
 
             amount:amount,
 
-            currency: isPlatformPayment ? "USDT" : (s.currency || state.settings.currency || "EGP"),
+            currency: (s.currency || state.settings.currency || "EGP"),
 
             payment_date:
             paymentDate,
@@ -6417,7 +6424,7 @@ async function confirmPayment(subscriptionId,periodKey){
             paid_month:
             periodKey || monthKey(due),
 
-            notes:notes
+            notes:isPlatformPayment ? ((notes||'')+' | خصم المنصة: '+platformDeductionAmount+' USDT') : notes
 
         })
         .select()
@@ -6433,7 +6440,7 @@ async function confirmPayment(subscriptionId,periodKey){
 
         if(isPlatformPayment){
             try{
-                await syncSalehPlatformSubscriptionDeduction(paymentMethod,amount,result.data.id,paymentDate,notes,customer.client_name,(getService(s.app_service_id)||{}).service_name||"اشتراك");
+                await syncSalehPlatformSubscriptionDeduction(paymentMethod,platformDeductionAmount,result.data.id,paymentDate,notes,customer.client_name,(getService(s.app_service_id)||{}).service_name||"اشتراك");
             }catch(syncError){
                 platformSyncError=syncError;
                 console.error("Subscription payment saved but platform deduction sync failed:",syncError);
@@ -6476,7 +6483,7 @@ async function confirmPayment(subscriptionId,periodKey){
             phone:customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number||"",
             serviceName:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",
             amount:amount,
-            currency:isPlatformPayment?"USDT":(s.currency||state.settings.currency||"EGP"),
+            currency:(s.currency||state.settings.currency||"EGP"),
             paymentMethod:paymentMethod,
             methodDetails:methodDetails,
             dueDate:due,
@@ -13218,11 +13225,13 @@ applyTheme();
     const isPlatform=String(method).startsWith('platform_');
     const input=document.getElementById('paymentAmount');
     const label=input?.closest('.field')?.querySelector('label');
-    if(label)label.textContent=isPlatform?'المبلغ المدفوع من المنصة (USDT)':'المبلغ';
+    const platformWrap=document.getElementById('platformDeductionAmountWrap');
+    if(label)label.textContent='قيمة الاشتراك المسجلة ('+(isPlatform?'جنيه / عملة الاشتراك':'جنيه أو عملة الاشتراك')+')';
     if(input){
-      if(isPlatform && input.dataset.platformMode!=='1'){input.value='';input.step='0.000001';input.placeholder='مثال: 3 أو 5 USDT';input.dataset.platformMode='1';}
-      else if(!isPlatform && input.dataset.platformMode==='1'){input.value='';input.step='0.01';input.placeholder='';input.dataset.platformMode='0';}
+      if(input.dataset.platformMode!=='1'){input.dataset.platformMode='1';input.step='0.01';}
+      input.placeholder=isPlatform?'قيمة الاشتراك بالجنيه':'';
     }
+    if(platformWrap)platformWrap.style.display=isPlatform?'':'none';
   };
   window.syncSalehPlatformSubscriptionDeduction=async function(method,amount,paymentId,paymentDate,notes,customerName,serviceName){
     const map={platform_bybit_saleh:'Bybit Saleh',platform_bybit_mahmoud:'Bybit Mahmoud',platform_binance:'Binance'};
