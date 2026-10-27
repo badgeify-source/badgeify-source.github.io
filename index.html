@@ -11866,8 +11866,17 @@ function renderPersonalFinance(){
     const repaid=(state.loanPayments||[]).filter(p=>group.some(l=>String(l.id)===String(p.loan_id))).reduce((s,x)=>s+Number(x.amount||0),0);
     return {total,repaid,remaining:Math.max(0,total-repaid),open:group.filter(x=>loanRemaining(x)>0).length,overdue:group.filter(x=>loanRemaining(x)>0&&x.due_date&&String(x.due_date)<isoDate(new Date())).length};
   };
-  const borrowedStats=calcLoanGroup(borrowedLoans);
-  const lentStats=calcLoanGroup(lentLoans);
+  // احسب الإجماليات بنفس منطق كناش الأشخاص: صافي كل شخص على حدة.
+  // يمنع جمع الاتجاهين بشكل إجمالي من دون تسوية المستحقات المتبادلة مع الشخص نفسه.
+  const peopleNetStats=(state.loanPeople||[]).reduce((totals,person)=>{
+    const personLoans=activeLoans.filter(l=>String(l.person_id)===String(person.id));
+    const lent=personLoans.filter(l=>loanDirection(l)==='lent').reduce((sum,l)=>sum+loanRemaining(l),0);
+    const borrowed=personLoans.filter(l=>loanDirection(l)==='borrowed').reduce((sum,l)=>sum+loanRemaining(l),0);
+    const net=lent-borrowed;
+    totals.lent+=Math.max(0,net);
+    totals.borrowed+=Math.max(0,-net);
+    return totals;
+  },{lent:0,borrowed:0});
 
   const cards=[
    ['إجمالي أموالي',total,'fa-wallet','finance-main'],
@@ -11914,7 +11923,7 @@ function renderPersonalFinance(){
    '<div class="grid stats finance-stat-grid">'+cards.map(x=>'<div class="stat '+x[3]+'"><div class="stat-icon">'+(x[3]==='saleh-instapay-card'?'<img class="saleh-logo-img instapay" src="https://commons.wikimedia.org/wiki/Special:FilePath/InstaPay_Logo.png" alt="InstaPay" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'"><i class="fa-solid '+x[2]+'" style="display:none"></i>':x[3]==='saleh-vodafone-card'?'<img class="saleh-logo-img vodafone" src="https://upload.wikimedia.org/wikipedia/commons/7/7a/Vodafone_icon.svg" alt="Vodafone Cash" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline-block\'"><i class="fa-solid '+x[2]+'" style="display:none"></i>':'<i class="fa-solid '+(x[3]==='saleh-pocket-card'?'fa-money-bill-wave':x[2])+'"></i>')+'</div><h2>'+money(x[1])+' <small>'+esc(cur)+'</small></h2><p>'+x[0]+'</p></div>').join('')+'</div>'+
    '<div class="card" style="margin-top:16px"><div class="card-head"><div><h3><i class="fa-solid fa-gamepad"></i> شحن الألعاب ورصيد الموبايل</h3><span class="muted">إجماليات مسجلة من الحركات الحالية — بدون ملفات عملاء أو بطاقات طلبات.</span></div></div><div class="card-body"><div class="finance-kpis"><div class="finance-kpi"><span>المبالغ المستلمة</span><b>'+money(rechargeIncome)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>تكلفة الشحن</span><b>'+money(rechargeCost)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي المكسب</span><b>'+money(rechargeProfit)+' '+esc(cur)+'</b></div></div></div></div>' +
    '<div class="finance-kpis"><div class="finance-kpi"><span>مقبوضات الشهر</span><b>'+money(income)+' '+esc(cur)+'</b></div><div class="finance-kpi expense"><span>مصروفات الشهر</span><b>'+money(expense)+' '+esc(cur)+'</b></div><div class="finance-kpi profit"><span>صافي الربح / الحركة</span><b>'+money(profit)+' '+esc(cur)+'</b></div><div class="finance-kpi"><span>عدد الحركات</span><b>'+T.length+'</b></div></div>'+
-   '<div class="finance-kpis" style="margin-top:10px"><div class="finance-kpi profit"><span>إجمالي السلف اللي ليا</span><b>'+money(lentStats.remaining)+' '+esc(cur)+'</b><small>المتبقي عند الأشخاص اللي أنت مسلفهم</small></div><div class="finance-kpi expense"><span>إجمالي السلف اللي عليا</span><b>'+money(borrowedStats.remaining)+' '+esc(cur)+'</b><small>المتبقي اللي أنت مستلفه من الأشخاص</small></div></div>'+
+   '<div class="finance-kpis" style="margin-top:10px"><div class="finance-kpi profit"><span>إجمالي السلف اللي ليا</span><b>'+money(peopleNetStats.lent)+' '+esc(cur)+'</b><small>صافي المتبقي عند الأشخاص اللي أنت مسلفهم</small></div><div class="finance-kpi expense"><span>إجمالي السلف اللي عليا</span><b>'+money(peopleNetStats.borrowed)+' '+esc(cur)+'</b><small>صافي المتبقي اللي أنت مستلفه من الأشخاص</small></div></div>'+
    
    '<div id="salehDigitalPlatforms" style="margin-top:16px">'+(typeof window.renderSalehPlatforms==='function'?window.renderSalehPlatforms():'<div class="card" style="padding:22px;text-align:center"><h3>منصات العملات</h3><p class="muted">Bybit Saleh • Bybit Mahmoud • Binance</p></div>')+'</div>'+
    '<div id="salehMovementsSection" class="card" style="display:none;margin-top:16px;scroll-margin-top:18px"><div class="card-body"><div class="finance-toolbar"><div class="finance-search"><input id="salehFinanceSearch" placeholder="ابحث في الحركات: عميل، مصروف، حساب..." value="'+esc(filterText)+'" oninput="renderPersonalFinance()"><select id="salehFinanceType" onchange="renderPersonalFinance()"><option value="all" '+(filterType==='all'?'selected':'')+'>كل الحركات</option><option value="income" '+(filterType==='income'?'selected':'')+'>المقبوضات</option><option value="expense" '+(filterType==='expense'?'selected':'')+'>المصروفات</option><option value="transfer" '+(filterType==='transfer'?'selected':'')+'>التحويلات</option><option value="adjustment" '+(filterType==='adjustment'?'selected':'')+'>التسويات</option></select></div><button class="ghost-btn" onclick="openSalehFinanceEntry(\'expense\')"><i class="fa-solid fa-minus"></i> مصروف</button><button class="gold-btn" onclick="openSalehFinanceEntry(\'income\')"><i class="fa-solid fa-plus"></i> مبلغ مستلم</button></div><div class="table-wrap"><table class="table"><thead><tr><th>التاريخ</th><th>البيان</th><th>الحساب</th><th>النوع</th><th>المبلغ</th><th>إجراءات</th></tr></thead><tbody>'+txRows+'</tbody></table></div></div></div>'+
