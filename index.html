@@ -13150,29 +13150,42 @@ applyTheme();
   window.openSalehPlatformOpeningBalance=function(platformId){
     const a=platformById(platformId);
     if(!a)return showToast('حساب المنصة غير موجود.',true);
-    const usdt=balance(a,'USDT');
-    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>مطابقة الرصيد الافتتاحي للمنصة</h4><p>حدد الرصيد الفعلي الافتتاحي للمنصة بعملة USDT.</p></div></div><div class="form-grid"><div class="field full"><label>المنصة</label><input value="'+escv(a.account_name)+'" disabled></div><div class="field finance-required"><label>الرصيد الافتتاحي USDT</label><input id="pfOpenUSDT" type="number" min="0" step="0.000001" value="'+usdt+'"></div></div><div style="margin-top:12px;padding:12px;border-radius:12px;background:rgba(180,145,55,.10);border:1px solid rgba(180,145,55,.22)">الرصيد الافتتاحي منفصل عن الجنيه، ولن يتم اعتباره دخلًا أو مصروفًا.</div></div>';
-    openModal('مطابقة رصيد '+escv(a.account_name),body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformOpeningBalance('+a.id+')"><i class="fa-solid fa-check"></i> حفظ</button>');
+    const currentBalance=balance(a,'USDT');
+    const body='<div class="finance-modal-shell"><div class="finance-form-intro"><div class="finance-form-icon"><i class="fa-solid fa-scale-balanced"></i></div><div><h4>تسوية رصيد المنصة</h4><p>اكتب الرصيد النهائي الذي تريد أن يظهر للمنصة. لو كتبت صفر، سيحسب النظام رصيد التسوية الافتتاحي اللازم لتصبح النتيجة 0.00 USDT مع الاحتفاظ بحركات المنصة.</p></div></div><div class="form-grid"><div class="field full"><label>المنصة</label><input value="'+escv(a.account_name)+'" disabled></div><div class="field"><label>الرصيد الحالي</label><input value="'+num(currentBalance).toFixed(6)+' USDT" disabled></div><div class="field finance-required"><label>الرصيد النهائي المطلوب (USDT)</label><input id="pfOpenUSDT" type="number" step="0.000001" value="'+Math.max(0,currentBalance).toFixed(6)+'"></div></div><div style="margin-top:12px;padding:12px;border-radius:12px;background:rgba(24,119,242,.10);border:1px solid rgba(99,179,255,.22)">سيتم تعديل قيد الرصيد الافتتاحي فقط لتعويض صافي الحركات المسجلة، ولن تُحذف الإيداعات أو الخصومات أو التحويلات السابقة، ولن يتأثر رصيد الجنيه المصري.</div></div>';
+    openModal('تسوية رصيد '+escv(a.account_name),body,'<button class="ghost-btn" onclick="closeModal()">إلغاء</button><button class="gold-btn" onclick="saveSalehPlatformOpeningBalance('+a.id+')"><i class="fa-solid fa-check"></i> تسوية الرصيد</button>');
   };
   window.saveSalehPlatformOpeningBalance=async function(platformId){
     const a=platformById(platformId);
-    const usdt=num(document.getElementById('pfOpenUSDT')?.value);
-    if(!a||usdt<0){showToast('اكتب رصيد USDT صحيح.',true);return;}
+    const target=num(document.getElementById('pfOpenUSDT')?.value);
+    if(!a||!Number.isFinite(target)||target<0){showToast('اكتب الرصيد النهائي المطلوب بشكل صحيح (صفر أو أكثر).',true);return;}
     try{
-      for(const item of [{currency:'USDT',amount:usdt}]){
-        const sourceId='platform_opening_'+String(a.id)+'_'+item.currency;
-        const payload={user_id:currentUser?.id,account_id:a.id,amount:item.amount,transaction_type:'adjustment',category:'الرصيد الافتتاحي للمنصة',description:'الرصيد الافتتاحي '+item.currency+' - '+a.account_name,source_type:'platform_opening_balance',source_id:sourceId,transaction_date:isoDate(new Date()),notes:JSON.stringify({currency:item.currency,kind:'platform_opening_balance'})};
-        const existing=await db.from('personal_finance_transactions').select('id').eq('account_id',a.id).eq('source_type','platform_opening_balance').eq('source_id',sourceId).maybeSingle();
-        if(existing.error)throw existing.error;
-        const q=existing.data
-          ? await db.from('personal_finance_transactions').update(payload).eq('id',existing.data.id).eq('user_id',currentUser?.id)
-          : await db.from('personal_finance_transactions').insert(payload);
-        if(q.error)throw q.error;
+      if(!currentUser?.id)throw new Error('جلسة الدخول غير موجودة؛ سجّل الدخول مرة أخرى.');
+      const sourceId='platform_opening_'+String(a.id)+'_USDT';
+      const allOpening=await db.from('personal_finance_transactions').select('id,source_id,notes,amount').eq('user_id',currentUser.id).eq('account_id',a.id).eq('source_type','platform_opening_balance');
+      if(allOpening.error)throw allOpening.error;
+      const openingRows=(allOpening.data||[]).filter(x=>currencyOf(x)==='USDT');
+      const canonical=openingRows.find(x=>String(x.source_id)===sourceId);
+      const duplicateIds=openingRows.filter(x=>String(x.source_id)!==sourceId).map(x=>x.id);
+      // صافي الحركات التشغيلية فقط؛ لا تدخل قيود الرصيد الافتتاحي في هذا المجموع.
+      const movements=txs().filter(x=>String(x.account_id)===String(a.id)&&x.source_type!=='platform_opening_balance'&&currencyOf(x)==='USDT').reduce((sum,x)=>sum+num(x.amount),0);
+      // عوّض الحركات حتى يصبح إجمالي الرصيد النهائي مساويًا تمامًا للرقم الذي أدخله المستخدم.
+      const openingAmount=target-movements;
+      const payload={user_id:currentUser.id,account_id:a.id,amount:openingAmount,transaction_type:'adjustment',category:'تسوية الرصيد الافتتاحي للمنصة',description:'تسوية الرصيد النهائي USDT - '+a.account_name,source_type:'platform_opening_balance',source_id:sourceId,transaction_date:isoDate(new Date()),notes:JSON.stringify({currency:'USDT',kind:'platform_opening_balance',target_balance:target,settlement:true})};
+      const q=canonical
+        ? await db.from('personal_finance_transactions').update(payload).eq('id',canonical.id).eq('user_id',currentUser.id)
+        : await db.from('personal_finance_transactions').insert(payload);
+      if(q.error)throw q.error;
+      // إزالة قيود افتتاحية مكررة لنفس العملة فقط، إن وُجدت، حتى لا تتكرر إضافتها للحساب.
+      if(duplicateIds.length){
+        const del=await db.from('personal_finance_transactions').delete().in('id',duplicateIds).eq('user_id',currentUser.id);
+        if(del.error)throw del.error;
       }
       closeModal();
       await refresh();
-      showToast('تم حفظ الرصيد الافتتاحي للمنصة بـ USDT');
-    }catch(e){console.error('PLATFORM OPENING BALANCE',e);showToast(e.message||'تعذر حفظ الرصيد الافتتاحي للمنصة.',true);}
+      const finalBalance=window.pfPlatformBalance?Number(window.pfPlatformBalance(a.id)||0):target;
+      if(Math.abs(finalBalance-target)<0.000001)showToast('تمت التسوية بنجاح. الرصيد النهائي: '+finalBalance.toFixed(2)+' USDT');
+      else showToast('تم حفظ التسوية، لكن الرصيد المعروض '+finalBalance.toFixed(6)+' USDT؛ حدّث الصفحة وراجع الحركات.',true);
+    }catch(e){console.error('PLATFORM OPENING BALANCE SETTLEMENT',e);showToast(e.message||'تعذر تسوية رصيد المنصة.',true);}
   };
 
   window.openSalehPlatformDeposit=async function(platformId,editSourceId){
