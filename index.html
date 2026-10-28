@@ -9529,54 +9529,6 @@ td{font-size:12px}
     .print{display:none}
 }
 
-/* SALEH LOAN DIRECTION UI */
-.finance-loan-direction-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}
-.finance-loan-direction{border:1px solid var(--border);border-radius:16px;padding:14px;background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(24,119,242,.035))}
-.finance-loan-direction.borrowed{border-color:rgba(239,98,98,.22)}
-.finance-loan-direction.lent{border-color:rgba(53,201,138,.22)}
-.finance-loan-direction-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.finance-loan-direction-head h4{margin:0;font-size:14px}
-.finance-loan-direction-head small{color:var(--muted);font-size:10px}
-.finance-loan-direction-icon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:rgba(24,119,242,.10);color:var(--gold2)}
-.finance-loan-direction.borrowed .finance-loan-direction-icon{color:var(--red);background:rgba(239,98,98,.10)}
-.finance-loan-direction.lent .finance-loan-direction-icon{color:var(--green);background:rgba(53,201,138,.10)}
-@media(max-width:800px){.finance-loan-direction-grid{grid-template-columns:1fr}}
-
-/* SALEH DONATIONS */
-.saleh-donations-card .card-head{align-items:center}
-.finance-donation-total{display:flex;flex-direction:column;align-items:flex-end;margin-inline:8px}
-.finance-donation-total span{font-size:11px;color:var(--muted)}
-.finance-donation-total b{font-size:18px}
-@media(max-width:800px){.saleh-donations-card .card-head{flex-direction:column;align-items:stretch}.finance-donation-total{align-items:flex-start;margin:8px 0}.saleh-donations-card .actions{flex-wrap:wrap}}
-
-/* SALEH FINANCE v2 */
-.finance-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}
-.finance-search{display:flex;gap:8px;flex:1;min-width:240px}
-.finance-search input,.finance-search select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:var(--panel2);color:var(--text);outline:none}
-.finance-search input:focus,.finance-search select:focus{border-color:var(--blue)}
-.finance-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
-.finance-kpi{padding:15px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(145deg,rgba(24,119,242,.08),rgba(255,255,255,.015))}
-.finance-kpi span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}
-.finance-kpi b{font-size:19px}
-.finance-kpi.profit b{color:var(--green)}
-.finance-kpi.expense b{color:var(--red)}
-.finance-reconcile{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.finance-reconcile .field{margin:0}
-.finance-reconcile-note{font-size:10px;color:var(--muted);line-height:1.8}
-@media(max-width:900px){.finance-kpis{grid-template-columns:repeat(2,1fr)}.finance-reconcile{grid-template-columns:1fr}}
-@media(max-width:520px){.finance-kpis{grid-template-columns:1fr}.finance-search{min-width:100%;flex-direction:column}.finance-toolbar .ghost-btn,.finance-toolbar .gold-btn{width:100%}}
-
-</style>
-<style id="saleh-platform-finance-css">
-.platform-finance-section{margin-top:18px}.platform-finance-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.platform-finance-head h3{margin:0}.platform-finance-head p{margin:3px 0 0;color:var(--muted);font-size:11px}.platform-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.platform-card{background:linear-gradient(145deg,rgba(17,27,42,.98),rgba(8,15,25,.98));border:1px solid rgba(99,179,255,.12);border-radius:16px;padding:16px}.platform-card .platform-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.platform-card .platform-name{font-weight:800}.platform-card .platform-currency{font-size:10px;color:var(--muted)}.platform-card .platform-balance{font-size:25px;font-weight:900;margin:12px 0 3px}.platform-card .platform-balance small{font-size:12px;color:var(--muted)}.platform-actions{display:flex;gap:7px;flex-wrap:wrap}.platform-ledger{margin-top:14px}.platform-ledger .table{min-width:900px}.platform-tag{display:inline-flex;padding:4px 8px;border-radius:999px;background:rgba(99,179,255,.1);color:var(--gold2);font-size:9px;font-weight:800}.platform-empty{padding:20px;text-align:center;color:var(--muted)}.platform-note{font-size:10px;color:var(--muted);line-height:1.8;margin-top:8px}.platform-total-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}.platform-total{padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--panel2)}.platform-total span{display:block;color:var(--muted);font-size:10px}.platform-total b{display:block;margin-top:3px;font-size:18px}@media(max-width:900px){.platform-grid{grid-template-columns:1fr 1fr}.platform-total-strip{grid-template-columns:1fr 1fr}}@media(max-width:520px){.platform-grid,.platform-total-strip{grid-template-columns:1fr}.platform-finance-head{flex-direction:column;align-items:flex-start}}
-<style id="saleh-platform-top-cards-css">.finance-platform-top-card{border:1px solid rgba(212,175,55,.28);background:linear-gradient(145deg,rgba(212,175,55,.08),rgba(255,255,255,.02))}.finance-platform-top-card .finance-account-icon{background:rgba(212,175,55,.14);color:#d4af37}.finance-platform-card-actions{display:flex;gap:6px;margin-top:8px}.finance-platform-card-actions .mini-btn{flex:1}</style>
-/* SALEH DIGITAL PLATFORM ACTIONS - ALWAYS VISIBLE */
-#salehFinanceRedesign .finance-platform-card-actions,#salehFinanceRedesign .platform-actions,#salehFinanceRedesign .platform-actions-visible{display:flex!important;gap:7px!important;flex-wrap:wrap!important;align-items:center!important}
-#salehFinanceRedesign .finance-platform-card-actions .mini-btn,#salehFinanceRedesign .platform-actions .mini-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;min-height:34px!important;opacity:1!important;visibility:visible!important}
-#salehFinanceRedesign .platform-action-deposit{border-color:rgba(53,201,138,.45)!important;color:#35c98a!important;background:rgba(53,201,138,.08)!important}
-#salehFinanceRedesign .platform-action-transfer{border-color:rgba(99,179,255,.45)!important;color:#63b3ff!important;background:rgba(99,179,255,.08)!important}
-#salehFinanceRedesign .platform-action-deduct{border-color:rgba(239,98,98,.45)!important;color:#ef6262!important;background:rgba(239,98,98,.08)!important}
-@media(max-width:600px){#salehFinanceRedesign .finance-platform-card-actions .mini-btn,#salehFinanceRedesign .platform-actions .mini-btn{flex:1;min-width:0}.platform-finance-head .actions{width:100%}.platform-finance-head .actions button{flex:1}}
 </style>
 </head>
 <body>
