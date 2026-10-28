@@ -6168,6 +6168,7 @@ function getCustomerOutstandingForReceipt(customerId,paidSubscriptionId){
 
 function buildPaymentReceiptMessage(data){
     let msg="إيصال سداد\n------------------------------\n";
+    msg+="رقم الإيصال: "+(data.receiptNumber||("RCPT-"+String(data.paymentId||"").padStart(6,"0")))+"\n";
     msg+="العميل: "+(data.customerName||"-")+"\n";
     msg+="الاشتراك: "+(data.serviceName||"-")+"\n";
     msg+="المبلغ المدفوع: "+money(data.amount)+" "+(data.currency||"EGP")+"\n";
@@ -6286,7 +6287,7 @@ th,td{padding:12px 10px;border-bottom:1px solid #e8edf3;text-align:right}th{back
 <div class="page">
 <div class="head">
 <div class="brand"><img class="logo" src="${logo}" alt="BADGEIFY"><div><div class="brand-name">BADGEIFY</div><div class="tag">VERIFIED TRUST & SECURITY</div></div></div>
-<div><div class="receipt-title">إيصال سداد</div><div style="font-size:12px;color:#687386;margin-top:7px">${esc(data.paymentDate||"-")}</div></div>
+<div><div class="receipt-title">إيصال سداد</div><div style="font-size:12px;font-weight:800;color:#1877F2;margin-top:7px">رقم الإيصال: ${esc(data.receiptNumber||("RCPT-"+String(data.paymentId||"").padStart(6,"0")))}</div><div style="font-size:12px;color:#687386;margin-top:7px">تاريخ السداد: ${esc(data.paymentDate||"-")}</div></div>
 </div>
 
 <div class="info">
