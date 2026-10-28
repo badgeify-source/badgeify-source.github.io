@@ -8431,6 +8431,8 @@ async function createCombinedInvoice(scope){
 
         if(invoiceResult.error) throw invoiceResult.error;
 
+        await assignSequentialInvoiceNumber(invoiceResult.data.id,scope === "overdue" ? "LATE" : (entityType === "trader" ? "TR" : "INV"));
+
         const invoiceItems = selectedRows.map(function(row){
             const descriptionParts = [];
             if(entityType === "trader") descriptionParts.push(row.customer?.client_name || "");
@@ -8774,6 +8776,7 @@ async function saveCustomerInvoice(){
         if(result.error)
             throw result.error;
 
+        await assignSequentialInvoiceNumber(result.data.id,"INV");
 
         if(subscriptionId){
 
@@ -9175,6 +9178,7 @@ async function createTraderInvoice(){
         if(invoice.error)
             throw invoice.error;
 
+        await assignSequentialInvoiceNumber(invoice.data.id,"TR");
 
         const items=
         subscriptions.map(function(s){
@@ -9266,6 +9270,22 @@ function generateInvoiceNumber(prefix="INV"){
     .toString()
     .slice(-6);
 
+}
+
+// Assign a readable sequential reference using the existing database invoice ID.
+// This changes only the existing invoice_number field; it does not require a schema change.
+async function assignSequentialInvoiceNumber(invoiceId,prefix="INV"){
+    if(invoiceId==null) return null;
+    const date=new Date();
+    const number=prefix+"-"+date.getFullYear()+String(date.getMonth()+1).padStart(2,"0")+"-"+String(invoiceId).padStart(6,"0");
+    try{
+        const result=await db.from("invoices").update({invoice_number:number}).eq("id",invoiceId);
+        if(result.error) throw result.error;
+        return number;
+    }catch(error){
+        console.warn("Could not assign sequential invoice number; retaining the original reference.",error);
+        return null;
+    }
 }
 
 
