@@ -523,6 +523,12 @@ body{background:#050a12!important;color:#f7fbff!important}
 .visa-display{background:linear-gradient(135deg,rgba(24,119,242,.14),rgba(255,255,255,.025))!important;border-color:rgba(99,179,255,.22)!important;border-radius:15px!important}
 .footer{border-top:1px solid rgba(255,255,255,.06)!important;color:#718096!important}
 @media(max-width:700px){.container{width:94%!important}.hero{padding:22px!important;border-radius:20px!important}.customer-name{font-size:24px!important}.summary{grid-template-columns:1fr 1fr!important}.card{padding:17px!important}}
+
+/* BADGEIFY premium invoice cards */
+.customer-invoice-card{border:1px solid rgba(99,179,255,.22)!important;background:linear-gradient(145deg,rgba(17,31,49,.98),rgba(10,19,31,.98))!important;box-shadow:0 12px 34px rgba(0,0,0,.16)}
+.customer-invoice-card .invoice{align-items:flex-start;padding-bottom:14px;border-bottom:1px solid rgba(148,163,184,.15)}
+.invoice-main{min-width:0}.invoice-summary{text-align:left;white-space:nowrap}.invoice-items{margin-top:14px;border:1px solid rgba(148,163,184,.14);border-radius:12px;padding:12px}.invoice-items-title{font-size:12px;font-weight:900;color:var(--gold2);margin-bottom:8px}.invoice-item-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(148,163,184,.1);font-size:12px}.invoice-item-row:last-child{border-bottom:0}.invoice-balance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}.invoice-balance-grid>div{display:flex;justify-content:space-between;gap:8px;align-items:center;border-radius:12px;padding:12px;background:rgba(99,179,255,.07);border:1px solid rgba(99,179,255,.12)}.invoice-balance-grid span{font-size:11px;color:var(--muted)}.invoice-balance-grid strong{font-size:13px}.invoice-balance-grid>div:last-child strong{color:#f5b84b}.invoice-status.is-paid{color:#35c98a}.invoice-status.is-due{color:#f5b84b}.invoice-status.is-cancelled{color:var(--muted)}.invoice-actions{display:flex;justify-content:flex-start;margin-top:14px}.invoice-actions button{display:inline-flex;align-items:center;gap:8px}
+@media(max-width:560px){.customer-invoice-card .invoice{flex-direction:column}.invoice-summary{text-align:right}.invoice-balance-grid{grid-template-columns:1fr}.invoice-actions button{width:100%;justify-content:center}}
 </style>
 </head>
 
