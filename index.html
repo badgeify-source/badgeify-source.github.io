@@ -6194,6 +6194,7 @@ function showPaymentReceiptModal(data){
     const message=buildPaymentReceiptMessage(data);
     let html="<div class='card'><div class='card-body'>";
     html+="<h3 style='margin-top:0'>إيصال سداد</h3>";
+    html+="<div class='muted' style='margin-bottom:8px'>رقم الإيصال: "+esc(data.receiptNumber||("RCPT-"+String(data.paymentId||"").padStart(6,"0")))+"</div>";
     html+="<div><b>العميل:</b> "+esc(data.customerName||"-")+"</div>";
     html+="<div><b>الاشتراك:</b> "+esc(data.serviceName||"-")+"</div>";
     html+="<div class='money' style='margin-top:10px'>"+esc(money(data.amount))+" "+esc(data.currency||"EGP")+"</div>";
@@ -6490,6 +6491,8 @@ async function confirmPayment(subscriptionId,periodKey){
         const relationText={subscriber:"صاحب الاشتراك نفسه",relative:"قريب / أحد أفراد الأسرة",other:"شخص آخر"};
 
         showPaymentReceiptModal({
+            receiptNumber:"RCPT-"+String(savedPaymentId||"").padStart(6,"0"),
+            paymentId:savedPaymentId,
             customerName:customer?.client_name||"-",
             phone:customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number||"",
             serviceName:getService(s.app_service_id)?.service_name||s.page_name||"اشتراك",
@@ -8416,6 +8419,7 @@ async function createCombinedInvoice(scope){
             subscription_id: null,
             invoice_type: entityType,
             invoice_date: isoDate(new Date()),
+            due_date: selectedRows.map(function(row){return row.dueDate;}).filter(Boolean).sort()[0] || null,
             subtotal: total,
             discount: 0,
             total: total,
@@ -8569,6 +8573,10 @@ function openCustomerInvoiceModal(){
 
             </div>
 
+            <div class="field">
+                <label>موعد الاستحقاق (اختياري)</label>
+                <input id="invoiceDueDate" type="date">
+            </div>
 
             <div class="field">
 
@@ -8735,6 +8743,9 @@ async function saveCustomerInvoice(){
 
             invoice_date:
             isoDate(new Date()),
+
+            due_date:
+            document.getElementById("invoiceDueDate")?.value || null,
 
             subtotal:amount,
 
