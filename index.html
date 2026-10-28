@@ -8119,196 +8119,66 @@ async function deleteService(id){
 
 function renderInvoices(){
 
-    document.getElementById("content")
-    .innerHTML=`
-
+    document.getElementById("content").innerHTML=`
     <div class="page-head">
-
         <div>
-
             <h1>${t("invoices")}</h1>
-
+            <p class="muted">إدارة فواتير العملاء ومراجعة حالة السداد وطباعة نسخة PDF.</p>
         </div>
-
         <div class="page-actions">
-
-            <button
-            class="gold-btn"
-            onclick="openCustomerInvoiceModal()">
-
-            <i class="fa-solid fa-user"></i>
-
-            ${t("customerInvoice")}
-
+            <button class="gold-btn" onclick="openCustomerInvoiceModal()">
+                <i class="fa-solid fa-user"></i> ${t("customerInvoice")}
             </button>
-
-
-            <button
-            class="ghost-btn"
-            onclick="openTraderInvoiceModal()">
-
-            <i class="fa-solid fa-user-tie"></i>
-
-            ${t("traderInvoice")}
-
+            <button class="ghost-btn" onclick="openTraderInvoiceModal()">
+                <i class="fa-solid fa-user-tie"></i> ${t("traderInvoice")}
             </button>
-
-
-            <button
-            class="ghost-btn"
-            onclick="openCombinedInvoiceModal('overdue','trader')">
-
-            <i class="fa-solid fa-file-circle-exclamation"></i>
-
-            فاتورة مجمعة للتاجر المتأخرة
-
+            <button class="ghost-btn" onclick="openCombinedInvoiceModal('overdue','trader')">
+                <i class="fa-solid fa-file-circle-exclamation"></i> فاتورة مجمعة للتاجر المتأخرة
             </button>
-
-
+            <button class="ghost-btn" onclick="openCombinedInvoiceModal('all','customer')">
+                <i class="fa-solid fa-layer-group"></i> فاتورة مجمعة للعميل
+            </button>
         </div>
-
     </div>
 
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px">
+        <div class="card"><div class="card-body"><div class="muted">عدد الفواتير</div><div style="font-size:24px;font-weight:900">${state.invoices.length}</div></div></div>
+        <div class="card"><div class="card-body"><div class="muted">فواتير مدفوعة</div><div style="font-size:24px;font-weight:900;color:var(--green)">${state.invoices.filter(x=>String(x.status||"").toLowerCase()==="paid").length}</div></div></div>
+        <div class="card"><div class="card-body"><div class="muted">فواتير مستحقة</div><div style="font-size:24px;font-weight:900;color:var(--red)">${state.invoices.filter(x=>!["paid","cancelled"].includes(String(x.status||"").toLowerCase())).length}</div></div></div>
+    </div>
 
-    <div class="card">
-
-        <div class="card-body">
-
-        <div class="table-wrap">
-
-        <table class="table">
-
-        <thead>
-
-        <tr>
-
-            <th>${t("invoiceNumber")}</th>
-            <th>${t("customer")}</th>
-            <th>${t("trader")}</th>
-            <th>${t("invoiceDate")}</th>
-            <th>${t("total")}</th>
-            <th>${t("invoiceStatus")}</th>
-            <th>${t("actions")}</th>
-
-        </tr>
-
-        </thead>
-
+    <div class="card"><div class="card-body"><div class="table-wrap">
+    <table class="table">
+        <thead><tr>
+            <th>${t("invoiceNumber")}</th><th>${t("customer")}</th><th>${t("trader")}</th>
+            <th>${t("invoiceDate")}</th><th>موعد الاستحقاق</th><th>${t("total")}</th>
+            <th>المدفوع</th><th>المتبقي</th><th>${t("invoiceStatus")}</th><th>${t("actions")}</th>
+        </tr></thead>
         <tbody>
-
-        ${
-        state.invoices.map(function(invoice){
-
+        ${state.invoices.map(function(invoice){
+            const status=String(invoice.status||"unpaid").toLowerCase();
+            const total=Math.max(0,Number(invoice.total||0));
+            const paid=status==="paid"?total:0;
+            const remaining=(status==="paid"||status==="cancelled")?0:total;
+            const statusLabel=status==="paid"?"مدفوعة بالكامل":status==="cancelled"?"ملغاة":status==="partial"?"مدفوعة جزئياً":"مستحقة";
+            const statusClass=status==="paid"?"paid":status==="cancelled"?"inactive":"due";
             return `
-
             <tr>
-
-                <td>
-                ${esc(
-                    invoice.invoice_number
-                    ||("#"+invoice.id)
-                )}
-                </td>
-
-                <td>
-                ${esc(
-                    getCustomer(
-                        invoice.customer_id
-                    )?.client_name
-                    ||"-"
-                )}
-                </td>
-
-                <td>
-                ${esc(
-                    getTrader(
-                        invoice.trader_id
-                    )?.trader_name
-                    ||"-"
-                )}
-                </td>
-
-                <td>
-                ${formatDate(
-                    invoice.invoice_date
-                )}
-                </td>
-
-                <td class="money">
-
-                ${money(invoice.total)}
-                ${esc(
-                    invoice.currency||"EGP"
-                )}
-
-                </td>
-
-                <td>
-
-                <span class="badge
-                ${
-                    invoice.status==="paid"
-                    ?"paid"
-                    :
-                    invoice.status==="cancelled"
-                    ?"inactive"
-                    :"due"
-                }">
-
-                ${esc(invoice.status)}
-
-                </span>
-
-                </td>
-
-                <td>
-
-                <button
-                class="mini-btn"
-                onclick="printInvoice(${invoice.id})">
-
-                <i class="fa-solid fa-print"></i>
-
-                </button>
-
-                </td>
-
-            </tr>
-
-            `;
-
-        }).join("")
-        ||
-        `
-        <tr>
-
-            <td colspan="7">
-
-            <div class="empty">
-            ${t("noData")}
-            </div>
-
-            </td>
-
-        </tr>
-        `
-        }
-
+                <td><strong>${esc(invoice.invoice_number||("#"+invoice.id))}</strong></td>
+                <td>${esc(getCustomer(invoice.customer_id)?.client_name||"-")}</td>
+                <td>${esc(getTrader(invoice.trader_id)?.trader_name||"-")}</td>
+                <td>${formatDate(invoice.invoice_date)}</td>
+                <td>${formatDate(invoice.due_date)}</td>
+                <td class="money">${money(total)} ${esc(invoice.currency||"EGP")}</td>
+                <td>${money(paid)} ${esc(invoice.currency||"EGP")}</td>
+                <td style="color:${remaining>0?"var(--red)":"var(--green)"};font-weight:800">${money(remaining)} ${esc(invoice.currency||"EGP")}</td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                <td><button class="mini-btn" onclick="printInvoice(${invoice.id})" title="طباعة أو حفظ PDF"><i class="fa-solid fa-file-pdf"></i></button></td>
+            </tr>`;
+        }).join("")||`<tr><td colspan="10"><div class="empty">${t("noData")}</div></td></tr>`}
         </tbody>
-
-        </table>
-
-        </div>
-
-        </div>
-
-    </div>
-
-    `;
-
+    </table></div></div></div>`;
 }
-
-
 
 /* =========================================
    COMBINED INVOICES: ALL SUBSCRIPTIONS / OVERDUE
@@ -9692,7 +9562,8 @@ td{font-size:12px}
 
         <div class="invoice-box">
             <div class="invoice-no">${esc(invoice.invoice_number || ("#" + invoice.id))}</div>
-            <div class="date">تاريخ الفاتورة: ${formatDate(invoice.invoice_date)}</div>
+            <div class="date">تاريخ الإصدار: ${formatDate(invoice.invoice_date)}</div>
+            <div class="date">موعد الاستحقاق: ${formatDate(invoice.due_date)}</div>
         </div>
     </div>
 
@@ -9740,7 +9611,7 @@ td{font-size:12px}
     <div class="total-box">
         <div class="total-line">
             <span>الإجمالي قبل الخصم</span>
-            <strong>${money(invoice.subtotal || invoice.total)} ${esc(currency)}</strong>
+            <strong>${money(invoice.subtotal == null ? Number(invoice.total||0)+Number(invoice.discount||0) : invoice.subtotal)} ${esc(currency)}</strong>
         </div>
         <div class="total-line">
             <span>الخصم</span>
@@ -9751,8 +9622,16 @@ td{font-size:12px}
             <span class="total">${money(invoice.total)} ${esc(currency)}</span>
         </div>
         <div class="total-line">
-            <span>الحالة</span>
-            <strong>${esc(invoice.status || "غير محدد")}</strong>
+            <span>المدفوع حسب حالة الفاتورة</span>
+            <strong>${money(String(invoice.status||"").toLowerCase()==="paid"?invoice.total:0)} ${esc(currency)}</strong>
+        </div>
+        <div class="total-line">
+            <span>المتبقي</span>
+            <strong style="color:${["paid","cancelled"].includes(String(invoice.status||"").toLowerCase())?"#137a42":"#b45309"}">${money(["paid","cancelled"].includes(String(invoice.status||"").toLowerCase())?0:invoice.total)} ${esc(currency)}</strong>
+        </div>
+        <div class="total-line">
+            <span>حالة الفاتورة</span>
+            <strong>${esc(String(invoice.status||"unpaid").toLowerCase()==="paid"?"مدفوعة بالكامل":String(invoice.status||"").toLowerCase()==="cancelled"?"ملغاة":"مستحقة")}</strong>
         </div>
     </div>
 
