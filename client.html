@@ -1522,139 +1522,133 @@ function renderInvoices(
     currency
 ){
 
-    const container =
-        document.getElementById("invoices");
+    const container = document.getElementById("invoices");
 
     if(!invoices.length){
-
         container.innerHTML = `
             <div class="empty">
                 لا توجد فواتير مسجلة حتى الآن.
             </div>
         `;
-
         return;
     }
 
-    container.innerHTML =
-        invoices.map(invoice => {
-
-            const items =
-                invoiceItems.filter(
-                    item =>
-                        Number(item.invoice_id) ===
-                        Number(invoice.id)
-                );
-
-            const itemsHtml =
-                items.length
-                    ? `
-                        <div style="
-                            margin-top:15px;
-                            color:#aaa;
-                            font-size:12px;
-                        ">
-                            ${items.map(item => `
-                                <div style="
-                                    padding:6px 0;
-                                ">
-                                    ${escapeHtml(
-                                        item.service_name
-                                    )}
-                                    —
-                                    ${escapeHtml(
-                                        money(
-                                            item.total,
-                                            invoice.currency ||
-                                            currency
-                                        )
-                                    )}
-                                </div>
-                            `).join("")}
-                        </div>
-                    `
-                    : "";
-
-            return `
-                <div class="card" style="margin-bottom:12px;">
-
-                    <div class="invoice">
-
-                        <div>
-
-                            <div class="invoice-number">
-                                ${
-                                    escapeHtml(
-                                        invoice.invoice_number ||
-                                        "فاتورة"
-                                    )
-                                }
-                            </div>
-
-                            <div class="invoice-date">
-                                تاريخ الفاتورة:
-                                ${
-                                    escapeHtml(
-                                        formatDate(
-                                            invoice.invoice_date
-                                        )
-                                    )
-                                }
-                            </div>
-
-                            ${
-                                invoice.due_date
-                                    ? `
-                                    <div class="invoice-date">
-                                        الاستحقاق:
-                                        ${
-                                            escapeHtml(
-                                                formatDate(
-                                                    invoice.due_date
-                                                )
-                                            )
-                                        }
-                                    </div>
-                                    `
-                                    : ""
-                            }
-
-                            ${itemsHtml}
-
-                        </div>
-
-                        <div>
-
-                            <div class="invoice-total">
-                                ${
-                                    escapeHtml(
-                                        money(
-                                            invoice.total,
-                                            invoice.currency ||
-                                            currency
-                                        )
-                                    )
-                                }
-                            </div>
-
-                            <div class="invoice-status">
-                                الحالة:
-                                ${
-                                    escapeHtml(
-                                        invoice.status ||
-                                        "غير محدد"
-                                    )
-                                }
-                            </div>
-
-                        </div>
-
+    container.innerHTML = invoices.map(invoice => {
+        const items = invoiceItems.filter(item =>
+            Number(item.invoice_id) === Number(invoice.id)
+        );
+        const total = Math.max(0, Number(invoice.total || 0));
+        const status = String(invoice.status || "unpaid").toLowerCase();
+        const isPaid = status === "paid";
+        const isCancelled = status === "cancelled";
+        const paidAmount = isPaid ? total : 0;
+        const remaining = (isPaid || isCancelled) ? 0 : total;
+        const statusLabel = isPaid ? "مدفوعة بالكامل" : isCancelled ? "ملغاة" : status === "partial" ? "مدفوعة جزئياً" : "مستحقة";
+        const itemsHtml = items.length ? `
+            <div class="invoice-items">
+                <div class="invoice-items-title">تفاصيل الاشتراكات</div>
+                ${items.map(item => `
+                    <div class="invoice-item-row">
+                        <span>${escapeHtml(item.service_name || item.description || "اشتراك")}</span>
+                        <strong>${escapeHtml(money(item.total, invoice.currency || currency))}</strong>
                     </div>
+                `).join("")}
+            </div>
+        ` : "";
 
+        return `
+            <div class="card customer-invoice-card" style="margin-bottom:14px;">
+                <div class="invoice">
+                    <div class="invoice-main">
+                        <div class="invoice-number">فاتورة ${escapeHtml(invoice.invoice_number || ("#" + invoice.id))}</div>
+                        <div class="invoice-date">تاريخ الإصدار: ${escapeHtml(formatDate(invoice.invoice_date))}</div>
+                        ${invoice.due_date ? `<div class="invoice-date">موعد الاستحقاق: ${escapeHtml(formatDate(invoice.due_date))}</div>` : ""}
+                    </div>
+                    <div class="invoice-summary">
+                        <div class="invoice-total">${escapeHtml(money(total, invoice.currency || currency))}</div>
+                        <div class="invoice-status ${isPaid ? "is-paid" : isCancelled ? "is-cancelled" : "is-due"}">${statusLabel}</div>
+                    </div>
                 </div>
-            `;
+                ${itemsHtml}
+                <div class="invoice-balance-grid">
+                    <div><span>المدفوع</span><strong>${escapeHtml(money(paidAmount, invoice.currency || currency))}</strong></div>
+                    <div><span>المتبقي</span><strong>${escapeHtml(money(remaining, invoice.currency || currency))}</strong></div>
+                </div>
+                <div class="invoice-actions">
+                    <button class="gold-btn" type="button" onclick="printCustomerInvoice(${Number(invoice.id)})">
+                        <i class="fa-solid fa-file-pdf"></i> عرض / طباعة الفاتورة وحفظ PDF
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join("");
+}
 
-        }).join("");
+function printCustomerInvoice(invoiceId){
+    const data = portalData || {};
+    const invoice = (data.invoices || []).find(row => Number(row.id) === Number(invoiceId));
+    if(!invoice) return;
+
+    const customer = data.customer || {};
+    const company = data.company || {};
+    const items = (data.invoice_items || []).filter(item => Number(item.invoice_id) === Number(invoice.id));
+    const currency = invoice.currency || company.currency || "EGP";
+    const total = Math.max(0, Number(invoice.total || 0));
+    const status = String(invoice.status || "unpaid").toLowerCase();
+    const isPaid = status === "paid";
+    const isCancelled = status === "cancelled";
+    const paidAmount = isPaid ? total : 0;
+    const remaining = (isPaid || isCancelled) ? 0 : total;
+    const statusLabel = isPaid ? "مدفوعة بالكامل" : isCancelled ? "ملغاة" : status === "partial" ? "مدفوعة جزئياً" : "مستحقة";
+    const safe = escapeHtml;
+    const invoiceName = ("BADGEIFY - فاتورة - " + (invoice.invoice_number || invoice.id) + " - " + (customer.client_name || "عميل")).replace(/[\\/:*?"<>|]/g,"-");
+    const rows = items.length ? items.map(item => `
+        <tr>
+            <td>${safe(item.service_name || item.description || "اشتراك")}</td>
+            <td>${safe(String(item.quantity || 1))}</td>
+            <td>${safe(money(item.unit_price == null ? item.total : item.unit_price, currency))}</td>
+            <td>${safe(money(item.discount || 0, currency))}</td>
+            <td>${safe(money(item.total, currency))}</td>
+        </tr>
+    `).join("") : `<tr><td colspan="5" class="empty-cell">تفاصيل البنود غير متاحة لهذه الفاتورة.</td></tr>`;
+
+    const popup = window.open("", "_blank");
+    if(!popup){
+        alert("اسمح بفتح النوافذ المنبثقة لعرض الفاتورة وحفظها PDF.");
+        return;
+    }
+
+    popup.document.write(`<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safe(invoiceName)}</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#eef3f9;color:#172033;font-family:Tahoma,Arial,sans-serif}.toolbar{position:sticky;top:0;background:#101b2b;padding:12px;text-align:center}.toolbar button{background:#1877f2;color:#fff;border:0;border-radius:10px;padding:11px 20px;font-weight:800;cursor:pointer}.sheet{max-width:900px;margin:28px auto;background:#fff;padding:38px;border-radius:18px;box-shadow:0 12px 40px #0b1b3020}.brand{display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:4px solid #1877f2;padding-bottom:22px}.brand-name{font-size:29px;font-weight:900;color:#1877f2;letter-spacing:1px}.tag{font-size:11px;color:#64748b;margin-top:5px}.doc-title{font-size:21px;font-weight:900;color:#172033}.muted{font-size:12px;color:#64748b;line-height:1.9}.meta{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin:24px 0}.meta-card{border:1px solid #dbe7f5;background:#f7faff;border-radius:13px;padding:15px}.meta-card span{display:block;color:#64748b;font-size:11px;margin-bottom:7px}.meta-card strong{font-size:15px;overflow-wrap:anywhere}.status{display:inline-block;border-radius:999px;padding:6px 12px;background:${isPaid ? "#e7f8ee" : isCancelled ? "#f1f5f9" : "#fff3d9"};color:${isPaid ? "#137a42" : isCancelled ? "#64748b" : "#9a5b00"};font-weight:800;font-size:12px}table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#14243a;color:#fff;text-align:right;padding:12px;font-size:12px}td{padding:12px;border-bottom:1px solid #e7edf5;font-size:12px}.empty-cell{text-align:center;color:#64748b}.totals{width:min(390px,100%);margin:22px 0 0 auto;border:1px solid #dbe7f5;border-radius:14px;padding:16px;background:#f8fbff}.line{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13px}.line.final{border-top:1px solid #dbe7f5;margin-top:5px;padding-top:13px;font-size:17px;font-weight:900;color:#1877f2}.line.balance strong{color:${remaining > 0 ? "#b45309" : "#137a42"}}.notes{margin-top:22px;padding:14px;border-right:4px solid #1877f2;background:#f7faff;font-size:12px;line-height:1.9;white-space:pre-wrap}.footer{text-align:center;border-top:1px solid #e7edf5;margin-top:30px;padding-top:18px;color:#64748b;font-size:11px;line-height:1.9}@page{size:A4;margin:12mm}@media(max-width:600px){.sheet{margin:0;padding:20px;border-radius:0}.meta{grid-template-columns:1fr}.brand{align-items:flex-start;flex-direction:column}}@media print{body{background:#fff}.toolbar{display:none}.sheet{margin:0;max-width:none;padding:0;box-shadow:none;border-radius:0}tr,td,th{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="toolbar"><button onclick="window.print()">طباعة / حفظ PDF</button></div>
+<main class="sheet">
+<header class="brand"><div><div class="brand-name">BADGEIFY</div><div class="tag">VERIFIED TRUST &amp; SECURITY</div></div><div><div class="doc-title">فاتورة عميل</div><div class="muted">رقم الفاتورة: ${safe(invoice.invoice_number || ("#" + invoice.id))}</div></div></header>
+<section class="meta">
+<div class="meta-card"><span>بيانات العميل</span><strong>${safe(customer.client_name || "عميل BADGEIFY")}</strong><div class="muted">${safe(customer.phone || "")}</div></div>
+<div class="meta-card"><span>بيانات الفاتورة</span><strong>تاريخ الإصدار: ${safe(formatDate(invoice.invoice_date))}</strong><div class="muted">موعد الاستحقاق: ${safe(formatDate(invoice.due_date))}</div><div style="margin-top:9px"><span class="status">${statusLabel}</span></div></div>
+</section>
+<table><thead><tr><th>الخدمة / الاشتراك</th><th>الكمية</th><th>سعر الوحدة</th><th>الخصم</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+<section class="totals">
+<div class="line"><span>الإجمالي قبل الخصم</span><strong>${safe(money(invoice.subtotal == null ? total + Number(invoice.discount || 0) : invoice.subtotal, currency))}</strong></div>
+<div class="line"><span>الخصم</span><strong>${safe(money(invoice.discount || 0, currency))}</strong></div>
+<div class="line final"><span>إجمالي الفاتورة</span><strong>${safe(money(total, currency))}</strong></div>
+<div class="line"><span>المدفوع</span><strong>${safe(money(paidAmount, currency))}</strong></div>
+<div class="line balance"><span>المتبقي</span><strong>${safe(money(remaining, currency))}</strong></div>
+</section>
+${invoice.notes ? `<section class="notes"><strong>ملاحظات</strong><br>${safe(invoice.notes)}</section>` : ""}
+<footer class="footer"><strong>BADGEIFY</strong><br>VERIFIED TRUST &amp; SECURITY<br>شكراً لثقتك بنا</footer>
+</main>
+</body></html>`);
+    popup.document.close();
 }
 
 function renderFollowups(followups){
