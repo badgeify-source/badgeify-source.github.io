@@ -3563,7 +3563,7 @@ function openVisaCardModal(id=null){
         <div class="field">
           <label>${t("cardNumber")}</label>
           <input id="visaCardNumber" type="text" inputmode="numeric" autocomplete="off" maxlength="19" placeholder="أدخل رقم الفيزا">
-          <div class="muted" style="font-size:9px;margin-top:5px">سيتم حفظ اسم الفيزا وآخر 4 أرقام فقط.</div>
+          <div class="muted" style="font-size:9px;margin-top:5px">اكتب رقم الفيزا الجديدة لتحديث آخر 4 أرقام. لأمانك، لا يتم حفظ رقم البطاقة بالكامل.</div>
         </div>
         <div class="field full"><label>${t("last4")}</label><input id="visaCardLast4" value="${esc(card?.last4||"")}" maxlength="4" readonly></div>
       </div>`,
@@ -4407,7 +4407,7 @@ function renderSubscriptions(){
         });
     }):rows;
 
-    if(selectedStatus!=="all"){
+    if(subscriptionView==="active"&&selectedStatus!=="all"){
         filteredRows=filteredRows.filter(function(subscription){
             return subscription._periodType===selectedStatus;
         });
