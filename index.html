@@ -4358,9 +4358,23 @@ function periodStatusBadge(row){
 }
 
 function renderSubscriptions(){
-    const baseSubscriptions=state.subscriptions.filter(function(x){return x.status!=="inactive";});
+    const subscriptionView=state.subscriptionView||"active";
+    const inactiveSubscriptions=state.subscriptions.filter(function(x){return x.status==="inactive";});
+    const baseSubscriptions=subscriptionView==="inactive"
+        ? inactiveSubscriptions
+        : state.subscriptions.filter(function(x){return x.status!=="inactive";});
     let rows=[];
     baseSubscriptions.forEach(function(subscription){
+        if(subscriptionView==="inactive"){
+            rows.push(Object.assign({},subscription,{
+                _periodKey:"",
+                _periodDueDate:null,
+                _periodType:"inactive",
+                _periodText:t("inactive"),
+                _periodLabel:""
+            }));
+            return;
+        }
         getSubscriptionPeriods(subscription).forEach(function(period){
             rows.push(Object.assign({},subscription,{
                 _periodKey:period.periodKey,
@@ -4411,7 +4425,8 @@ function renderSubscriptions(){
         upcoming:rows.filter(x=>x._periodType==="upcoming").length,
         due:rows.filter(x=>x._periodType==="due").length,
         overdue:rows.filter(x=>x._periodType==="overdue").length,
-        paid:rows.filter(x=>x._periodType==="paid").length
+        paid:rows.filter(x=>x._periodType==="paid").length,
+        inactive:inactiveSubscriptions.length
     };
 
     const totals={
@@ -4558,12 +4573,17 @@ function renderSubscriptions(){
     <div class="card">
         <div class="card-body">
             <div class="subscription-filters">
+                <button class="subscription-filter-btn ${subscriptionView==="active"?"active":""}" onclick="setSubscriptionView('active')"><b>${state.subscriptions.filter(function(x){return x.status!=="inactive";}).length}</b><span>الاشتراكات النشطة</span><small>عرض الاشتراكات الحالية</small></button>
+                <button class="subscription-filter-btn ${subscriptionView==="inactive"?"active":""}" onclick="setSubscriptionView('inactive')"><b>${counts.inactive}</b><span>غير نشط</span><small>عرض وتعديل الاشتراكات المعطّلة</small></button>
+            </div>
+            ${subscriptionView==="active"?`
+            <div class="subscription-filters">
                 <button class="subscription-filter-btn ${selectedStatus==="all"?"active":""}" onclick="setSubscriptionStatusFilter('all')"><b>${counts.all}</b><span>${t("allSubscriptions")}</span><small>${money(totals.all)} ${esc(state.settings.currency||"EGP")}</small></button>
                 <button class="subscription-filter-btn ${selectedStatus==="upcoming"?"active":""}" onclick="setSubscriptionStatusFilter('upcoming')"><b>${counts.upcoming}</b><span>${t("upcomingSubscriptions")}</span><small>${money(totals.upcoming)} ${esc(state.settings.currency||"EGP")}</small></button>
                 <button class="subscription-filter-btn ${selectedStatus==="due"?"active":""}" onclick="setSubscriptionStatusFilter('due')"><b>${counts.due}</b><span>${t("dueToday")}</span><small>${money(totals.due)} ${esc(state.settings.currency||"EGP")}</small></button>
                 <button class="subscription-filter-btn ${selectedStatus==="overdue"?"active":""}" onclick="setSubscriptionStatusFilter('overdue')"><b>${counts.overdue}</b><span>${t("overdue")}</span><small>${money(totals.overdue)} ${esc(state.settings.currency||"EGP")}</small></button>
                 <button class="subscription-filter-btn ${selectedStatus==="paid"?"active":""}" onclick="setSubscriptionStatusFilter('paid')"><b>${counts.paid}</b><span>${t("paid")}</span><small>${money(totals.paid)} ${esc(state.settings.currency||"EGP")}</small></button>
-            </div>
+            </div>`: `<div class="muted" style="margin:4px 0 16px;font-size:12px">دي كل الاشتراكات اللي حالتها غير نشط. تقدر تعدّل أي اشتراك وتفعّله مرة تانية من زر التعديل.</div>`}
 
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
                 <label for="subscriptionVisaSearch" style="font-weight:700">بحث بآخر ٤ أرقام من الفيزا</label>
@@ -4609,7 +4629,7 @@ function renderSubscriptions(){
                     const serviceNames=[...new Set(subs.flatMap(servicesForSubscription).map(function(service){return service.service_name;}))];
                     const platforms=subs.map(function(s){return (s.platform||"-")+(s.page_name?" - "+s.page_name:"");});
                     const paymentDays=subs.map(function(s){return s.payment_day||"-";});
-                    const statusHtml=subs.map(function(s){return '<div style="margin-bottom:4px">'+periodStatusBadge(s)+'</div>';}).join("");
+                    const statusHtml=subs.map(function(s){return '<div style="margin-bottom:4px">'+(s._periodType==="inactive"?'<span class="badge inactive">'+t("inactive")+'</span>':periodStatusBadge(s))+'</div>';}).join("");
                     const actions=subs.map(function(s){
                         const status={type:s._periodType};
                         return `
@@ -4617,15 +4637,15 @@ function renderSubscriptions(){
                             <span class="muted" style="min-width:95px">
                                 ${esc(servicesForSubscription(s).map(function(service){return service.service_name;}).join(" + ")||"-")}
                             </span>
-                            ${status.type!=="paid"?`
+                            ${status.type!=="inactive"&&status.type!=="paid"?`
                             <button class="mini-btn pay" onclick="openPaymentModal(${s.id},'${s._periodKey}')" title="${t("confirmPayment")}">
                                 <i class="fa-solid fa-check"></i>
                             </button>`:""}
-                            ${(customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number)?`
+                            ${status.type!=="inactive"&&(customer?.phone||customer?.whatsapp||customer?.whatsapp_number||customer?.mobile||customer?.phone_number)?`
                             <button class="mini-btn wa" onclick="sendWhatsApp(${customer.id},${s.id},'${status.type==="paid"?"receipt":status.type==="overdue"?"overdue":status.type==="due"?"due":"payment"}','${s._periodKey}')" title="WhatsApp">
                                 <i class="fa-brands fa-whatsapp"></i>
                             </button>`:""}
-                            ${customer?`
+                            ${status.type!=="inactive"&&customer?`
                             <button class="mini-btn" title="رابط العميل" aria-label="رابط العميل" onclick="openCustomerPortal(${customer.id})" style="${status.type==="overdue"?"display:inline-flex;align-items:center;gap:5px;padding:5px 9px;white-space:nowrap;":""}">
                                 <i class="fa-solid fa-link"></i>${status.type==="overdue"?"رابط العميل":""}
                             </button>`:""}
@@ -4676,6 +4696,11 @@ function updateSubscriptionVisaSearch(value){
     }
 }
 
+function setSubscriptionView(view){
+    state.subscriptionView=view==="inactive"?"inactive":"active";
+    state.subscriptionFilterStatus="all";
+    renderSubscriptions();
+}
 function setSubscriptionStatusFilter(status){
     state.subscriptionFilterStatus=status||"all";
     renderSubscriptions();
