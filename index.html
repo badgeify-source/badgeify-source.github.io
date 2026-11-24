@@ -2499,6 +2499,30 @@ async function logActivity(
 
 
 /* =========================================
+   PAYMENT METHOD CHANGE REQUEST
+========================================= */
+
+function sendPaymentMethodChangeRequest(customerId){
+    const customer=getCustomer(customerId);
+    if(!customer){
+        showToast("العميل غير موجود",true);
+        return;
+    }
+    const phone=customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number||"";
+    if(!phone){
+        showToast("لا يوجد رقم هاتف محفوظ للعميل",true);
+        return;
+    }
+    const name=customer.client_name||"عميلنا العزيز";
+    const message=
+        "السلام عليكم "+name+"،\n\n"+
+        "نحتاج منك إرسال البريد الإلكتروني أو اسم الحساب المرتبط بالاشتراك، وذلك لتحديث طريقة الدفع الخاصة به.\n\n"+
+        "من فضلك لا ترسل كلمة المرور أو أي كود تحقق (OTP) أو بيانات بطاقة الدفع عبر المحادثة.\n\n"+
+        "شكرًا لتعاونك.";
+    openWhatsAppBusiness(phone,message);
+}
+
+/* =========================================
    WHATSAPP
 ========================================= */
 
@@ -4757,7 +4781,13 @@ function renderSubscriptions(){
                     return `
                     <tr>
                         <td>
-                            <strong>${esc(customer?.client_name||"-")}</strong>
+                            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                                <strong>${esc(customer?.client_name||"-")}</strong>
+                                ${customer&&(customer.phone||customer.whatsapp||customer.whatsapp_number||customer.mobile||customer.phone_number)?`
+                                <button type="button" class="mini-btn" onclick="sendPaymentMethodChangeRequest(${customer.id})" title="طلب بيانات الحساب لتغيير طريقة الدفع" aria-label="طلب تغيير طريقة الدفع">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                </button>`:""}
+                            </div>
                             ${customer?.phone?`<div class="muted">${esc(customer.phone)}</div>`:""}
                         </td>
                         <td>
