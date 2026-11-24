@@ -1595,6 +1595,7 @@ let state={
     customers:[],
     visaCards:[],
     paymentEmails:[],
+    paymentEmailDirectoryReady:false,
     traders:[],
     services:[],
     subscriptions:[],
@@ -2298,7 +2299,7 @@ async function loadData(){
         loadTable("followups"),
         loadTable("activity_logs"),
         loadTable("app_settings"),
-        loadTable("payment_emails")
+        (async function(){try{return await loadTable("payment_emails");}catch(error){console.warn("Payment email directory is not installed yet:",error.message);return null;}})()
 
     ]);
 
@@ -2314,6 +2315,7 @@ async function loadData(){
     state.followups=result[9];
     state.logs=result[10];
 
+    state.paymentEmailDirectoryReady=Array.isArray(result[12]);
     state.paymentEmails=result[12]||[];
 
     state.settings={};
@@ -5821,13 +5823,14 @@ async function saveSubscription(id){
         currency:
             state.settings.currency || "EGP",
 
-        payment_email_id:
-            document.getElementById("subPaymentEmail").value
-            ? Number(document.getElementById("subPaymentEmail").value)
-            : null,
-
-        payment_email:
-            getPaymentEmail(document.getElementById("subPaymentEmail").value)?.email || null,
+        ...(state.paymentEmailDirectoryReady ? {
+            payment_email_id:
+                document.getElementById("subPaymentEmail").value
+                ? Number(document.getElementById("subPaymentEmail").value)
+                : null,
+            payment_email:
+                getPaymentEmail(document.getElementById("subPaymentEmail").value)?.email || null
+        } : {}),
 
         visa_card_id:
             document.getElementById("subVisaCard").value
