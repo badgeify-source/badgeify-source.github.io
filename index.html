@@ -4386,7 +4386,7 @@ function renderPaymentEmails(){
             '<td>'+esc(service.service_name||"—")+'</td>'+
             '<td>'+esc(s.platform||"—")+(s.page_name?' <div class="muted">'+esc(s.page_name)+'</div>':'')+'</td>'+
             '<td dir="ltr" style="text-align:right">'+(s.payment_email?'<b>'+esc(s.payment_email)+'</b>':'<span class="badge inactive">لم يُضاف بريد</span>')+'</td>'+
-            '<td><button class="mini-btn" onclick="openSubscriptionModal('+Number(s.id)+')"><i class="fa-solid fa-pen"></i> تعديل الاشتراك</button></td>'+
+            '<td><div class="actions"><button class="mini-btn" onclick="openSubscriptionModal('+Number(s.id)+')"><i class="fa-solid fa-pen"></i> تعديل</button>'+(s.payment_email?'<button class="mini-btn" onclick="clearSubscriptionPaymentEmail('+Number(s.id)+')" title="حذف البريد فقط"><i class="fa-solid fa-trash"></i> حذف البريد</button>':'')+'</div></td>'+
         '</tr>';
     }).join("");
     document.getElementById("content").innerHTML=
@@ -4397,6 +4397,22 @@ function renderPaymentEmails(){
         '<div class="table-wrap"><table class="table" style="min-width:760px"><thead><tr><th>العميل</th><th>الخدمة</th><th>المنصة / الصفحة</th><th>البريد المستخدم في الدفع</th><th>الإجراء</th></tr></thead><tbody>'+
         (rowsHtml||'<tr><td colspan="5" class="empty">لا توجد اشتراكات مطابقة للبحث.</td></tr>')+
         '</tbody></table></div></div></div>';
+}
+
+async function clearSubscriptionPaymentEmail(id){
+    const subscription=(state.subscriptions||[]).find(function(item){return String(item.id)===String(id);});
+    if(!subscription||!subscription.payment_email)return;
+    if(!confirm("هل تريد حذف البريد الإلكتروني من هذا الاشتراك فقط؟ لن يتم حذف الاشتراك أو أي بيانات أخرى."))return;
+    try{
+        const result=await db.from("subscriptions").update({payment_email:null}).eq("id",id);
+        if(result.error)throw result.error;
+        await refresh();
+        if(state.page==="paymentEmails")renderPaymentEmails();
+        showToast("تم حذف البريد الإلكتروني من الاشتراك.");
+    }catch(error){
+        console.error("CLEAR SUBSCRIPTION PAYMENT EMAIL:",error);
+        showToast(error.message||"تعذر حذف البريد الإلكتروني.",true);
+    }
 }
 
 function periodStatusBadge(row){
