@@ -2514,11 +2514,12 @@ function sendPaymentMethodChangeRequest(customerId){
         return;
     }
     const name=customer.client_name||"عميلنا العزيز";
-    const message=
-        "السلام عليكم "+name+"،\n\n"+
-        "نحتاج منك إرسال البريد الإلكتروني أو اسم الحساب المرتبط بالاشتراك، وذلك لتحديث طريقة الدفع الخاصة به.\n\n"+
-        "من فضلك لا ترسل كلمة المرور أو أي كود تحقق (OTP) أو بيانات بطاقة الدفع عبر المحادثة.\n\n"+
-        "شكرًا لتعاونك.";
+    const template=state.settings.wa_payment_method_change||
+        "السلام عليكم {{client_name}}،\n\nنحتاج منك إرسال البريد الإلكتروني أو اسم الحساب المرتبط بالاشتراك، وذلك لتحديث طريقة الدفع الخاصة به.\n\nمن فضلك لا ترسل كلمة المرور أو أي كود تحقق (OTP) أو بيانات بطاقة الدفع عبر المحادثة.\n\nشكرًا لتعاونك.";
+    const message=buildPortalMessage(template,{
+        client_name:name,
+        company_name:state.settings.company_name||""
+    });
     openWhatsAppBusiness(phone,message);
 }
 
@@ -11267,6 +11268,29 @@ function renderSettings(){
                 </div>
             </div>
 
+            <div class="card" style="margin-top:16px;background:rgba(245,158,11,.035);border-color:rgba(245,158,11,.16)">
+                <div class="card-head">
+                    <h3>رسالة طلب تحديث طريقة الدفع</h3>
+                </div>
+                <div class="card-body">
+                    <div class="muted" style="margin-bottom:12px;line-height:1.8">
+                        هذه الرسالة تظهر عند الضغط على زر علامة الفيزا بجانب اسم العميل في صفحة الاشتراكات.
+                        <br>المتغيرات المتاحة: <b>{{client_name}}</b> اسم العميل - <b>{{company_name}}</b> اسم الشركة.
+                    </div>
+                    <div class="field">
+                        <label>نص الرسالة</label>
+                        <textarea id="msgPaymentMethodChange" rows="6" placeholder="اكتب رسالة طلب تحديث طريقة الدفع...">${esc(
+                            state.settings.wa_payment_method_change
+                            || "السلام عليكم {{client_name}}،\n\nنحتاج منك إرسال البريد الإلكتروني أو اسم الحساب المرتبط بالاشتراك، وذلك لتحديث طريقة الدفع الخاصة به.\n\nمن فضلك لا ترسل كلمة المرور أو أي كود تحقق (OTP) أو بيانات بطاقة الدفع عبر المحادثة.\n\nشكرًا لتعاونك."
+                        )}</textarea>
+                    </div>
+                    <button class="gold-btn" onclick="savePaymentMethodChangeMessage()">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        حفظ رسالة تحديث طريقة الدفع
+                    </button>
+                </div>
+            </div>
+
             <button
             class="gold-btn"
             onclick="saveWhatsAppMessages()">
@@ -11352,6 +11376,23 @@ async function saveCompanySettings(){
 
 }
 
+
+async function savePaymentMethodChangeMessage(){
+    const value=document.getElementById("msgPaymentMethodChange")?.value||"";
+    try{
+        const result=await db.from("app_settings").upsert({
+            setting_key:"wa_payment_method_change",
+            setting_value:value,
+            updated_at:new Date().toISOString()
+        },{onConflict:"setting_key"});
+        if(result.error)throw result.error;
+        state.settings.wa_payment_method_change=value;
+        showToast("تم حفظ رسالة طلب تحديث طريقة الدفع");
+    }catch(error){
+        console.error("SAVE PAYMENT METHOD CHANGE MESSAGE:",error);
+        showToast(error.message||"تعذر حفظ الرسالة",true);
+    }
+}
 
 async function saveWhatsAppMessages(){
 
