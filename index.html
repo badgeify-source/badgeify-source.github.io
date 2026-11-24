@@ -1594,6 +1594,7 @@ let state={
 
     customers:[],
     visaCards:[],
+    paymentEmails:[],
     traders:[],
     services:[],
     subscriptions:[],
@@ -2296,7 +2297,8 @@ async function loadData(){
         loadTable("invoice_items"),
         loadTable("followups"),
         loadTable("activity_logs"),
-        loadTable("app_settings")
+        loadTable("app_settings"),
+        loadTable("payment_emails")
 
     ]);
 
@@ -2311,6 +2313,8 @@ async function loadData(){
     state.invoiceItems=result[8];
     state.followups=result[9];
     state.logs=result[10];
+
+    state.paymentEmails=result[12]||[];
 
     state.settings={};
 
@@ -2340,6 +2344,10 @@ function getCustomer(id){
 
 function getVisaCard(id){
     return state.visaCards.find(x=>Number(x.id)===Number(id));
+}
+
+function getPaymentEmail(id){
+    return (state.paymentEmails||[]).find(x=>Number(x.id)===Number(id));
 }
 
 function maskVisaCard(card){
@@ -4360,69 +4368,73 @@ async function deleteCustomer(id){
    PAYMENT EMAILS
 ========================================= */
 
-function filterPaymentEmails(value){
-    state.paymentEmailDirectorySearch=value;
-    renderPaymentEmails();
-    const input=document.getElementById("paymentEmailDirectorySearch");
-    if(input){
-        input.focus();
-        const position=String(value||"").length;
-        input.setSelectionRange(position,position);
-    }
-}
-
 function renderPaymentEmails(){
-    const query=String(state.paymentEmailDirectorySearch||"").trim().toLowerCase();
-    const rows=(state.subscriptions||[]).map(function(subscription){
-        const customer=getCustomer(subscription.customer_id);
-        const service=getService(subscription.app_service_id);
-        return {subscription:subscription,customer:customer,service:service};
-    }).filter(function(item){
-        if(!query)return true;
-        const s=item.subscription,c=item.customer||{},v=item.service||{};
-        return [s.payment_email,s.platform,s.page_name,s.page_link,c.client_name,c.phone,v.service_name]
-            .some(function(value){return String(value||"").toLowerCase().includes(query);});
-    }).sort(function(a,b){
-        const ae=String(a.subscription.payment_email||"").trim();
-        const be=String(b.subscription.payment_email||"").trim();
-        if(!!ae!==!!be)return ae?-1:1;
-        return String(a.customer?.client_name||"").localeCompare(String(b.customer?.client_name||""),"ar");
+    const rows=state.paymentEmails||[];
+    const usedCounts={};
+    (state.subscriptions||[]).forEach(function(s){
+        if(s.payment_email_id)usedCounts[String(s.payment_email_id)]=(usedCounts[String(s.payment_email_id)]||0)+1;
     });
-    const total=(state.subscriptions||[]).length;
-    const withEmail=(state.subscriptions||[]).filter(function(s){return String(s.payment_email||"").trim();}).length;
-    const rowsHtml=rows.map(function(item){
-        const s=item.subscription,c=item.customer||{},service=item.service||{};
-        return '<tr>'+
-            '<td><b>'+esc(c.client_name||"—")+'</b><div class="muted">'+esc(c.phone||"")+'</div></td>'+
-            '<td>'+esc(service.service_name||"—")+'</td>'+
-            '<td>'+esc(s.platform||"—")+(s.page_name?' <div class="muted">'+esc(s.page_name)+'</div>':'')+'</td>'+
-            '<td dir="ltr" style="text-align:right">'+(s.payment_email?'<b>'+esc(s.payment_email)+'</b>':'<span class="badge inactive">لم يُضاف بريد</span>')+'</td>'+
-            '<td><div class="actions"><button class="mini-btn" onclick="openSubscriptionModal('+Number(s.id)+')"><i class="fa-solid fa-pen"></i> تعديل</button>'+(s.payment_email?'<button class="mini-btn" onclick="clearSubscriptionPaymentEmail('+Number(s.id)+')" title="حذف البريد فقط"><i class="fa-solid fa-trash"></i> حذف البريد</button>':'')+'</div></td>'+
-        '</tr>';
-    }).join("");
     document.getElementById("content").innerHTML=
-        '<div class="page-head"><div><h1>إدارة البريد الإلكتروني</h1><p>كل بريد مرتبط باشتراكه بشكل مستقل، ويمكنك تعديله من بيانات الاشتراك.</p></div>'+
-        '<div class="page-actions"><span class="badge upcoming">بريد مسجل: '+withEmail+' / '+total+'</span></div></div>'+
-        '<div class="card"><div class="card-body">'+
-        '<div class="search"><input id="paymentEmailDirectorySearch" type="search" placeholder="ابحث بالبريد أو العميل أو الخدمة أو الصفحة..." value="'+esc(query)+'" oninput="filterPaymentEmails(this.value)" style="width:100%"></div>'+
-        '<div class="table-wrap"><table class="table" style="min-width:760px"><thead><tr><th>العميل</th><th>الخدمة</th><th>المنصة / الصفحة</th><th>البريد المستخدم في الدفع</th><th>الإجراء</th></tr></thead><tbody>'+
-        (rowsHtml||'<tr><td colspan="5" class="empty">لا توجد اشتراكات مطابقة للبحث.</td></tr>')+
+        '<div class="page-head"><div><h1>إدارة البريد الإلكتروني</h1><p>أضف عناوين البريد مرة واحدة، ثم اخترها من قائمة الاشتراكات مثل الفيزا</p></div>'+
+        '<button class="gold-btn" onclick="openPaymentEmailModal()"><i class="fa-solid fa-plus"></i> إضافة بريد إلكتروني</button></div>'+
+        '<div class="card"><div class="card-body"><div class="table-wrap"><table class="table">'+
+        '<thead><tr><th>البريد الإلكتروني</th><th>عدد الاشتراكات المرتبطة</th><th>الإجراءات</th></tr></thead><tbody>'+
+        (rows.length?rows.map(function(item){
+            return '<tr><td dir="ltr"><b>'+esc(item.email)+'</b></td><td>'+Number(usedCounts[String(item.id)]||0)+'</td><td><div class="actions">'+
+                '<button class="mini-btn" onclick="openPaymentEmailModal('+Number(item.id)+')"><i class="fa-solid fa-pen"></i> تعديل</button>'+
+                '<button class="mini-btn" onclick="deletePaymentEmail('+Number(item.id)+')"><i class="fa-solid fa-trash"></i> حذف</button>'+
+                '</div></td></tr>';
+        }).join(""):'<tr><td colspan="3"><div class="empty">لا توجد عناوين بريد محفوظة. اضغط إضافة بريد إلكتروني للبدء.</div></td></tr>')+
         '</tbody></table></div></div></div>';
 }
 
-async function clearSubscriptionPaymentEmail(id){
-    const subscription=(state.subscriptions||[]).find(function(item){return String(item.id)===String(id);});
-    if(!subscription||!subscription.payment_email)return;
-    if(!confirm("هل تريد حذف البريد الإلكتروني من هذا الاشتراك فقط؟ لن يتم حذف الاشتراك أو أي بيانات أخرى."))return;
+function openPaymentEmailModal(id=null){
+    const item=id?getPaymentEmail(id):{email:""};
+    if(id&&!item){showToast("تعذر العثور على البريد الإلكتروني",true);return;}
+    openModal(
+        id?"تعديل البريد الإلكتروني":"إضافة بريد إلكتروني",
+        '<div class="form-grid"><div class="field full"><label>عنوان البريد الإلكتروني</label>'+
+        '<input id="paymentEmailValue" type="email" dir="ltr" autocomplete="email" placeholder="name@example.com" value="'+esc(item?.email||"")+'"></div></div>',
+        '<button class="ghost-btn" onclick="closeModal()">إلغاء</button>'+
+        '<button class="gold-btn" onclick="savePaymentEmail('+ (id||"null") +')">حفظ</button>'
+    );
+}
+
+async function savePaymentEmail(id){
+    const email=String(document.getElementById("paymentEmailValue")?.value||"").trim().toLowerCase();
+    if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        showToast("اكتب بريدًا إلكترونيًا صحيحًا",true);return;
+    }
     try{
-        const result=await db.from("subscriptions").update({payment_email:null}).eq("id",id);
+        const duplicate=(state.paymentEmails||[]).find(function(x){
+            return String(x.email||"").toLowerCase()===email&&String(x.id)!==String(id||"");
+        });
+        if(duplicate){showToast("هذا البريد مسجل بالفعل",true);return;}
+        const result=id
+            ?await db.from("payment_emails").update({email:email}).eq("id",id)
+            :await db.from("payment_emails").insert({email:email});
         if(result.error)throw result.error;
-        await refresh();
-        if(state.page==="paymentEmails")renderPaymentEmails();
-        showToast("تم حذف البريد الإلكتروني من الاشتراك.");
+        closeModal();await refresh();showToast("تم حفظ البريد الإلكتروني");
     }catch(error){
-        console.error("CLEAR SUBSCRIPTION PAYMENT EMAIL:",error);
-        showToast(error.message||"تعذر حذف البريد الإلكتروني.",true);
+        console.error("SAVE PAYMENT EMAIL:",error);
+        showToast(error.message||"تعذر حفظ البريد الإلكتروني",true);
+    }
+}
+
+async function deletePaymentEmail(id){
+    const used=(state.subscriptions||[]).filter(function(s){return Number(s.payment_email_id)===Number(id);}).length;
+    if(used){
+        showToast("لا يمكن حذف هذا البريد لأنه مرتبط بـ "+used+" اشتراك. غيّر البريد في الاشتراكات أولًا.",true);
+        return;
+    }
+    if(!confirm("هل تريد حذف عنوان البريد الإلكتروني من القائمة؟"))return;
+    try{
+        const result=await db.from("payment_emails").delete().eq("id",id);
+        if(result.error)throw result.error;
+        await refresh();showToast("تم حذف البريد الإلكتروني");
+    }catch(error){
+        console.error("DELETE PAYMENT EMAIL:",error);
+        showToast(error.message||"تعذر حذف البريد الإلكتروني",true);
     }
 }
 
@@ -5372,7 +5384,15 @@ function subscriptionServiceRowHTML(
 
             <div class="field full">
                 <label>${state.lang==="ar"?"البريد الإلكتروني المستخدم في الدفع":"Email used for payment"}</label>
-                <input id="subPaymentEmail" type="email" inputmode="email" autocomplete="off" dir="ltr" placeholder="name@example.com" value="${esc(s.payment_email||"")}">
+                <select id="subPaymentEmail">
+                    <option value="">${t("choose")}</option>
+                    ${(state.paymentEmails||[]).map(function(item){
+                        const selected=Number(s.payment_email_id)===Number(item.id) ||
+                            (!s.payment_email_id && String(s.payment_email||"").toLowerCase()===String(item.email||"").toLowerCase());
+                        return '<option value="'+item.id+'" '+(selected?"selected":"")+'>'+esc(item.email)+'</option>';
+                    }).join("")}
+                </select>
+                ${(state.paymentEmails||[]).length?'':'<div class="muted" style="font-size:9px;margin-top:5px">أضف بريدًا أولًا من صفحة البريد الإلكتروني ليظهر هنا.</div>'}
             </div>
 
             <div class="field full">
@@ -5801,8 +5821,13 @@ async function saveSubscription(id){
         currency:
             state.settings.currency || "EGP",
 
+        payment_email_id:
+            document.getElementById("subPaymentEmail").value
+            ? Number(document.getElementById("subPaymentEmail").value)
+            : null,
+
         payment_email:
-            (document.getElementById("subPaymentEmail").value||"").trim().toLowerCase() || null,
+            getPaymentEmail(document.getElementById("subPaymentEmail").value)?.email || null,
 
         visa_card_id:
             document.getElementById("subVisaCard").value
