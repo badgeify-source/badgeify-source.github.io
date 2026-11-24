@@ -4511,8 +4511,8 @@ function renderSubscriptions(){
     }
     const selectedService=document.getElementById("subscriptionServiceFilter")?.value||"";
     const selectedStatus=state.subscriptionFilterStatus||"all";
-    const selectedVisaSearch=String(state.subscriptionVisaSearch||"").replace(/\D/g,"").slice(0,4);
-    const selectedPaymentEmailSearch=String(state.subscriptionPaymentEmailSearch||"").trim().toLowerCase();
+    const selectedVisaSearch=String(state.subscriptionVisaSearch||"");
+    const selectedPaymentEmailSearch=String(state.subscriptionPaymentEmailSearch||"");
 
     let filteredRows=selectedService?rows.filter(function(subscription){
         return servicesForSubscription(subscription).some(function(service){
@@ -4528,13 +4528,17 @@ function renderSubscriptions(){
 
     if(selectedVisaSearch){
         filteredRows=filteredRows.filter(function(subscription){
-            const last4=String(subscription.visa_last4||getVisaCard(subscription.visa_card_id)?.last4||"").replace(/\D/g,"");
-            return last4.endsWith(selectedVisaSearch);
+            const cardId=subscription.visa_card_id;
+            const card=getVisaCard(cardId);
+            return String(cardId)===selectedVisaSearch ||
+                String(subscription.visa_last4||card?.last4||"").replace(/\D/g,"").endsWith(selectedVisaSearch);
         });
     }
     if(selectedPaymentEmailSearch){
         filteredRows=filteredRows.filter(function(subscription){
-            return String(subscription.payment_email||"").toLowerCase().includes(selectedPaymentEmailSearch);
+            const email=getPaymentEmail(subscription.payment_email_id);
+            return String(subscription.payment_email_id||"")===selectedPaymentEmailSearch ||
+                String(subscription.payment_email||email?.email||"").toLowerCase()===selectedPaymentEmailSearch.toLowerCase();
         });
     }
 
@@ -4704,10 +4708,20 @@ function renderSubscriptions(){
             </div>`: `<div class="muted" style="margin:4px 0 16px;font-size:12px">دي كل الاشتراكات اللي حالتها غير نشط. تقدر تعدّل أي اشتراك وتفعّله مرة تانية من زر التعديل.</div>`}
 
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
-                <label for="subscriptionVisaSearch" style="font-weight:700">بحث بآخر ٤ أرقام من الفيزا</label>
-                <input id="subscriptionVisaSearch" type="text" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="آخر ٤ أرقام" value="${esc(selectedVisaSearch)}" oninput="updateSubscriptionVisaSearch(this.value)" style="width:150px;min-width:130px;">
-                <label for="subscriptionPaymentEmailSearch" style="font-weight:700">${state.lang==="ar"?"بحث ببريد الدفع":"Search payment email"}</label>
-                <input id="subscriptionPaymentEmailSearch" type="email" autocomplete="off" placeholder="name@example.com" value="${esc(state.subscriptionPaymentEmailSearch||"")}" oninput="updateSubscriptionPaymentEmailSearch(this.value)" style="width:220px;min-width:180px;">
+                <label for="subscriptionVisaSearch" style="font-weight:700">اختيار الفيزا</label>
+                <select id="subscriptionVisaSearch" onchange="updateSubscriptionVisaSearch(this.value)" style="min-width:190px">
+                    <option value="">كل الفيزات</option>
+                    ${(state.visaCards||[]).map(function(card){
+                        return '<option value="'+card.id+'" '+(String(selectedVisaSearch)===String(card.id)?"selected":"")+'>'+esc(card.card_name||"فيزا")+' — •••• '+esc(String(card.last4||"").slice(-4))+'</option>';
+                    }).join("")}
+                </select>
+                <label for="subscriptionPaymentEmailSearch" style="font-weight:700">اختيار البريد الإلكتروني</label>
+                <select id="subscriptionPaymentEmailSearch" onchange="updateSubscriptionPaymentEmailSearch(this.value)" style="min-width:220px">
+                    <option value="">كل عناوين البريد</option>
+                    ${(state.paymentEmails||[]).map(function(item){
+                        return '<option value="'+item.id+'" '+(String(selectedPaymentEmailSearch)===String(item.id)?"selected":"")+'>'+esc(item.email)+'</option>';
+                    }).join("")}
+                </select>
                 <label style="font-weight:700">فلترة حسب الخدمة</label>
                 <select id="subscriptionServiceFilter" onchange="renderSubscriptions()" style="min-width:220px">
                     <option value="">كل الخدمات</option>
@@ -4813,27 +4827,13 @@ function renderSubscriptions(){
 }
 
 function updateSubscriptionPaymentEmailSearch(value){
-    state.subscriptionPaymentEmailSearch=String(value||"").trimStart();
-    const input=document.getElementById("subscriptionPaymentEmailSearch");
-    const cursor=input?input.selectionStart:null;
+    state.subscriptionPaymentEmailSearch=String(value||"");
     renderSubscriptions();
-    const next=document.getElementById("subscriptionPaymentEmailSearch");
-    if(next){
-        next.focus();
-        if(cursor!==null&&typeof next.setSelectionRange==="function") next.setSelectionRange(cursor,cursor);
-    }
 }
 
 function updateSubscriptionVisaSearch(value){
-    state.subscriptionVisaSearch=String(value||"").replace(/\D/g,"").slice(0,4);
-    const input=document.getElementById("subscriptionVisaSearch");
-    const cursor=input?input.selectionStart:null;
+    state.subscriptionVisaSearch=String(value||"");
     renderSubscriptions();
-    const next=document.getElementById("subscriptionVisaSearch");
-    if(next){
-        next.focus();
-        if(cursor!==null&&typeof next.setSelectionRange==="function") next.setSelectionRange(cursor,cursor);
-    }
 }
 
 function setSubscriptionView(view){
