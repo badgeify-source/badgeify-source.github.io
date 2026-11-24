@@ -4360,6 +4360,17 @@ async function deleteCustomer(id){
    PAYMENT EMAILS
 ========================================= */
 
+function filterPaymentEmails(value){
+    state.paymentEmailDirectorySearch=value;
+    renderPaymentEmails();
+    const input=document.getElementById("paymentEmailDirectorySearch");
+    if(input){
+        input.focus();
+        const position=String(value||"").length;
+        input.setSelectionRange(position,position);
+    }
+}
+
 function renderPaymentEmails(){
     const query=String(state.paymentEmailDirectorySearch||"").trim().toLowerCase();
     const rows=(state.subscriptions||[]).map(function(subscription){
@@ -4393,7 +4404,7 @@ function renderPaymentEmails(){
         '<div class="page-head"><div><h1>إدارة البريد الإلكتروني</h1><p>كل بريد مرتبط باشتراكه بشكل مستقل، ويمكنك تعديله من بيانات الاشتراك.</p></div>'+
         '<div class="page-actions"><span class="badge upcoming">بريد مسجل: '+withEmail+' / '+total+'</span></div></div>'+
         '<div class="card"><div class="card-body">'+
-        '<div class="search"><input id="paymentEmailDirectorySearch" type="search" placeholder="ابحث بالبريد أو العميل أو الخدمة أو الصفحة..." value="'+esc(query)+'" oninput="state.paymentEmailDirectorySearch=this.value;renderPaymentEmails()" style="width:100%"></div>'+
+        '<div class="search"><input id="paymentEmailDirectorySearch" type="search" placeholder="ابحث بالبريد أو العميل أو الخدمة أو الصفحة..." value="'+esc(query)+'" oninput="filterPaymentEmails(this.value)" style="width:100%"></div>'+
         '<div class="table-wrap"><table class="table" style="min-width:760px"><thead><tr><th>العميل</th><th>الخدمة</th><th>المنصة / الصفحة</th><th>البريد المستخدم في الدفع</th><th>الإجراء</th></tr></thead><tbody>'+
         (rowsHtml||'<tr><td colspan="5" class="empty">لا توجد اشتراكات مطابقة للبحث.</td></tr>')+
         '</tbody></table></div></div></div>';
